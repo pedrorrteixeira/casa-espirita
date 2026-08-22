@@ -10,7 +10,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { normalizarTexto, montarAutoria, buscarTitulos } = require('../src/dominio.js');
+const {
+  normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade,
+  SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO
+} = require('../src/dominio.js');
 
 // Segue a convenção de catalogação da ESPECIFICACAO.md: nome formal com o
 // popular entre parênteses, porque o frequentador pede "um do Chico".
@@ -212,4 +215,86 @@ test('título com zero exemplares aparece na busca', () => {
   // lista de doação desejada. A busca não filtra por disponibilidade.
   const semExemplar = [{ id_titulo: 9, titulo: 'A Gênese', autor: 'Allan Kardec' }];
   assert.deepEqual(idsDe(buscarTitulos(semExemplar, 'genese')), [9]);
+});
+
+// --- resumirDisponibilidade --------------------------------------------------
+
+const exemplar = (extra) => Object.assign({
+  tombo: 1, id_titulo: 1, ativo: 'SIM',
+  situacao: 'disponível', com_quem: '', previsao_devolucao: ''
+}, extra);
+
+test('título sem exemplar nenhum: a casa não tem', () => {
+  // D5: catalogar obra que a casa não possui é recurso, não bug.
+  const resumo = resumirDisponibilidade([]);
+  assert.equal(resumo.estado, 'sem_exemplar');
+  assert.equal(resumo.total, 0);
+  assert.equal(resumo.disponiveis, 0);
+  assert.equal(resumo.previsao, null);
+});
+
+test('conta disponíveis sobre o total de ativos', () => {
+  const resumo = resumirDisponibilidade([
+    exemplar({ tombo: 1 }),
+    exemplar({ tombo: 2 }),
+    exemplar({ tombo: 3, situacao: 'emprestado', previsao_devolucao: new Date(2026, 8, 12) })
+  ]);
+  assert.equal(resumo.estado, 'disponivel');
+  assert.equal(resumo.disponiveis, 2);
+  assert.equal(resumo.total, 3);
+});
+
+test('exemplar baixado não conta em nada', () => {
+  // Para quem procura livro, exemplar perdido e exemplar inexistente são a
+  // mesma coisa.
+  const resumo = resumirDisponibilidade([
+    exemplar({ tombo: 1, ativo: 'NÃO', situacao: 'baixado' }),
+    exemplar({ tombo: 2 })
+  ]);
+  assert.equal(resumo.total, 1);
+  assert.equal(resumo.disponiveis, 1);
+});
+
+test('todos emprestados: estado emprestado e previsão mais próxima', () => {
+  const resumo = resumirDisponibilidade([
+    exemplar({ tombo: 1, situacao: 'emprestado', previsao_devolucao: new Date(2026, 8, 30) }),
+    exemplar({ tombo: 2, situacao: 'emprestado', previsao_devolucao: new Date(2026, 8, 12) })
+  ]);
+  assert.equal(resumo.estado, 'emprestado');
+  assert.equal(resumo.disponiveis, 0);
+  assert.equal(resumo.previsao.getTime(), new Date(2026, 8, 12).getTime(),
+    'tem que ser a devolução mais próxima, que é quando dá para pegar');
+});
+
+test('previsão em texto ISO, como volta do cache, também é entendida', () => {
+  const resumo = resumirDisponibilidade([
+    exemplar({ situacao: 'emprestado', previsao_devolucao: '2026-09-12T03:00:00.000Z' })
+  ]);
+  assert.ok(resumo.previsao instanceof Date);
+});
+
+test('resumo não devolve nada sobre quem está com o livro', () => {
+  // Seção 6: a busca pública mostra "emprestado — previsão dd/mm", nunca o
+  // nome. A privacidade não pode depender de a tela lembrar de esconder.
+  const resumo = resumirDisponibilidade([
+    exemplar({ situacao: 'emprestado', com_quem: 'Maria da Silva',
+               previsao_devolucao: new Date(2026, 8, 12) })
+  ]);
+  const serializado = JSON.stringify(resumo);
+  assert.equal(serializado.indexOf('Maria'), -1, 'vazou nome de frequentador');
+  assert.equal(Object.keys(resumo).sort().join(','), 'disponiveis,estado,previsao,total');
+});
+
+test('o vocabulário de situacao é o mesmo em dominio.js e setup.js', () => {
+  // A ARRAYFORMULA de setup.js produz estas palavras; dominio.js compara
+  // contra elas. Divergir quebraria a busca em silêncio: nenhum exemplar
+  // apareceria como disponível e nenhum erro seria levantado.
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const setup = fs.readFileSync(path.join(__dirname, '..', 'src', 'setup.js'), 'utf8');
+
+  for (const palavra of [SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO]) {
+    assert.ok(setup.includes('"' + palavra + '"'),
+      `setup.js não produz mais a situação "${palavra}"`);
+  }
 });

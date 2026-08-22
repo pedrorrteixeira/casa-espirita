@@ -85,7 +85,74 @@ function buscarTitulos(titulos, termo) {
   });
 }
 
+/**
+ * Vocabulário da coluna derivada `situacao`.
+ *
+ * ATENÇÃO: estas mesmas palavras estão escritas dentro da ARRAYFORMULA em
+ * `setup.js`. Mudar aqui e não lá (ou o contrário) quebra em silêncio: a busca
+ * pararia de achar exemplar disponível e ninguém veria erro nenhum. O teste
+ * "o vocabulário de situacao é o mesmo nos dois arquivos" existe para pegar
+ * isso — não é duplicação esquecida, é duplicação vigiada.
+ */
+var SITUACAO_DISPONIVEL = 'disponível';
+var SITUACAO_EMPRESTADO = 'emprestado';
+var SITUACAO_BAIXADO = 'baixado';
+
+/**
+ * Resume a disponibilidade de um título a partir dos seus exemplares.
+ *
+ * É a função que alimenta a busca pública, então tem uma responsabilidade
+ * extra: **não devolve nada sobre quem está com o livro**. Recebe exemplares
+ * que podem trazer `com_quem` preenchido e simplesmente não olha para o campo.
+ * A privacidade não fica a cargo de a tela lembrar de esconder (seção 6 da
+ * especificação).
+ *
+ * Exemplar baixado não entra em nenhuma contagem: para quem procura livro, um
+ * exemplar perdido e um exemplar que nunca existiu são a mesma coisa.
+ *
+ * `previsao` é a devolução mais próxima entre os emprestados — é a data que
+ * responde "quando posso pegar?".
+ */
+function resumirDisponibilidade(exemplares) {
+  var ativos = (exemplares || []).filter(function (exemplar) {
+    return String(exemplar.ativo).trim() === 'SIM';
+  });
+
+  var disponiveis = ativos.filter(function (exemplar) {
+    return normalizarTexto(exemplar.situacao) === normalizarTexto(SITUACAO_DISPONIVEL);
+  });
+
+  var previsao = null;
+  ativos.forEach(function (exemplar) {
+    var data = comoData_(exemplar.previsao_devolucao);
+    if (data && (previsao === null || data < previsao)) previsao = data;
+  });
+
+  var estado;
+  if (ativos.length === 0) estado = 'sem_exemplar';
+  else if (disponiveis.length > 0) estado = 'disponivel';
+  else estado = 'emprestado';
+
+  return {
+    estado: estado,
+    total: ativos.length,
+    disponiveis: disponiveis.length,
+    previsao: previsao
+  };
+}
+
 // --- Auxiliares --------------------------------------------------------------
+
+/**
+ * Converte o que veio da planilha para Date, ou null.
+ * Célula de data volta como Date; o JSON do cache volta como string ISO.
+ */
+function comoData_(valor) {
+  if (!valor) return null;
+  if (valor instanceof Date) return isFinite(valor.getTime()) ? valor : null;
+  var data = new Date(valor);
+  return isFinite(data.getTime()) ? data : null;
+}
 
 function limpar_(valor) {
   if (valor === null || valor === undefined) return '';
@@ -144,5 +211,13 @@ function numeroOuNulo_(valor) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { normalizarTexto: normalizarTexto, montarAutoria: montarAutoria, buscarTitulos: buscarTitulos };
+  module.exports = {
+    normalizarTexto: normalizarTexto,
+    montarAutoria: montarAutoria,
+    buscarTitulos: buscarTitulos,
+    resumirDisponibilidade: resumirDisponibilidade,
+    SITUACAO_DISPONIVEL: SITUACAO_DISPONIVEL,
+    SITUACAO_EMPRESTADO: SITUACAO_EMPRESTADO,
+    SITUACAO_BAIXADO: SITUACAO_BAIXADO
+  };
 }
