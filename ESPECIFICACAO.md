@@ -134,6 +134,13 @@ Toda escrita do Web App grava aqui. Sem dado pessoal sensível no `detalhe`.
 2. A validação de disponibilidade e a gravação acontecem dentro do mesmo
    `LockService`. Verificar e depois gravar sem lock é uma condição de corrida.
 3. `data_prevista` = `data_emprestimo` + `prazo_devolucao_dias` da aba `Config`.
+   Calculada **uma vez, no ato do empréstimo, e gravada como valor** — nunca
+   como coluna de fórmula. Dois motivos: a renovação (regra 4) precisa empurrar
+   essa data, e uma fórmula recalcularia sempre `emprestimo + prazo`; e mudar
+   `prazo_devolucao_dias` no `Config` reescreveria retroativamente a data
+   prevista de todos os empréstimos, inclusive os já devolvidos. Contraste com
+   `situacao`, que é derivada porque seu significado não muda com o tempo:
+   é sempre "existe empréstimo aberto para este tombo?".
 4. Renovação incrementa `renovacoes` e empurra `data_prevista`. Sem limite rígido
    por enquanto — se houver fila para o título, o atendente decide.
 5. Uma pessoa inativa (`ativo` = NÃO) não pode pegar livro.
