@@ -18,8 +18,18 @@
  * duas abas, leia a coluna A em lote e conte. As outras cinco abas não têm
  * fórmula e podem usar getLastRow() normalmente.
  *
- * As fórmulas são escritas em notação en-US (vírgula separando argumentos).
- * O Apps Script sempre recebe assim; o Sheets traduz para ";" na exibição.
+ * SEPARADOR DE ARGUMENTOS
+ * -----------------------
+ * As fórmulas abaixo são escritas com vírgula, mas isso é só a forma de
+ * armazenamento neste arquivo. `setFormula()` grava o texto literal: quem
+ * interpreta é a planilha, e numa planilha pt_BR o separador é ";". Passar
+ * vírgula ali dá #ERROR! (erro de sintaxe), não #REF!.
+ *
+ * Por isso `separadorDeFormula_()` descobre em tempo de execução qual notação
+ * esta planilha aceita, e `comSeparador_()` converte antes de gravar.
+ *
+ * Consequência para quem for editar as fórmulas: nenhuma delas pode conter
+ * vírgula dentro de uma string literal, porque a conversão é textual.
  */
 
 var SETUP_FUSO = 'America/Sao_Paulo';
@@ -226,8 +236,11 @@ function criarEstruturaPlanilha() {
       atualizadas.push(spec.nome);
     }
   });
+  var sep = separadorDeFormula_(ss);
+  console.log('Separador de fórmulas desta planilha: "%s"', sep);
+
   ESTRUTURA_ABAS.forEach(function (spec) {
-    configurarAba_(ss, spec);
+    configurarAba_(ss, spec, sep);
   });
 
   var nomes = ESTRUTURA_ABAS.map(function (spec) { return spec.nome; });
@@ -304,7 +317,7 @@ function garantirAba_(ss, spec) {
  * Passada 2: reaplica cabeçalho, formato, validação, fórmula, congelamento e
  * proteção. Só roda depois que TODAS as abas existem — ver criarEstruturaPlanilha().
  */
-function configurarAba_(ss, spec) {
+function configurarAba_(ss, spec, sep) {
   var nCols = spec.cabecalhos.length;
   var aba = ss.getSheetByName(spec.nome);
 
@@ -328,7 +341,7 @@ function configurarAba_(ss, spec) {
 
   // Fórmula só na linha 2 — a ARRAYFORMULA cuida do resto da coluna sozinha.
   Object.keys(spec.formulas || {}).forEach(function (col) {
-    aba.getRange(2, Number(col)).setFormula(spec.formulas[col]);
+    aba.getRange(2, Number(col)).setFormula(comSeparador_(spec.formulas[col], sep));
   });
 
   Object.keys(spec.larguras || {}).forEach(function (col) {
@@ -336,6 +349,48 @@ function configurarAba_(ss, spec) {
   });
 
   aplicarProtecoes_(aba, spec, nCols, linhasDados);
+}
+
+/**
+ * Descobre qual separador de argumentos o parser desta planilha aceita.
+ *
+ * Não dá para deduzir do locale com segurança, então a gente pergunta: grava
+ * uma fórmula-sonda numa aba temporária e vê qual das duas notações devolve
+ * resultado em vez de #ERROR!. Falha alto se nenhuma funcionar — melhor parar
+ * aqui do que espalhar #ERROR! por cinco colunas derivadas.
+ */
+function separadorDeFormula_(ss) {
+  // Sobra de uma execução que morreu no meio faria o insertSheet estourar.
+  var restos = ss.getSheetByName('__sonda__');
+  if (restos) ss.deleteSheet(restos);
+
+  var aba = ss.insertSheet('__sonda__');
+  try {
+    var celula = aba.getRange('A1');
+
+    celula.setFormula('=IF(TRUE,1,2)');
+    SpreadsheetApp.flush();
+    if (celula.getValue() === 1) return ',';
+
+    celula.setFormula('=IF(TRUE;1;2)');
+    SpreadsheetApp.flush();
+    if (celula.getValue() === 1) return ';';
+
+    throw new Error(
+      'Não consegui descobrir o separador de fórmulas desta planilha: nem "," ' +
+      'nem ";" foram aceitos pela fórmula-sonda.'
+    );
+  } finally {
+    ss.deleteSheet(aba);
+  }
+}
+
+/**
+ * Converte a fórmula para o separador que a planilha aceita.
+ * Conversão textual: nenhuma fórmula pode ter vírgula dentro de string.
+ */
+function comSeparador_(formula, sep) {
+  return sep === ',' ? formula : formula.split(',').join(sep);
 }
 
 function criarValidacao_(lista, bloqueia) {

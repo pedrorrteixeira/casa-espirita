@@ -50,6 +50,10 @@ Plano de execução: @PLANO.md
   cinco não têm fórmula e podem usar `getLastRow()`.
 - **Nunca escreva em coluna derivada** (`Titulos!P:Q`, `Exemplares!G:I`).
   Escrever quebra a `ARRAYFORMULA` com `#REF!`. Ver o cabeçalho de `setup.js`.
+- **`setFormula()` não traduz separador.** Ele grava o texto literal e quem
+  interpreta é a planilha, que em `pt_BR` espera `;` e não `,`. Vírgula ali dá
+  `#ERROR!` (sintaxe), não `#REF!` (referência). Use `separadorDeFormula_()` de
+  `setup.js`, que descobre a notação aceita em tempo de execução.
 - **`LockService` em toda escrita** que possa ter concorrência (empréstimo,
   devolução). Timeout de 10s, e falhe com mensagem clara.
 - **Nada de IDs hardcoded.** `spreadsheetId`, `calendarId`, e-mail do admin e

@@ -38,8 +38,11 @@ Objetivo: repositório funcionando, planilha criada, `clasp push` publicando.
       remoto `appsscript`, e o Google recusa:
       `A file with this name already exists in the current project: appsscript`.
 - [x] 👤 `npx clasp push` — 12 arquivos publicados.
-- [ ] 👤 Rodar `criarEstruturaPlanilha()` uma vez no editor e autorizar o script
-      na tela de consentimento OAuth.
+- [x] 👤 Rodar `criarEstruturaPlanilha()` e autorizar o script na tela de
+      consentimento OAuth. Feito pelo menu `Biblioteca` da planilha, não pelo
+      editor: com várias contas Google logadas no Chrome, o script.google.com
+      ignora a sessão multi-conta e devolve "Não foi possível abrir o arquivo"
+      até para o dono. O docs.google.com lida com multi-conta; o editor não.
 
 **Aceite:** `npx clasp push` publica sem erro; a planilha existe com as sete
 abas, cabeçalhos e validações; `npm test` roda (mesmo sem testes ainda).
