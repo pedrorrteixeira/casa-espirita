@@ -1,0 +1,16 @@
+{
+  "name": "biblioteca-casa-espirita",
+  "version": "0.1.0",
+  "description": "Biblioteca e agenda de palestrantes de uma casa espirita. Google Apps Script + Google Sheets.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.4.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

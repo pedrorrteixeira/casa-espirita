@@ -43,6 +43,13 @@ Plano de execução: @PLANO.md
   ```
 - **Leia e escreva em lote.** `getValues()` / `setValues()` sobre intervalos.
   Nunca `getValue()` dentro de um laço — estoura quota e fica lento.
+- **Em `Titulos` e `Exemplares`, `getLastRow()` mente.** As colunas derivadas
+  são uma `ARRAYFORMULA` na linha 2 que preenche a coluna inteira com `""`, e o
+  Apps Script conta isso como conteúdo: `getLastRow()` devolve 1000. Nessas duas
+  abas, ache a última linha lendo a coluna A em lote e contando. As outras
+  cinco não têm fórmula e podem usar `getLastRow()`.
+- **Nunca escreva em coluna derivada** (`Titulos!P:Q`, `Exemplares!G:I`).
+  Escrever quebra a `ARRAYFORMULA` com `#REF!`. Ver o cabeçalho de `setup.js`.
 - **`LockService` em toda escrita** que possa ter concorrência (empréstimo,
   devolução). Timeout de 10s, e falhe com mensagem clara.
 - **Nada de IDs hardcoded.** `spreadsheetId`, `calendarId`, e-mail do admin e

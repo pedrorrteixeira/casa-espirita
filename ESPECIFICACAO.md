@@ -38,6 +38,8 @@ títulos. Os demais voluntários apenas registram empréstimo e devolução.
 | D10 | Sem senha própria. Identidade por link mágico quando necessário | Guardar senha em planilha é risco jurídico e operacional sem ganho |
 | D11 | Conta Google **nova**, da casa, não a pessoal do voluntário | Se o voluntário sai, o sistema não morre com ele |
 | D12 | Link do sistema publicado atrás de encurtador ou Google Sites | A URL do Web App muda na migração para Workspace; assim não se reensina 40 pessoas |
+| D13 | Identificadores **numéricos sequenciais** (`id_titulo`, `id_pessoa`, `id_emprestimo`, `tombo`) | Etiqueta fica "Tombo 142" e a tela de empréstimo pede 3 toques em vez de 8. E `SUMIFS` só resolve `com_quem` se `id_pessoa` for número |
+| D14 | Colunas derivadas são **uma `ARRAYFORMULA` na linha 2**, não fórmula por linha | Linha nova recebe o valor sozinha. Nenhum código precisa escrever em coluna derivada, o que torna D7 verificável em vez de ser só disciplina |
 
 ### Decisões adiadas
 

@@ -13,20 +13,28 @@ Legenda: 👤 = passo manual do Weldson · 🤖 = passo do Claude Code
 
 Objetivo: repositório funcionando, planilha criada, `clasp push` publicando.
 
+- [x] 🤖 Instalar o Node.js LTS na máquina de desenvolvimento (v24.19.0, via
+      `winget install OpenJS.NodeJS.LTS`). Não estava previsto no plano
+      original. Roda só aqui: nenhum voluntário da casa instala nada.
+- [x] 🤖 Criar a estrutura do repositório (ver "Estrutura de pastas" abaixo),
+      com `package.json`, `.gitignore` e `src/appsscript.json`.
+- [x] 🤖 Escrever `criarEstruturaPlanilha()`: cria as sete abas com cabeçalhos,
+      validação de dados nas colunas de lista, fórmulas derivadas, congelamento
+      da primeira linha e formatação de datas.
+- [x] 🤖 Popular a aba `Config` com os valores padrão (`popularConfigPadrao()`,
+      chamada no fim de `criarEstruturaPlanilha()`).
 - [ ] 👤 Criar conta Gmail **nova** para a casa. Não usar conta pessoal.
       Guardar a senha com a diretoria, não só com o voluntário.
 - [ ] 👤 Habilitar a Apps Script API em `script.google.com/home/usersettings`.
       (Sem isso o `clasp push` falha com erro genérico.)
-- [ ] 🤖 Criar a estrutura do repositório (ver "Estrutura de pastas" abaixo),
-      com `package.json`, `.gitignore` e `src/appsscript.json`.
 - [ ] 👤 `npx clasp login` (abre o navegador — logar na conta **da casa**).
 - [ ] 👤 `npx clasp create --type sheets --title "Biblioteca Casa Espírita" --rootDir ./src`
-- [ ] 🤖 Escrever `criarEstruturaPlanilha()`: cria as sete abas com cabeçalhos,
-      validação de dados nas colunas de lista, fórmulas derivadas, congelamento
-      da primeira linha e formatação de datas.
+- [ ] 👤 `git checkout src/appsscript.json` — o `clasp create` sobrescreve o
+      manifesto e come o bloco `webapp`. Sem isso a implantação não aceita
+      acesso anônimo. O teste `npm test` pega esse erro.
+- [ ] 👤 `npx clasp push`
 - [ ] 👤 Rodar `criarEstruturaPlanilha()` uma vez no editor e autorizar o script
       na tela de consentimento OAuth.
-- [ ] 🤖 Popular a aba `Config` com os valores padrão.
 
 **Aceite:** `npx clasp push` publica sem erro; a planilha existe com as sete
 abas, cabeçalhos e validações; `npm test` roda (mesmo sem testes ainda).
@@ -183,14 +191,27 @@ O `.clasp.json` (que tem só o scriptId) pode ser versionado.
 ## Comandos
 
 ```bash
-npm test                 # node --test test/
+npm test                 # node --test "test/**/*.test.js"
 npx clasp push           # publica src/ no projeto Apps Script
-npx clasp open           # abre o editor no navegador
+npx clasp open-script    # abre o editor no navegador
+npx clasp open-container # abre a planilha no navegador
 npx clasp deploy         # nova implantação (URL nova)
 ```
 
 Para atualizar o Web App **mantendo a mesma URL**, use "Implantar → Gerenciar
 implantações → editar → nova versão" no editor, não `clasp deploy`.
+
+**Notas de ferramenta** (verificadas em 22/08/2026, clasp 3.4.0, Node 24.19):
+
+- `node --test test/` **não funciona** no Node 24 no Windows — ele tenta
+  carregar `test/` como módulo. Use o glob entre aspas, como no `package.json`.
+- O clasp v3 manteve `create`, `push`, `deploy` e `clone` como aliases dos
+  nomes novos, com as mesmas flags. Só o `clasp open` foi dividido em
+  `open-script`, `open-container` e `open-web-app`.
+- Ficamos no clasp v3 e não no v2 porque o v2 tem uma falha **high**
+  (GHSA-hqjg-pww4-pcgq, path traversal em `clone`/`pull`). Não afeta o nosso
+  fluxo, que só faz `create` e `push`, mas o v3 não custa nada e zera o
+  `npm audit`.
 
 ---
 

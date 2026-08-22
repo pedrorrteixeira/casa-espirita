@@ -1,0 +1,12 @@
+# Dependencias
+node_modules/
+
+# Credenciais OAuth do clasp — NUNCA versionar.
+# O .clasp.json (que tem so o scriptId) pode e deve ser versionado.
+.clasprc.json
+*.local.json
+
+# Ruido
+npm-debug.log*
+.DS_Store
+Thumbs.db
