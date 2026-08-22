@@ -25,14 +25,18 @@ Objetivo: repositório funcionando, planilha criada, `clasp push` publicando.
       chamada no fim de `criarEstruturaPlanilha()`).
 - [ ] 👤 Criar conta Gmail **nova** para a casa. Não usar conta pessoal.
       Guardar a senha com a diretoria, não só com o voluntário.
-- [ ] 👤 Habilitar a Apps Script API em `script.google.com/home/usersettings`.
+- [x] 👤 Habilitar a Apps Script API em `script.google.com/home/usersettings`.
       (Sem isso o `clasp push` falha com erro genérico.)
-- [ ] 👤 `npx clasp login` (abre o navegador — logar na conta **da casa**).
-- [ ] 👤 `npx clasp create --type sheets --title "Biblioteca Casa Espírita" --rootDir ./src`
-- [ ] 👤 `git checkout src/appsscript.json` — o `clasp create` sobrescreve o
-      manifesto e come o bloco `webapp`. Sem isso a implantação não aceita
-      acesso anônimo. O teste `npm test` pega esse erro.
-- [ ] 👤 `npx clasp push`
+- [x] 👤 `npx clasp login` (abre o navegador — logar na conta **da casa**).
+- [x] 👤 `npx clasp create --type sheets --title "Biblioteca Casa Espírita" --rootDir ./src`
+- [x] 👤 `rm -rf src/src` — o `clasp create` do v3 resolve o caminho do
+      manifesto **relativo ao `rootDir`** e cria `src/src/appsscript.json`
+      (fuso `America/New_York`, sem bloco `webapp`). Ele não sobrescreve o
+      nosso, como o v2 fazia — cria um duplicado. Como o `.clasp.json` vem com
+      `skipSubdirectories: false`, o `push` acha os dois, ambos viram o nome
+      remoto `appsscript`, e o Google recusa:
+      `A file with this name already exists in the current project: appsscript`.
+- [x] 👤 `npx clasp push` — 12 arquivos publicados.
 - [ ] 👤 Rodar `criarEstruturaPlanilha()` uma vez no editor e autorizar o script
       na tela de consentimento OAuth.
 
