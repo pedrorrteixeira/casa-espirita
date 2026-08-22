@@ -25,9 +25,13 @@ function onOpen() {
 }
 
 function doGet() {
-  var pagina = HtmlService.createTemplateFromFile('ui/index').evaluate();
-  return pagina
-    .setTitle('Biblioteca')
+  var pagina = HtmlService.createTemplateFromFile('ui/index');
+
+  // Nada de nome de casa hardcoded: vem do Config, como toda configuração.
+  pagina.nomeCasa = lerConfig('nome_casa', 'Biblioteca');
+
+  return pagina.evaluate()
+    .setTitle(pagina.nomeCasa)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 

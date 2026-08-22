@@ -1,27 +1,145 @@
-<!-- ui/css.html — estilos base. Mobile primeiro: a tela de empréstimo vai ser
-     usada em pé, no celular. -->
+<!-- ui/css.html — estilos.
+
+     Celular primeiro: a tela de empréstimo da Fase 2 vai ser usada em pé, no
+     corredor, e a de busca por quem está com o livro na mão. Alvo de toque de
+     44px e fonte de 16px nos campos — abaixo disso o iOS dá zoom sozinho ao
+     focar, e a pessoa perde o contexto da tela. -->
 <style>
   :root {
     --tinta: #202124;
     --tinta-fraca: #5f6368;
     --fundo: #ffffff;
+    --fundo-suave: #f6f7f9;
     --borda: #dadce0;
+    --acento: #1a5c3a;      /* verde sóbrio, não institucional demais */
+    --disponivel: #1a7f4b;
+    --emprestado: #a35200;
+    --ausente: #7a7a7a;
+    --erro: #b3261e;
   }
+
   * { box-sizing: border-box; }
+
   body {
     margin: 0;
-    padding: 1rem;
+    padding: 0 1rem 3rem;
     background: var(--fundo);
     color: var(--tinta);
-    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
-  .cartao {
-    max-width: 34rem;
-    margin: 2rem auto;
-    padding: 1.5rem;
+
+  main, .topo { max-width: 46rem; margin: 0 auto; }
+
+  /* --- topo --- */
+  .topo { padding-top: 1.25rem; }
+  .topo h1 { margin: 0 0 .75rem; font-size: 1.35rem; }
+
+  .abas { display: flex; gap: .25rem; border-bottom: 1px solid var(--borda); }
+  .aba {
+    appearance: none;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: .6rem .9rem;
+    min-height: 44px;
+    font: inherit;
+    color: var(--tinta-fraca);
+    cursor: pointer;
+  }
+  .aba.ativa { color: var(--acento); border-bottom-color: var(--acento); font-weight: 600; }
+
+  .visao { padding-top: 1.25rem; }
+  .oculta { display: none; }
+
+  /* --- busca --- */
+  .linha-busca { display: flex; gap: .5rem; }
+  .linha-busca input { flex: 1; }
+
+  .dica { color: var(--tinta-fraca); font-size: .85rem; margin: .4rem 0 0; }
+
+  .resultados { list-style: none; padding: 0; margin: 1rem 0 0; }
+  .resultado {
+    padding: .9rem 0;
+    border-bottom: 1px solid var(--borda);
+  }
+  .resultado h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+  .resultado .autoria { margin: .15rem 0 0; }
+  .resultado .meta { margin: .15rem 0 0; color: var(--tinta-fraca); font-size: .85rem; }
+
+  .selo {
+    display: inline-block;
+    margin-top: .45rem;
+    padding: .15rem .5rem;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 600;
+    background: var(--fundo-suave);
+  }
+  .selo.disponivel   { color: var(--disponivel); }
+  .selo.emprestado   { color: var(--emprestado); }
+  .selo.sem_exemplar { color: var(--ausente); }
+
+  .estado { margin-top: .9rem; color: var(--tinta-fraca); }
+  .estado.erro { color: var(--erro); }
+  .estado.ok { color: var(--disponivel); }
+
+  /* --- formulário --- */
+  fieldset {
     border: 1px solid var(--borda);
     border-radius: 8px;
+    padding: .9rem 1rem 1.1rem;
+    margin: 0 0 1rem;
   }
-  h1 { margin-top: 0; font-size: 1.5rem; }
-  .nota { color: var(--tinta-fraca); font-size: 0.875rem; }
+  legend { padding: 0 .35rem; font-weight: 600; font-size: .9rem; }
+
+  label { display: block; margin-top: .8rem; font-size: .85rem; color: var(--tinta-fraca); }
+  label.caixa { display: flex; align-items: center; gap: .5rem; color: var(--tinta); font-size: 1rem; }
+  label.cresce { flex: 1; }
+
+  input, select, textarea {
+    display: block;
+    width: 100%;
+    margin-top: .2rem;
+    padding: .55rem .6rem;
+    min-height: 44px;
+    border: 1px solid var(--borda);
+    border-radius: 6px;
+    font: inherit;          /* 16px: abaixo disso o iOS dá zoom ao focar */
+    color: var(--tinta);
+    background: var(--fundo);
+  }
+  input[type="checkbox"] { width: auto; min-height: 0; margin: 0; }
+  textarea { min-height: 0; resize: vertical; }
+  input:focus, select:focus, textarea:focus, button:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 1px;
+  }
+
+  .par { display: flex; gap: .75rem; }
+  .par > label { flex: 1; }
+  .linha-isbn { display: flex; gap: .5rem; align-items: flex-end; }
+
+  .obrigatorio { color: var(--erro); }
+
+  button {
+    padding: .6rem 1.1rem;
+    min-height: 44px;
+    border: 1px solid var(--acento);
+    border-radius: 6px;
+    background: var(--acento);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button[type="button"] { background: var(--fundo); color: var(--acento); }
+  button:disabled { opacity: .55; cursor: progress; }
+
+  #btn-salvar { width: 100%; }
+
+  /* Telas estreitas: dois campos lado a lado viram ilegíveis. */
+  @media (max-width: 30rem) {
+    .par, .linha-isbn { flex-direction: column; gap: 0; }
+    .linha-isbn button { margin-top: .8rem; }
+  }
 </style>

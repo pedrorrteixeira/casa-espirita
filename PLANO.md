@@ -54,21 +54,21 @@ abas, cabeçalhos e validações; `npm test` roda (mesmo sem testes ainda).
 Objetivo: a bibliotecária consegue cadastrar títulos e exemplares, e qualquer
 pessoa consegue buscar.
 
-- [ ] 🤖 `dominio.js`: `normalizarTexto()` (minúsculas, sem acento, para busca),
+- [x] 🤖 `dominio.js`: `normalizarTexto()` (minúsculas, sem acento, para busca),
       `montarAutoria()` (resolve autor vs autor espiritual/médium para exibição),
       `buscarTitulos(titulos, termo)` — pura, sem tocar em planilha.
-- [ ] 🤖 `test/dominio.test.js` cobrindo busca por título, por autor, por autor
+- [x] 🤖 `test/dominio.test.js` cobrindo busca por título, por autor, por autor
       espiritual, por médium, por série, e busca sem acento
       ("nosso lar" acha "Nosso Lar", "andre luiz" acha "André Luiz").
-- [ ] 🤖 `planilha.js`: leitura em lote das abas, cache de 5 min em
+- [x] 🤖 `planilha.js`: leitura em lote das abas, cache de 5 min em
       `CacheService` para a lista de títulos.
-- [ ] 🤖 `catalogo.js`: `criarTitulo()`, `atualizarTitulo()`, `criarExemplar()`,
+- [x] 🤖 `catalogo.js`: `criarTitulo()`, `atualizarTitulo()`, `criarExemplar()`,
       `darBaixaExemplar()`. Com validações das regras 8, 9 e 10.
-- [ ] 🤖 Tela de busca em `ui/`: campo único, resultado mostrando título,
+- [x] 🤖 Tela de busca em `ui/`: campo único, resultado mostrando título,
       autoria, categoria, e "disponível (2 de 3)" ou "emprestado — previsão dd/mm".
       **Sem nome de quem está com o livro.**
-- [ ] 🤖 Tela de cadastro de título e exemplar.
-- [ ] 🤖 Botão de busca por ISBN chamando a API do Google Books, com
+- [x] 🤖 Tela de cadastro de título e exemplar.
+- [x] 🤖 Botão de busca por ISBN chamando a API do Google Books, com
       preenchimento dos campos e fallback manual silencioso quando não achar.
 - [ ] 👤 Cadastrar 20 livros reais do acervo para validar o modelo antes de
       catalogar tudo.

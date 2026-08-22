@@ -1,4 +1,249 @@
-<!-- ui/js.html — JS do cliente. Vazio na Fase 0.
-     A comunicação com o servidor usa google.script.run. -->
+<!-- ui/js.html — JavaScript do cliente.
+
+     Fala com o servidor só por `google.script.run`. Sem framework, sem
+     dependência externa: o HtmlService serve isto de um sandbox e cada
+     biblioteca a mais é mais uma coisa para um voluntário manter daqui a
+     cinco anos. -->
 <script>
+(function () {
+  'use strict';
+
+  var $ = function (selecao) { return document.querySelector(selecao); };
+
+  // ---------------------------------------------------------------- navegação
+  document.querySelectorAll('.aba').forEach(function (aba) {
+    aba.addEventListener('click', function () {
+      document.querySelectorAll('.aba').forEach(function (outra) {
+        outra.classList.toggle('ativa', outra === aba);
+      });
+      document.querySelectorAll('.visao').forEach(function (visao) {
+        visao.classList.toggle('oculta', visao.id !== 'visao-' + aba.dataset.visao);
+      });
+    });
+  });
+
+  // ------------------------------------------------------------------- busca
+  var termo = $('#termo');
+  var estadoBusca = $('#estado-busca');
+  var resultados = $('#resultados');
+  var buscaEmVoo = 0;
+
+  $('#form-busca').addEventListener('submit', function (evento) {
+    evento.preventDefault();
+    buscar(termo.value);
+  });
+
+  // Busca enquanto digita, com folga de 300ms. Sem isso, cada tecla vira uma
+  // chamada ao servidor e a lista pisca.
+  var temporizador = null;
+  termo.addEventListener('input', function () {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(function () { buscar(termo.value); }, 300);
+  });
+
+  function buscar(texto) {
+    if (!texto.trim()) {
+      resultados.innerHTML = '';
+      dizer(estadoBusca, '');
+      return;
+    }
+
+    // Resposta de busca antiga não pode sobrescrever resposta nova: quem
+    // digita rápido dispara várias e elas voltam fora de ordem.
+    var estaBusca = ++buscaEmVoo;
+    dizer(estadoBusca, 'Procurando…');
+
+    google.script.run
+      .withSuccessHandler(function (achados) {
+        if (estaBusca !== buscaEmVoo) return;
+        mostrarResultados(achados);
+      })
+      .withFailureHandler(function (erro) {
+        if (estaBusca !== buscaEmVoo) return;
+        resultados.innerHTML = '';
+        dizer(estadoBusca, erro.message || 'Não consegui buscar agora.', 'erro');
+      })
+      .buscarNoAcervo(texto);
+  }
+
+  function mostrarResultados(achados) {
+    resultados.innerHTML = '';
+
+    if (!achados.length) {
+      dizer(estadoBusca, 'Nada encontrado. Tente outra palavra, ou parte dela.');
+      return;
+    }
+
+    dizer(estadoBusca, achados.length === 1 ? '1 obra' : achados.length + ' obras');
+
+    achados.forEach(function (obra) {
+      var item = document.createElement('li');
+      item.className = 'resultado';
+
+      item.appendChild(elemento('h2', obra.titulo +
+        (obra.subtitulo ? ' — ' + obra.subtitulo : '')));
+
+      if (obra.autoria) item.appendChild(elemento('p', obra.autoria, 'autoria'));
+
+      var meta = [];
+      if (obra.categoria) meta.push(obra.categoria);
+      if (obra.serie) {
+        meta.push(obra.serie + (obra.ordem_na_serie ? ' nº ' + obra.ordem_na_serie : ''));
+      }
+      if (obra.editora) meta.push(obra.editora);
+      if (obra.ano) meta.push(obra.ano);
+      if (meta.length) item.appendChild(elemento('p', meta.join(' · '), 'meta'));
+
+      var selo = elemento('span', textoDeDisponibilidade(obra), 'selo ' + obra.estado);
+      item.appendChild(selo);
+
+      resultados.appendChild(item);
+    });
+  }
+
+  /**
+   * Nunca mostra com quem o livro está — o servidor sequer manda esse dado.
+   * Aqui é só a redação.
+   */
+  function textoDeDisponibilidade(obra) {
+    if (obra.estado === 'sem_exemplar') return 'a casa não tem exemplar';
+
+    if (obra.estado === 'disponivel') {
+      return obra.total > 1
+        ? 'disponível (' + obra.disponiveis + ' de ' + obra.total + ')'
+        : 'disponível';
+    }
+
+    return obra.previsao
+      ? 'emprestado — previsão ' + obra.previsao
+      : 'emprestado';
+  }
+
+  // ---------------------------------------------------------------- cadastro
+  var formulario = $('#form-cadastro');
+  var estadoCadastro = $('#estado-cadastro');
+  var caixaExemplar = formulario.elements.criar_exemplar;
+  var camposExemplar = $('#campos-exemplar');
+
+  google.script.run
+    .withSuccessHandler(function (listas) {
+      preencherSelect($('#categoria'), listas.categorias, 'doutrinário');
+      preencherSelect($('#estado-exemplar'), listas.estados, 'bom');
+    })
+    .withFailureHandler(function () {
+      dizer(estadoCadastro, 'Não consegui carregar as listas de categoria.', 'erro');
+    })
+    .lerListasDeCadastro();
+
+  caixaExemplar.addEventListener('change', function () {
+    camposExemplar.classList.toggle('oculta', !caixaExemplar.checked);
+  });
+
+  // ISBN: atalho, não caminho principal. Não achar é normal e não é erro.
+  $('#btn-isbn').addEventListener('click', function () {
+    var campo = formulario.elements.isbn;
+    var aviso = $('#aviso-isbn');
+    var botao = this;
+
+    if (!campo.value.trim()) {
+      aviso.textContent = 'Digite o ISBN primeiro.';
+      return;
+    }
+
+    botao.disabled = true;
+    aviso.textContent = 'Consultando…';
+
+    google.script.run
+      .withSuccessHandler(function (livro) {
+        botao.disabled = false;
+        if (!livro) {
+          aviso.textContent = 'Não achei. Edição antiga da FEB costuma não estar ' +
+            'no Google — preencha à mão, é normal.';
+          return;
+        }
+        ['titulo', 'subtitulo', 'autor', 'editora', 'ano', 'sinopse']
+          .forEach(function (campoNome) {
+            // Só preenche o que está vazio: não apaga o que a bibliotecária
+            // já digitou.
+            if (livro[campoNome] && !formulario.elements[campoNome].value.trim()) {
+              formulario.elements[campoNome].value = livro[campoNome];
+            }
+          });
+        aviso.textContent = 'Preenchido. Confira — e se for psicografia, mova o ' +
+          'nome do campo Autor para Médium.';
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        aviso.textContent = erro.message || 'Não consegui consultar agora.';
+      })
+      .buscarPorIsbn(campo.value);
+  });
+
+  formulario.addEventListener('submit', function (evento) {
+    evento.preventDefault();
+
+    var botao = $('#btn-salvar');
+    var dados = {};
+    Array.prototype.forEach.call(formulario.elements, function (campo) {
+      if (!campo.name) return;
+      dados[campo.name] = campo.type === 'checkbox' ? campo.checked : campo.value.trim();
+    });
+
+    var quem = dados.quem_registrou;
+    delete dados.quem_registrou;
+
+    botao.disabled = true;
+    dizer(estadoCadastro, 'Salvando…');
+
+    google.script.run
+      .withSuccessHandler(function (resposta) {
+        botao.disabled = false;
+        var recado = 'Título ' + resposta.id_titulo + ' cadastrado.';
+        if (resposta.tombo) {
+          recado += ' Etiquete o livro com o tombo ' + resposta.tombo + '.';
+        }
+        dizer(estadoCadastro, recado, 'ok');
+
+        // Limpa a obra mas preserva quem está cadastrando e a série: quem
+        // cataloga faz uma pilha de livros seguidos, quase sempre da mesma
+        // série ou da mesma doação.
+        var serie = formulario.elements.serie.value;
+        var doador = formulario.elements.doado_por.value;
+        formulario.reset();
+        formulario.elements.quem_registrou.value = quem;
+        formulario.elements.serie.value = serie;
+        formulario.elements.doado_por.value = doador;
+        formulario.elements.titulo.focus();
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer(estadoCadastro, erro.message || 'Não consegui salvar.', 'erro');
+      })
+      .cadastrarTituloComExemplar(dados, quem);
+  });
+
+  // ------------------------------------------------------------- auxiliares
+  function elemento(marca, texto, classe) {
+    var no = document.createElement(marca);
+    no.textContent = texto;          // textContent, nunca innerHTML: o acervo
+    if (classe) no.className = classe;  // é digitado por gente e pode ter < e &
+    return no;
+  }
+
+  function preencherSelect(select, valores, padrao) {
+    select.innerHTML = '';
+    valores.forEach(function (valor) {
+      var opcao = document.createElement('option');
+      opcao.value = valor;
+      opcao.textContent = valor;
+      if (valor === padrao) opcao.selected = true;
+      select.appendChild(opcao);
+    });
+  }
+
+  function dizer(onde, texto, classe) {
+    onde.textContent = texto;
+    onde.className = 'estado' + (classe ? ' ' + classe : '');
+  }
+})();
 </script>

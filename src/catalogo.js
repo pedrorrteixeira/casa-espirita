@@ -188,3 +188,162 @@ function darBaixaExemplar(tombo, motivo, quemRegistrou) {
  * título do catálogo, o caminho é o mesmo do exemplar — marcação lógica —,
  * e aí a checagem de exemplares vinculados passa a ser necessária.
  */
+
+// --- API das telas -----------------------------------------------------------
+// Funções chamadas por `google.script.run`. Tudo o que sai daqui vai para o
+// navegador do frequentador, então o retorno é montado campo a campo.
+
+/**
+ * Busca do acervo, para a tela pública.
+ *
+ * O retorno é uma LISTA BRANCA montada à mão, não o registro da planilha
+ * repassado. Isso é deliberado: `Exemplares` traz `com_quem` preenchido, e
+ * devolver o objeto inteiro publicaria o nome de quem está com cada livro.
+ * Acrescentar campo aqui é decisão consciente; esquecer de tirar, não seria.
+ */
+function buscarNoAcervo(termo) {
+  var achados = buscarTitulos(lerTitulos(), termo);
+  if (!achados.length) return [];
+
+  var porTitulo = {};
+  lerExemplares().forEach(function (exemplar) {
+    var id = Number(exemplar.id_titulo);
+    if (!porTitulo[id]) porTitulo[id] = [];
+    porTitulo[id].push(exemplar);
+  });
+
+  return achados.map(function (titulo) {
+    var resumo = resumirDisponibilidade(porTitulo[Number(titulo.id_titulo)] || []);
+    return {
+      id_titulo: titulo.id_titulo,
+      titulo: titulo.titulo,
+      subtitulo: titulo.subtitulo,
+      autoria: montarAutoria(titulo),
+      categoria: titulo.categoria,
+      serie: titulo.serie,
+      ordem_na_serie: titulo.ordem_na_serie,
+      editora: titulo.editora,
+      ano: titulo.ano,
+      link_online: titulo.link_online,
+      estado: resumo.estado,
+      total: resumo.total,
+      disponiveis: resumo.disponiveis,
+      previsao: resumo.previsao ? formatarData_(resumo.previsao) : ''
+    };
+  });
+}
+
+/** Ficha completa de um título, para a tela de detalhe. Traz a sinopse. */
+function verTitulo(idTitulo) {
+  var titulo = lerTitulo(idTitulo);
+  if (!titulo) throw new Error('Título não encontrado.');
+
+  var exemplares = lerExemplares().filter(function (exemplar) {
+    return Number(exemplar.id_titulo) === Number(idTitulo);
+  });
+  var resumo = resumirDisponibilidade(exemplares);
+
+  return {
+    id_titulo: titulo.id_titulo,
+    titulo: titulo.titulo,
+    subtitulo: titulo.subtitulo,
+    autoria: montarAutoria(titulo),
+    autor: titulo.autor,
+    autor_espiritual: titulo.autor_espiritual,
+    medium: titulo.medium,
+    tradutor: titulo.tradutor,
+    editora: titulo.editora,
+    ano: titulo.ano,
+    isbn: titulo.isbn,
+    categoria: titulo.categoria,
+    serie: titulo.serie,
+    ordem_na_serie: titulo.ordem_na_serie,
+    sinopse: titulo.sinopse,
+    link_online: titulo.link_online,
+    estado: resumo.estado,
+    total: resumo.total,
+    disponiveis: resumo.disponiveis,
+    previsao: resumo.previsao ? formatarData_(resumo.previsao) : ''
+  };
+}
+
+/** Categorias e estados que a tela de cadastro oferece, da mesma fonte que a
+ *  validação da planilha usa. */
+function lerListasDeCadastro() {
+  return { categorias: LISTA_CATEGORIA, estados: LISTA_ESTADO };
+}
+
+/**
+ * Cadastra título e, opcionalmente, o primeiro exemplar de uma vez.
+ *
+ * A bibliotecária tem o livro na mão: separar em duas telas obrigaria a
+ * decorar o id do título recém-criado para digitar na tela seguinte.
+ */
+function cadastrarTituloComExemplar(dados, quemRegistrou) {
+  var idTitulo = criarTitulo(dados, quemRegistrou);
+  var resposta = { id_titulo: idTitulo, tombo: null };
+
+  if (dados && dados.criar_exemplar) {
+    resposta.tombo = criarExemplar({
+      id_titulo: idTitulo,
+      estado: dados.estado_exemplar,
+      doado_por: dados.doado_por
+    }, quemRegistrou);
+  }
+  return resposta;
+}
+
+/**
+ * Consulta a API de livros do Google por ISBN.
+ *
+ * É atalho, não caminho principal: a API cobre mal edição FEB e LAKE dos anos
+ * 70-80, e muita obra do acervo nem tem ISBN. Por isso não achar NÃO é erro —
+ * devolve `null` e a tela segue no preenchimento manual, sem alarde.
+ *
+ * Nunca preenche `autor_espiritual` nem `medium`: o Google devolve o médium no
+ * campo de autor, e adivinhar qual dos dois é qual erraria a catalogação de
+ * toda psicografia. Quem separa é a bibliotecária (D9).
+ */
+function buscarPorIsbn(isbn) {
+  var limpo = limparCampo_(isbn).replace(/[^0-9Xx]/g, '');
+  if (limpo.length !== 10 && limpo.length !== 13) {
+    throw new Error('ISBN deve ter 10 ou 13 dígitos.');
+  }
+
+  var url = 'https://www.googleapis.com/books/v1/volumes?q=isbn:' + encodeURIComponent(limpo);
+  var resposta;
+  try {
+    resposta = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  } catch (erro) {
+    return null;  // sem internet ou fora do ar: o manual continua valendo
+  }
+  if (resposta.getResponseCode() !== 200) return null;
+
+  var dados;
+  try {
+    dados = JSON.parse(resposta.getContentText());
+  } catch (erro) {
+    return null;
+  }
+  if (!dados.items || !dados.items.length) return null;
+
+  var livro = dados.items[0].volumeInfo || {};
+  return {
+    titulo: livro.title || '',
+    subtitulo: livro.subtitle || '',
+    autor: (livro.authors || []).join('; '),
+    editora: livro.publisher || '',
+    ano: (livro.publishedDate || '').substring(0, 4),
+    sinopse: livro.description || '',
+    isbn: limpo
+  };
+}
+
+/** Data no formato que o voluntário lê, no fuso da planilha. */
+function formatarData_(data) {
+  return Utilities.formatDate(
+    data,
+    SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(),
+    'dd/MM/yyyy'
+  );
+}

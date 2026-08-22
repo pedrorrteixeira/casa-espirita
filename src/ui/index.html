@@ -1,10 +1,185 @@
-<!-- ui/index.html — Fase 0: placeholder. As telas vêm na Fase 1. -->
+<!-- ui/index.html — Fase 1: busca e cadastro.
+
+     Uma página só, duas visões trocadas no cliente. Web App não tem rota, e
+     recarregar a página custa uma chamada ao servidor inteira. -->
 <?!= include('ui/css'); ?>
 
-<main class="cartao">
-  <h1>Biblioteca</h1>
-  <p>Sistema em construção.</p>
-  <p class="nota">Fase 0 concluída: a estrutura da planilha está criada.</p>
+<header class="topo">
+  <h1><?= nomeCasa ?></h1>
+  <nav class="abas" role="tablist">
+    <button class="aba ativa" data-visao="busca" role="tab">Buscar</button>
+    <button class="aba" data-visao="cadastro" role="tab">Cadastrar</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ---------------------------------------------------------------- busca -->
+  <section id="visao-busca" class="visao">
+    <form id="form-busca" class="linha-busca" role="search">
+      <input
+        id="termo"
+        type="search"
+        name="termo"
+        placeholder="título, autor, médium, série…"
+        aria-label="Buscar no acervo"
+        autocomplete="off"
+        enterkeyhint="search">
+      <button type="submit">Buscar</button>
+    </form>
+
+    <p class="dica">
+      Pode buscar sem acento. "andre luiz" acha André Luiz, "chico" acha as
+      psicografias.
+    </p>
+
+    <div id="estado-busca" class="estado" role="status" aria-live="polite"></div>
+    <ul id="resultados" class="resultados"></ul>
+  </section>
+
+  <!-- ------------------------------------------------------------- cadastro -->
+  <section id="visao-cadastro" class="visao oculta">
+    <form id="form-cadastro" autocomplete="off">
+
+      <fieldset>
+        <legend>Quem está cadastrando</legend>
+        <!-- Conta Gmail comum não identifica o visitante: o script não tem
+             como saber quem é. Então perguntamos, para o Log ter autor. -->
+        <label>
+          Seu nome
+          <input name="quem_registrou" required placeholder="para o registro interno">
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Obra</legend>
+
+        <div class="linha-isbn">
+          <label class="cresce">
+            ISBN
+            <input name="isbn" inputmode="numeric" placeholder="10 ou 13 dígitos">
+          </label>
+          <button type="button" id="btn-isbn">Preencher pelo ISBN</button>
+        </div>
+        <p id="aviso-isbn" class="dica"></p>
+
+        <label>
+          Título <span class="obrigatorio">*</span>
+          <input name="titulo" required>
+        </label>
+
+        <label>
+          Subtítulo
+          <input name="subtitulo">
+        </label>
+
+        <p class="dica">
+          Obra <strong>não</strong> psicografada: preencha só <em>Autor</em>.
+          Psicografia: deixe <em>Autor</em> vazio e preencha
+          <em>autor espiritual</em> e <em>médium</em> — o frequentador procura
+          pelos dois.
+        </p>
+
+        <label>
+          Autor
+          <input name="autor" placeholder="Allan Kardec">
+        </label>
+
+        <div class="par">
+          <label>
+            Autor espiritual
+            <input name="autor_espiritual" placeholder="André Luiz">
+          </label>
+          <label>
+            Médium
+            <input name="medium" placeholder="Francisco Cândido Xavier (Chico Xavier)">
+          </label>
+        </div>
+
+        <p class="dica">
+          Quando o nome popular for diferente do formal, grave os dois, como no
+          exemplo acima. É o que faz buscar "chico" encontrar.
+        </p>
+
+        <div class="par">
+          <label>
+            Tradutor
+            <input name="tradutor">
+          </label>
+          <label>
+            Editora
+            <input name="editora">
+          </label>
+        </div>
+
+        <div class="par">
+          <label>
+            Ano
+            <input name="ano" inputmode="numeric">
+          </label>
+          <label>
+            Categoria
+            <select name="categoria" id="categoria"></select>
+          </label>
+        </div>
+
+        <div class="par">
+          <label>
+            Série
+            <input name="serie" placeholder="A Vida no Mundo Espiritual">
+          </label>
+          <label>
+            Nº na série
+            <input name="ordem_na_serie" inputmode="numeric">
+          </label>
+        </div>
+
+        <label>
+          Sinopse
+          <textarea name="sinopse" rows="3"></textarea>
+        </label>
+
+        <label>
+          Link para leitura on-line
+          <input name="link_online" type="url" placeholder="só fonte oficial (FEB, federação, editora)">
+        </label>
+        <p class="dica">
+          Kardec é domínio público. Psicografia do Chico, obra do Divaldo e
+          tradução da FEB não são — aponte só para fonte oficial.
+        </p>
+
+        <label>
+          Observação
+          <input name="observacao">
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Exemplar</legend>
+        <label class="caixa">
+          <input type="checkbox" name="criar_exemplar" checked>
+          A casa tem este livro em mãos — gerar tombo
+        </label>
+        <p class="dica">
+          Desmarque para catalogar obra que a casa <em>não</em> possui. Ela
+          aparece na busca como indisponível e alimenta a lista de doação.
+        </p>
+
+        <div id="campos-exemplar" class="par">
+          <label>
+            Estado
+            <select name="estado_exemplar" id="estado-exemplar"></select>
+          </label>
+          <label>
+            Doado por
+            <input name="doado_por">
+          </label>
+        </div>
+      </fieldset>
+
+      <button type="submit" id="btn-salvar">Salvar</button>
+      <div id="estado-cadastro" class="estado" role="status" aria-live="polite"></div>
+    </form>
+  </section>
 </main>
 
 <?!= include('ui/js'); ?>
