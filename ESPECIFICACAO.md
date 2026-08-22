@@ -78,6 +78,12 @@ Pares chave/valor. Nada de configuração no código.
   `autor_espiritual` + `medium` e deixe `autor` vazio.
 - A busca deve procurar em `titulo`, `autor`, `autor_espiritual`, `medium` e
   `serie` simultaneamente.
+- **Convenção de catalogação de nomes.** Grave o nome pelo qual a pessoa é
+  conhecida. Quando o nome formal for diferente do popular, grave os dois:
+  `Francisco Cândido Xavier (Chico Xavier)`. O frequentador pede "um do Chico",
+  não "um do Francisco Cândido". Isso é regra de catalogação, não código: não
+  existe tabela de apelidos no sistema, e não deve existir — seria mais uma
+  coisa para um voluntário manter.
 - **Um título pode existir com zero exemplares.** Isso é o recurso, não um bug:
   serve para consulta e alimenta a lista de doações desejadas.
 
