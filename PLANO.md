@@ -23,8 +23,9 @@ Objetivo: repositório funcionando, planilha criada, `clasp push` publicando.
       da primeira linha e formatação de datas.
 - [x] 🤖 Popular a aba `Config` com os valores padrão (`popularConfigPadrao()`,
       chamada no fim de `criarEstruturaPlanilha()`).
-- [ ] 👤 Criar conta Gmail **nova** para a casa. Não usar conta pessoal.
+- [x] 👤 Criar conta Gmail **nova** para a casa. Não usar conta pessoal.
       Guardar a senha com a diretoria, não só com o voluntário.
+      Feito: `gefranciscodeassis1973@gmail.com`.
 - [x] 👤 Habilitar a Apps Script API em `script.google.com/home/usersettings`.
       (Sem isso o `clasp push` falha com erro genérico.)
 - [x] 👤 `npx clasp login` (abre o navegador — logar na conta **da casa**).
@@ -189,6 +190,27 @@ O `.clasp.json` (que tem só o scriptId) pode ser versionado.
   "webapp": { "executeAs": "USER_DEPLOYING", "access": "ANYONE_ANONYMOUS" }
 }
 ```
+
+---
+
+## Links do projeto
+
+Conta da casa: `gefranciscodeassis1973@gmail.com`.
+
+- **Editor do script**
+  `https://script.google.com/d/1VBiyyAgE6qCQ6xJnbeyR-zy087Pfy0dhwvjbRIh3YJGRbf7sMwFvI4_x/edit`
+- **Planilha**
+  `https://docs.google.com/spreadsheets/d/11kukihFOi9AXjnMcMdJ0eYRThz830WT6ngbIy9JkxLU/edit`
+
+Se o navegador tiver mais de uma conta Google logada, ele abre esses links na
+conta **padrão** e mostra "você precisa de permissão" num arquivo que é seu.
+Insira o índice da conta na URL (`script.google.com/u/N/d/...`,
+`docs.google.com/spreadsheets/u/N/d/...`). O `N` é a posição na fila do
+navegador, não identidade: muda se você adicionar ou remover uma conta.
+
+Um perfil do Chrome dedicado à conta da casa resolve de vez — o índice vira
+`0`, os links param de depender da ordem, e a conta da casa deixa de estar
+amarrada ao navegador pessoal do voluntário, que é o mesmo motivo do D11.
 
 ---
 
