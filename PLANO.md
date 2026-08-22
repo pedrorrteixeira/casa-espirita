@@ -200,10 +200,14 @@ O `.clasp.json` (que tem só o scriptId) pode ser versionado.
 
 Conta da casa: `gefranciscodeassis1973@gmail.com`.
 
-- **Editor do script**
-  `https://script.google.com/d/1VBiyyAgE6qCQ6xJnbeyR-zy087Pfy0dhwvjbRIh3YJGRbf7sMwFvI4_x/edit`
+- **Sistema (Web App)** — é este link que se distribui aos voluntários
+  `https://script.google.com/macros/s/AKfycbxiglLWLBUcaaYO5ar4PYzDu8T28BhXZdIGqNddYwNSbt3n4i6kno2zvdthkYtegwGP/exec`
 - **Planilha**
   `https://docs.google.com/spreadsheets/d/11kukihFOi9AXjnMcMdJ0eYRThz830WT6ngbIy9JkxLU/edit`
+- **Editor do script**
+  `https://script.google.com/d/1VBiyyAgE6qCQ6xJnbeyR-zy087Pfy0dhwvjbRIh3YJGRbf7sMwFvI4_x/edit`
+
+Implantação em uso: `AKfycbxiglLWLBUcaaYO5ar4PYzDu8T28BhXZdIGqNddYwNSbt3n4i6kno2zvdthkYtegwGP`
 
 Se o navegador tiver mais de uma conta Google logada, ele abre esses links na
 conta **padrão** e mostra "você precisa de permissão" num arquivo que é seu.
@@ -227,8 +231,18 @@ npx clasp open-container # abre a planilha no navegador
 npx clasp deploy         # nova implantação (URL nova)
 ```
 
-Para atualizar o Web App **mantendo a mesma URL**, use "Implantar → Gerenciar
-implantações → editar → nova versão" no editor, não `clasp deploy`.
+Para atualizar o Web App **mantendo a mesma URL**, nunca use `clasp deploy` de
+novo — ele cria implantação nova, com URL nova, e aí é preciso reensinar todo
+mundo. Use:
+
+```bash
+npx clasp push                                  # sobe o código
+npx clasp redeploy <id-da-implantacao> -d "o que mudou"
+npx clasp list-deployments                      # lembra qual é o id
+```
+
+O `redeploy` roda pelo terminal e não depende do editor do Apps Script — o que
+importa aqui, porque o editor não abre neste navegador (ver Fase 0).
 
 **Notas de ferramenta** (verificadas em 22/08/2026, clasp 3.4.0, Node 24.19):
 
