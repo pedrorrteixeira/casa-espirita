@@ -151,15 +151,51 @@ recebe a cópia; nenhum gatilho leva mais de 30 segundos.
 
 ---
 
-## Fase 5 — Perfis (só se necessário)
+## Fase 5 — Perfis
 
-Não faça agora. Implementar apenas se o Modelo A da seção 6 da especificação
-apertar na prática.
+Feita. O Modelo A apertou duas vezes: quando foi preciso editar cadastro de
+pessoa sem expor telefone, e quando a revisão mostrou que `verExemplar` e
+`listarEmprestados` devolviam nome de frequentador a quem tivesse o link.
 
-- [ ] 🤖 Link mágico: token em `PropertiesService`, validade de 30 minutos,
-      um uso.
-- [ ] 🤖 `doGet` lê o perfil de `Pessoas` e renderiza telas conforme
+- [x] 🤖 Link mágico: código de uso único de 30 minutos em `PropertiesService`,
+      trocado no `doGet` por uma sessão de 12 horas — um plantão. Dois
+      segredos, e não um: o código vai por e-mail e acaba em print e
+      histórico; a sessão nunca aparece numa URL.
+- [x] 🤖 `doGet` lê o perfil de `Pessoas` e renderiza telas conforme
       `consulta` / `atendente` / `bibliotecario` / `admin`.
+- [x] 🤖 Guarda `exigir_()` em toda função que grava, **no servidor**. Esconder
+      aba é conveniência: `google.script.run` é chamável do console do
+      navegador. Um teste percorre `src/` e falha se alguma função que escreve
+      não tiver a guarda.
+- [x] 🤖 Tela "Meus livros": o frequentador digita e-mail **ou telefone** e vê
+      os próprios prazos, sem login.
+
+### Os quatro perfis
+
+A ordem é a permissão: cada um pode o que os anteriores podem.
+
+| perfil | quem é | além do anterior |
+|---|---|---|
+| *(aberto)* | qualquer um com o link | buscar acervo, ver agenda, ver os próprios empréstimos |
+| `consulta` | frequentador cadastrado | nada a mais por enquanto |
+| `atendente` | voluntário de plantão | emprestar, devolver, renovar, ver atrasos, gravar tema |
+| `bibliotecario` | responsável pelo acervo | cadastrar obra e exemplar, dar baixa, cadastrar e editar pessoa |
+| `admin` | diretoria | `Config`, `Log`, gatilhos, sincronização |
+
+A separação atendente / bibliotecário não é desconfiança: é a seção 1 da
+especificação. Catalogação errada é difícil de desfazer, e quem responde pelo
+acervo é uma pessoa só.
+
+### Consequência aceita conscientemente
+
+"Meus livros" não exige login, porque parte dos frequentadores não tem e-mail e
+o link mágico deixaria essa gente sem saber o próprio prazo. Em troca, **quem
+souber o telefone de alguém vê o que essa pessoa está lendo**.
+
+Numa casa espírita a escolha de livro não é neutra — revela luto, doença,
+dependência. A tela devolve só livro e data, nunca nome ou contato, e responde
+igual para contato inexistente. Se um dia incomodar, o mesmo link mágico dos
+voluntários serve aqui, e é trocar uma linha.
 
 ---
 
