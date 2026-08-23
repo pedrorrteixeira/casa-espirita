@@ -22,6 +22,10 @@ function onOpen() {
     .addItem('Criar / atualizar estrutura da planilha', 'criarEstruturaPlanilha')
     .addItem('Repor chaves padrão em Config', 'popularConfigPadrao')
     .addSeparator()
+    .addItem('Sincronizar reuniões com o Google Agenda', 'sincronizarAgora')
+    .addItem('Instalar gatilhos automáticos', 'instalarGatilhos')
+    .addItem('Ver gatilhos instalados', 'verGatilhos')
+    .addSeparator()
     .addItem('Diagnóstico: busca de livros do Google', 'diagnosticarGoogleBooks')
     .addItem('Migrar para o modelo de edições (uma vez só)',
       'migrarParaModeloDeEdicoes')

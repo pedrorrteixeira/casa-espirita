@@ -201,6 +201,145 @@ function resumirEdicoes(exemplares) {
 }
 
 /**
+ * Status possíveis de uma reunião.
+ * `vaga_aberta` existe para data criada à mão na planilha, sem reserva ainda.
+ */
+var STATUS_VAGA_ABERTA = 'vaga_aberta';
+var STATUS_RESERVADA = 'reservada';
+var STATUS_TEMA_CONFIRMADO = 'tema_confirmado';
+var STATUS_REALIZADA = 'realizada';
+var STATUS_CANCELADA = 'cancelada';
+
+/**
+ * Decide o que fazer para a aba `Reunioes` refletir o Google Agenda.
+ *
+ * Pura de propósito, e é a parte que mais precisa disso: sincronização é o
+ * tipo de código que só quebra em produção, meses depois, quando alguém
+ * cancela uma reserva. Aqui dá para testar cancelamento, remarcação e troca de
+ * palestrante sem tocar em calendário nenhum.
+ *
+ * Sentido único (regra 12): o Agenda manda, a planilha obedece. Este
+ * planejamento nunca cria nem apaga evento — só descreve o que gravar.
+ *
+ * DUAS COISAS QUE ELE NÃO PODE FAZER, e ambas já seriam bugs difíceis de ver:
+ *
+ * 1. Nunca mexer em `tema`. O tema é preenchido depois, pela planilha ou pela
+ *    tela (regra 13). Sobrescrevê-lo a cada sincronização apagaria em silêncio
+ *    o que o palestrante escreveu.
+ *
+ * 2. Nunca rebaixar o status. Uma reunião já `realizada` não volta a ser
+ *    `reservada` porque o evento continua no calendário.
+ *
+ * `janela` limita o cancelamento ao período que foi realmente consultado —
+ * sem isso, toda reunião antiga do histórico seria marcada como cancelada por
+ * não estar entre os eventos lidos.
+ */
+function planejarSincronizacao(eventos, reunioes, pessoas, janela) {
+  var porEmail = {};
+  (pessoas || []).forEach(function (pessoa) {
+    var email = normalizarTexto(pessoa.email);
+    if (email) porEmail[email] = pessoa.id_pessoa;
+  });
+
+  var existentes = {};
+  (reunioes || []).forEach(function (reuniao) {
+    var chave = limpar_(reuniao.id_evento_calendar);
+    if (chave) existentes[chave] = reuniao;
+  });
+
+  var plano = { criar: [], atualizar: [], cancelar: [] };
+  var vistos = {};
+
+  (eventos || []).forEach(function (evento) {
+    var chave = limpar_(evento.id_evento_calendar);
+    if (!chave) return;
+    vistos[chave] = true;
+
+    var idPalestrante = porEmail[normalizarTexto(evento.email_reservado)] || '';
+    var jaExiste = existentes[chave];
+
+    if (!jaExiste) {
+      plano.criar.push({
+        data: evento.data,
+        horario: evento.horario,
+        id_palestrante: idPalestrante,
+        nome_reservado: evento.nome_reservado,
+        email_reservado: evento.email_reservado,
+        tema: '',
+        status: STATUS_RESERVADA,
+        id_evento_calendar: chave,
+        data_inscricao: evento.data_inscricao || ''
+      });
+      return;
+    }
+
+    var mudancas = {};
+    if (!mesmaData_(jaExiste.data, evento.data)) mudancas.data = evento.data;
+    if (limpar_(jaExiste.horario) !== limpar_(evento.horario)) {
+      mudancas.horario = evento.horario;
+    }
+    if (limpar_(jaExiste.nome_reservado) !== limpar_(evento.nome_reservado)) {
+      mudancas.nome_reservado = evento.nome_reservado;
+    }
+    if (limpar_(jaExiste.email_reservado) !== limpar_(evento.email_reservado)) {
+      mudancas.email_reservado = evento.email_reservado;
+    }
+    // Só preenche o vínculo; nunca apaga um que alguém ligou à mão.
+    if (idPalestrante && limpar_(jaExiste.id_palestrante) === '') {
+      mudancas.id_palestrante = idPalestrante;
+    }
+    // Reserva cancelada e refeita volta a valer. Mas `tema_confirmado` e
+    // `realizada` não são rebaixados.
+    if (limpar_(jaExiste.status) === STATUS_CANCELADA ||
+        limpar_(jaExiste.status) === STATUS_VAGA_ABERTA) {
+      mudancas.status = STATUS_RESERVADA;
+    }
+
+    if (Object.keys(mudancas).length) {
+      plano.atualizar.push({ _linha: jaExiste._linha, mudancas: mudancas });
+    }
+  });
+
+  // Sumiu do Agenda = cancelada, nunca apagada (regra 12 e regra 15).
+  (reunioes || []).forEach(function (reuniao) {
+    var chave = limpar_(reuniao.id_evento_calendar);
+    if (!chave || vistos[chave]) return;
+    if (limpar_(reuniao.status) === STATUS_CANCELADA) return;
+    if (!dentroDaJanela_(reuniao.data, janela)) return;
+
+    plano.cancelar.push({
+      _linha: reuniao._linha,
+      id_reuniao: reuniao.id_reuniao,
+      mudancas: { status: STATUS_CANCELADA }
+    });
+  });
+
+  return plano;
+}
+
+function mesmaData_(a, b) {
+  var da = comoData_(a);
+  var db = comoData_(b);
+  if (!da && !db) return true;
+  if (!da || !db) return false;
+  return soData_(da).getTime() === soData_(db).getTime();
+}
+
+function dentroDaJanela_(data, janela) {
+  if (!janela) return true;
+  var quando = comoData_(data);
+  if (!quando) return false;
+
+  var dia = soData_(quando).getTime();
+  var inicio = comoData_(janela.inicio);
+  var fim = comoData_(janela.fim);
+
+  if (inicio && dia < soData_(inicio).getTime()) return false;
+  if (fim && dia > soData_(fim).getTime()) return false;
+  return true;
+}
+
+/**
  * Vocabulário da coluna derivada `situacao`.
  *
  * ATENÇÃO: estas mesmas palavras estão escritas dentro da ARRAYFORMULA em
@@ -434,6 +573,7 @@ if (typeof module !== 'undefined') {
     calcularDataPrevista: calcularDataPrevista,
     estaAtrasado: estaAtrasado,
     diasDeAtraso: diasDeAtraso,
+    planejarSincronizacao: planejarSincronizacao,
     SITUACAO_DISPONIVEL: SITUACAO_DISPONIVEL,
     SITUACAO_EMPRESTADO: SITUACAO_EMPRESTADO,
     SITUACAO_BAIXADO: SITUACAO_BAIXADO

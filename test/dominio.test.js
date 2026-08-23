@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
 const {
   normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria, resumirEdicoes, acharTituloEquivalente,
   calcularSituacao, acharEmprestimoAberto, calcularDataPrevista,
-  estaAtrasado, diasDeAtraso,
+  estaAtrasado, diasDeAtraso, planejarSincronizacao,
   SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO
 } = require('../src/dominio.js');
 
@@ -569,4 +569,171 @@ test('acharEmprestimoAberto devolve o aberto e ignora os fechados', () => {
   assert.equal(acharEmprestimoAberto(historico, 6), null);
   assert.equal(acharEmprestimoAberto([], 5), null);
   assert.equal(acharEmprestimoAberto(null, 5), null);
+});
+
+// --- planejarSincronizacao ---------------------------------------------------
+// Sincronização é o tipo de código que só quebra meses depois, quando alguém
+// cancela uma reserva. Estes testes existem para isso não acontecer em
+// produção — não há como testar contra um calendário de verdade.
+
+const JANELA = { inicio: new Date(2026, 0, 1), fim: new Date(2026, 11, 31) };
+
+const evento = (extra) => Object.assign({
+  id_evento_calendar: 'evt1',
+  data: new Date(2026, 8, 7),
+  horario: '19:30',
+  nome_reservado: 'Maria da Silva',
+  email_reservado: 'maria@exemplo.com',
+  data_inscricao: new Date(2026, 7, 20)
+}, extra);
+
+const reuniao = (extra) => Object.assign({
+  _linha: 2,
+  id_reuniao: 1,
+  data: new Date(2026, 8, 7),
+  horario: '19:30',
+  id_palestrante: '',
+  nome_reservado: 'Maria da Silva',
+  email_reservado: 'maria@exemplo.com',
+  tema: '',
+  status: 'reservada',
+  id_evento_calendar: 'evt1'
+}, extra);
+
+const PESSOAS = [
+  { id_pessoa: 7, nome: 'Maria da Silva', email: 'maria@exemplo.com' },
+  { id_pessoa: 8, nome: 'João Souza', email: 'JOAO@EXEMPLO.COM' }
+];
+
+test('reserva nova vira linha nova, já vinculada à pessoa', () => {
+  const plano = planejarSincronizacao([evento()], [], PESSOAS, JANELA);
+
+  assert.equal(plano.criar.length, 1);
+  assert.equal(plano.atualizar.length, 0);
+  assert.equal(plano.cancelar.length, 0);
+
+  assert.equal(plano.criar[0].id_evento_calendar, 'evt1');
+  assert.equal(plano.criar[0].nome_reservado, 'Maria da Silva');
+  assert.equal(plano.criar[0].id_palestrante, 7, 'devia resolver pelo e-mail');
+  assert.equal(plano.criar[0].status, 'reservada');
+});
+
+test('e-mail casa sem depender de maiúsculas', () => {
+  const plano = planejarSincronizacao(
+    [evento({ email_reservado: 'joao@exemplo.com' })], [], PESSOAS, JANELA);
+  assert.equal(plano.criar[0].id_palestrante, 8);
+});
+
+test('e-mail que não está em Pessoas deixa o vínculo vazio, não quebra', () => {
+  // O público é fechado, mas alguém pode reservar com um e-mail diferente do
+  // cadastrado. A reserva vale mesmo assim.
+  const plano = planejarSincronizacao(
+    [evento({ email_reservado: 'desconhecido@exemplo.com' })], [], PESSOAS, JANELA);
+  assert.equal(plano.criar[0].id_palestrante, '');
+  assert.equal(plano.criar[0].nome_reservado, 'Maria da Silva');
+});
+
+test('reserva que não mudou nada não gera escrita', () => {
+  // Sincronização diária: reescrever tudo todo dia gasta quota à toa.
+  const plano = planejarSincronizacao([evento()], [reuniao({ id_palestrante: 7 })],
+    PESSOAS, JANELA);
+  assert.deepEqual(plano, { criar: [], atualizar: [], cancelar: [] });
+});
+
+test('reserva remarcada para outra data atualiza a linha', () => {
+  const plano = planejarSincronizacao(
+    [evento({ data: new Date(2026, 8, 14) })],
+    [reuniao({ id_palestrante: 7 })], PESSOAS, JANELA);
+
+  assert.equal(plano.atualizar.length, 1);
+  assert.equal(plano.atualizar[0]._linha, 2);
+  assert.equal(plano.atualizar[0].mudancas.data.getDate(), 14);
+});
+
+test('troca de palestrante na mesma data atualiza nome e e-mail', () => {
+  const plano = planejarSincronizacao(
+    [evento({ nome_reservado: 'João Souza', email_reservado: 'joao@exemplo.com' })],
+    [reuniao({ id_palestrante: 7 })], PESSOAS, JANELA);
+
+  assert.equal(plano.atualizar[0].mudancas.nome_reservado, 'João Souza');
+  assert.equal(plano.atualizar[0].mudancas.email_reservado, 'joao@exemplo.com');
+});
+
+test('sincronização NUNCA mexe no tema — regra 13', () => {
+  // O tema é escrito pelo palestrante depois. Sobrescrever a cada sincronização
+  // apagaria em silêncio o que ele escreveu.
+  const comTema = reuniao({
+    id_palestrante: 7,
+    tema: 'A prece segundo o Evangelho',
+    status: 'tema_confirmado'
+  });
+  const plano = planejarSincronizacao(
+    [evento({ data: new Date(2026, 8, 14) })], [comTema], PESSOAS, JANELA);
+
+  const mudancas = plano.atualizar[0].mudancas;
+  assert.equal('tema' in mudancas, false, 'não pode tocar no tema');
+});
+
+test('status já avançado não é rebaixado', () => {
+  for (const status of ['tema_confirmado', 'realizada']) {
+    const plano = planejarSincronizacao(
+      [evento()], [reuniao({ id_palestrante: 7, status: status })], PESSOAS, JANELA);
+    assert.deepEqual(plano.atualizar, [],
+      `status ${status} não podia virar reservada de novo`);
+  }
+});
+
+test('reserva cancelada e refeita volta a valer', () => {
+  const plano = planejarSincronizacao(
+    [evento()], [reuniao({ id_palestrante: 7, status: 'cancelada' })],
+    PESSOAS, JANELA);
+  assert.equal(plano.atualizar[0].mudancas.status, 'reservada');
+});
+
+test('evento que sumiu do Agenda vira cancelada, não some da planilha', () => {
+  // Regra 12 e regra 15: o código nunca apaga linha.
+  const plano = planejarSincronizacao([], [reuniao({ id_palestrante: 7 })],
+    PESSOAS, JANELA);
+
+  assert.equal(plano.cancelar.length, 1);
+  assert.equal(plano.cancelar[0]._linha, 2);
+  assert.equal(plano.cancelar[0].mudancas.status, 'cancelada');
+});
+
+test('reunião fora da janela consultada não é cancelada', () => {
+  // Sem isso, sincronizar os próximos 365 dias marcaria como cancelada toda
+  // reunião do histórico, só por não estar entre os eventos lidos.
+  const antiga = reuniao({ data: new Date(2025, 5, 10), status: 'realizada' });
+  const plano = planejarSincronizacao([], [antiga], PESSOAS, JANELA);
+  assert.deepEqual(plano.cancelar, []);
+});
+
+test('já cancelada não é cancelada de novo', () => {
+  const plano = planejarSincronizacao([],
+    [reuniao({ status: 'cancelada' })], PESSOAS, JANELA);
+  assert.deepEqual(plano.cancelar, []);
+});
+
+test('vínculo feito à mão não é apagado pela sincronização', () => {
+  // Alguém pode ligar o palestrante à ficha na planilha quando o e-mail da
+  // reserva não bate com o cadastrado. A sincronização não pode desfazer.
+  const plano = planejarSincronizacao(
+    [evento({ email_reservado: 'outro@exemplo.com' })],
+    [reuniao({ id_palestrante: 7, email_reservado: 'outro@exemplo.com' })],
+    PESSOAS, JANELA);
+  assert.deepEqual(plano.atualizar, []);
+});
+
+test('linha da planilha sem id de evento é ignorada pela sincronização', () => {
+  // Data aberta à mão, ainda sem reserva: não é do Agenda, não se mexe.
+  const manual = reuniao({ id_evento_calendar: '', status: 'vaga_aberta' });
+  const plano = planejarSincronizacao([], [manual], PESSOAS, JANELA);
+  assert.deepEqual(plano, { criar: [], atualizar: [], cancelar: [] });
+});
+
+test('entradas vazias não quebram', () => {
+  assert.deepEqual(planejarSincronizacao([], [], [], JANELA),
+    { criar: [], atualizar: [], cancelar: [] });
+  assert.deepEqual(planejarSincronizacao(null, null, null, null),
+    { criar: [], atualizar: [], cancelar: [] });
 });

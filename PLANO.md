@@ -117,11 +117,11 @@ Objetivo: palestrante se inscreve sozinho e o dado chega na planilha.
 - [ ] 👤 Testar a reserva com dois e-mails diferentes na mesma data e confirmar
       que o segundo não consegue.
 - [ ] 👤 Colocar `id_calendario` na aba `Config`.
-- [ ] 🤖 `agenda.js`: `sincronizarReunioes()` — lê os eventos do período, faz
+- [x] 🤖 `agenda.js`: `sincronizarReunioes()` — lê os eventos do período, faz
       upsert em `Reunioes` por `id_evento_calendar`, resolve `id_palestrante`
       por e-mail, marca como `cancelada` o que sumiu do Agenda.
-- [ ] 🤖 Gatilho diário de sincronização.
-- [ ] 🤖 Tela de agenda: próximas reuniões, quem palestra, tema, e campo para o
+- [x] 🤖 Gatilho diário de sincronização.
+- [x] 🤖 Tela de agenda: próximas reuniões, quem palestra, tema, e campo para o
       palestrante ou o admin preencher o tema.
 
 **Aceite:** uma reserva feita na página do Agenda aparece na aba `Reunioes` no

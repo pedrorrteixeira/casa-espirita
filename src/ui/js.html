@@ -863,6 +863,109 @@
       .atualizarPessoa(pessoaEmEdicao.id_pessoa, mudancas, quem);
   });
 
+  // ----------------------------------------------------------------- agenda
+  var listaReunioes = $('#lista-reunioes');
+  var estadoAgenda = $('#estado-agenda');
+  var quemTema = $('#quem-tema');
+  var agendaCarregada = false;
+
+  try {
+    quemTema.value = localStorage.getItem('atendente') || '';
+  } catch (erro) {}
+
+  // Só carrega quando a aba é aberta: a maioria de quem entra vem buscar
+  // livro, e uma chamada ao servidor a cada visita custa quota à toa.
+  document.querySelectorAll('.aba').forEach(function (aba) {
+    aba.addEventListener('click', function () {
+      if (aba.dataset.visao === 'agenda' && !agendaCarregada) carregarAgenda();
+    });
+  });
+
+  function carregarAgenda() {
+    agendaCarregada = true;
+    listaReunioes.innerHTML = '';
+    dizer(estadoAgenda, 'Carregando…');
+
+    google.script.run
+      .withSuccessHandler(function (reunioes) {
+        if (!reunioes.length) {
+          dizer(estadoAgenda,
+            'Nenhuma reunião marcada. Se a página de agendamento já existe, ' +
+            'a sincronização roda de madrugada.');
+          return;
+        }
+        dizer(estadoAgenda, reunioes.length + ' reunião(ões) marcada(s)');
+        reunioes.forEach(function (reuniao) {
+          listaReunioes.appendChild(itemReuniao(reuniao));
+        });
+      })
+      .withFailureHandler(function (erro) {
+        agendaCarregada = false;   // deixa tentar de novo
+        dizer(estadoAgenda, erro.message || 'Não consegui carregar.', 'erro');
+      })
+      .listarProximasReunioes(12);
+  }
+
+  function itemReuniao(reuniao) {
+    var item = document.createElement('li');
+    item.className = 'resultado';
+
+    item.appendChild(elemento('h2',
+      reuniao.data + (reuniao.horario ? ' às ' + reuniao.horario : '')));
+
+    item.appendChild(elemento('p',
+      reuniao.palestrante || 'sem palestrante inscrito', 'autoria'));
+
+    if (reuniao.tema) {
+      item.appendChild(elemento('p', reuniao.tema, 'meta'));
+    }
+
+    // Campo de tema aparece só onde falta: reunião com tema definido vira
+    // leitura, e a tela não fica um formulário gigante.
+    if (!reuniao.tema) {
+      var linha = document.createElement('div');
+      linha.className = 'linha-isbn';
+
+      var campo = document.createElement('input');
+      campo.placeholder = 'tema desta reunião';
+      campo.className = 'cresce';
+
+      var botao = document.createElement('button');
+      botao.type = 'button';
+      botao.textContent = 'Gravar tema';
+      botao.addEventListener('click', function () {
+        var texto = campo.value.trim();
+        if (!texto) { campo.focus(); return; }
+
+        var quem = quemTema.value.trim();
+        if (!quem) {
+          dizer(estadoAgenda, 'Escreva seu nome acima — fica registrado.', 'erro');
+          quemTema.focus();
+          return;
+        }
+
+        botao.disabled = true;
+        google.script.run
+          .withSuccessHandler(function () {
+            dizer(estadoAgenda, 'Tema gravado.', 'ok');
+            agendaCarregada = false;
+            carregarAgenda();
+          })
+          .withFailureHandler(function (erro) {
+            botao.disabled = false;
+            dizer(estadoAgenda, erro.message || 'Não consegui gravar.', 'erro');
+          })
+          .definirTema(reuniao.id_reuniao, texto, quem);
+      });
+
+      linha.appendChild(campo);
+      linha.appendChild(botao);
+      item.appendChild(linha);
+    }
+
+    return item;
+  }
+
   // ------------------------------------------------------------- auxiliares
   /**
    * Diz o que conferir na autoria. O Google marca o autor espiritual com

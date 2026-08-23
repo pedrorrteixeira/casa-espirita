@@ -1,5 +1,240 @@
 /**
- * agenda.js — sincronizarReunioes: Google Agenda -> aba Reunioes, unidirecional. Preenchido na Fase 3.
+ * agenda.js — Google Agenda → aba `Reunioes`.
  *
- * Esqueleto da Fase 0. Sem lógica ainda.
+ * SENTIDO ÚNICO (regra 12). O calendário manda, a planilha obedece. Nada aqui
+ * cria, altera ou apaga evento: quem reserva é o palestrante, pela página de
+ * agendamento, e é ela que garante uma reunião por data (D4). Se este arquivo
+ * um dia chamar `createEvent`, é bug.
+ *
+ * A decisão de o que gravar é de `planejarSincronizacao()`, em `dominio.js`,
+ * que é pura e testada. Aqui só se lê o calendário, traduz o evento para o
+ * nosso formato, e aplica o plano.
  */
+
+var JANELA_PASSADO_DIAS = 30;    // o suficiente para pegar cancelamento recente
+var JANELA_FUTURO_DIAS = 400;    // a página de agendamento abre 365 dias
+
+/**
+ * Lê os eventos do período e reflete na aba `Reunioes`.
+ *
+ * Chamada pelo gatilho diário e pelo menu. Devolve o resumo do que fez, para o
+ * menu mostrar e para o log do gatilho registrar.
+ */
+function sincronizarReunioes() {
+  var idCalendario = limparCampo_(lerConfig('id_calendario', ''));
+  if (!idCalendario) {
+    throw new Error(
+      'Falta o `id_calendario` na aba Config. Ele é o ID do calendário ' +
+      '"Reuniões Públicas" — está em Google Agenda → configurações do ' +
+      'calendário → "ID do calendário".'
+    );
+  }
+
+  var calendario = CalendarApp.getCalendarById(idCalendario);
+  if (!calendario) {
+    throw new Error(
+      'Não achei o calendário "' + idCalendario + '". Confira o ID na aba ' +
+      'Config e se ele pertence a esta conta.'
+    );
+  }
+
+  var hoje = new Date();
+  var janela = {
+    inicio: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - JANELA_PASSADO_DIAS),
+    fim: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + JANELA_FUTURO_DIAS)
+  };
+
+  var eventos = calendario.getEvents(janela.inicio, janela.fim).map(traduzirEvento_);
+
+  return comTrava_(function () {
+    var plano = planejarSincronizacao(
+      eventos, lerAba_(ABA_REUNIOES), lerPessoas(), janela);
+
+    plano.criar.forEach(function (nova) {
+      nova.id_reuniao = proximoId_(ABA_REUNIOES, 'id_reuniao');
+      escreverLinha_(ABA_REUNIOES, nova);
+    });
+
+    plano.atualizar.forEach(function (item) {
+      atualizarCelulas_(ABA_REUNIOES, item._linha, item.mudancas);
+    });
+
+    plano.cancelar.forEach(function (item) {
+      atualizarCelulas_(ABA_REUNIOES, item._linha, item.mudancas);
+    });
+
+    var resumo = {
+      lidos: eventos.length,
+      criadas: plano.criar.length,
+      atualizadas: plano.atualizar.length,
+      canceladas: plano.cancelar.length
+    };
+
+    // Só registra quando houve mudança: um gatilho diário que não faz nada
+    // encheria o Log de linhas inúteis e esconderia o que importa.
+    if (resumo.criadas || resumo.atualizadas || resumo.canceladas) {
+      registrarLog_('gatilho', 'sincronizar', 'reunioes', '',
+        resumo.criadas + ' nova(s), ' + resumo.atualizadas + ' alterada(s), ' +
+        resumo.canceladas + ' cancelada(s)');
+    }
+
+    return resumo;
+  });
+}
+
+/**
+ * Traduz um evento do Google para o nosso formato.
+ *
+ * A página de agendamento cria o evento com quem reservou na lista de
+ * convidados, então é de lá que vêm nome e e-mail. O título do evento serve
+ * de reserva: em alguns formatos ele traz o nome e a lista de convidados vem
+ * vazia.
+ *
+ * O horário é gravado como TEXTO ("19:30"). Como hora, o Sheets converteria
+ * para fração de dia e a exibição dependeria do fuso da planilha — para um
+ * campo que nunca é calculado, texto é mais honesto.
+ */
+function traduzirEvento_(evento) {
+  var inicio = evento.getStartTime();
+  var convidados = evento.getGuestList();
+
+  var nome = '';
+  var email = '';
+
+  // Ignora a própria casa na lista: quem interessa é quem reservou.
+  var idCalendario = normalizarTexto(lerConfig('id_calendario', ''));
+  for (var i = 0; i < convidados.length; i++) {
+    var candidato = normalizarTexto(convidados[i].getEmail());
+    if (candidato && candidato !== idCalendario) {
+      email = convidados[i].getEmail();
+      nome = convidados[i].getName() || '';
+      break;
+    }
+  }
+
+  if (!nome) nome = limparCampo_(evento.getTitle());
+
+  return {
+    id_evento_calendar: evento.getId(),
+    data: new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate()),
+    horario: Utilities.formatDate(
+      inicio,
+      SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(),
+      'HH:mm'
+    ),
+    nome_reservado: nome,
+    email_reservado: email,
+    data_inscricao: evento.getDateCreated()
+  };
+}
+
+// --- API das telas -----------------------------------------------------------
+
+/**
+ * Próximas reuniões, para a tela de agenda.
+ *
+ * Esta tela é aberta a todos: mostra quem palestra e sobre o quê, que é
+ * informação pública da casa. Mas NÃO devolve o e-mail de quem reservou —
+ * esse é dado de contato, e vale a mesma regra da tela de pessoa.
+ */
+function listarProximasReunioes(quantas) {
+  var limite = Number(quantas);
+  if (!isFinite(limite) || limite <= 0) limite = 12;
+
+  var hoje = soDataDeHoje_();
+
+  return lerAba_(ABA_REUNIOES)
+    .filter(function (reuniao) {
+      if (limparCampo_(reuniao.status) === STATUS_CANCELADA) return false;
+      var quando = comoDataSegura_(reuniao.data);
+      return quando && quando.getTime() >= hoje.getTime();
+    })
+    .sort(function (a, b) {
+      return comoDataSegura_(a.data).getTime() - comoDataSegura_(b.data).getTime();
+    })
+    .slice(0, limite)
+    .map(function (reuniao) {
+      return {
+        id_reuniao: reuniao.id_reuniao,
+        data: formatarData_(reuniao.data),
+        horario: reuniao.horario,
+        palestrante: limparCampo_(reuniao.nome_reservado),
+        tema: limparCampo_(reuniao.tema),
+        status: limparCampo_(reuniao.status)
+      };
+    });
+}
+
+/**
+ * Grava o tema de uma reunião (regra 13).
+ *
+ * O tema é a única coisa que a planilha manda e o Agenda não sabe — por isso
+ * `planejarSincronizacao` nunca o toca.
+ */
+function definirTema(idReuniao, tema, quemRegistrou) {
+  var texto = limparCampo_(tema);
+  if (!texto) throw new Error('Escreva o tema.');
+
+  var quem = limparCampo_(quemRegistrou);
+  if (!quem) throw new Error('Informe quem está preenchendo.');
+
+  return comTrava_(function () {
+    var alvo = Number(idReuniao);
+    var achadas = lerAba_(ABA_REUNIOES).filter(function (reuniao) {
+      return Number(reuniao.id_reuniao) === alvo;
+    });
+    if (!achadas.length) throw new Error('Reunião não encontrada.');
+
+    var reuniao = achadas[0];
+    if (limparCampo_(reuniao.status) === STATUS_CANCELADA) {
+      throw new Error('Esta reunião está cancelada.');
+    }
+
+    var mudancas = { tema: texto };
+    // Já realizada não volta para tema_confirmado só por corrigir o texto.
+    if (limparCampo_(reuniao.status) !== STATUS_REALIZADA) {
+      mudancas.status = STATUS_TEMA_CONFIRMADO;
+    }
+
+    atualizarCelulas_(ABA_REUNIOES, reuniao._linha, mudancas);
+    registrarLog_(quem, 'tema', 'reuniao', alvo, '');
+    return alvo;
+  });
+}
+
+/** Hoje à meia-noite. Nome distinto do `soData_` de dominio.js. */
+function soDataDeHoje_() {
+  var agora = new Date();
+  return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+}
+
+/** Célula de data para Date, ou null. */
+function comoDataSegura_(valor) {
+  if (!valor) return null;
+  if (valor instanceof Date) return isFinite(valor.getTime()) ? valor : null;
+  var data = new Date(valor);
+  return isFinite(data.getTime()) ? data : null;
+}
+
+/**
+ * Sincronização manual, pelo menu. Existe para não ser preciso esperar até as
+ * 5h da manhã para ver se a reserva chegou — e para dar mensagem de erro
+ * legível quando o `id_calendario` estiver errado, coisa que o gatilho só
+ * registraria no Log.
+ */
+function sincronizarAgora() {
+  var ui = SpreadsheetApp.getUi();
+  try {
+    var resumo = sincronizarReunioes();
+    ui.alert(
+      'Sincronização concluída',
+      resumo.lidos + ' evento(s) lido(s) no calendário.\n\n' +
+      resumo.criadas + ' reunião(ões) nova(s)\n' +
+      resumo.atualizadas + ' atualizada(s)\n' +
+      resumo.canceladas + ' cancelada(s)',
+      ui.ButtonSet.OK
+    );
+  } catch (erro) {
+    ui.alert('Não consegui sincronizar', erro.message, ui.ButtonSet.OK);
+  }
+}

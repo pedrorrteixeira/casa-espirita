@@ -10,6 +10,7 @@
     <button class="aba ativa" data-visao="busca" role="tab">Buscar</button>
     <button class="aba" data-visao="balcao" role="tab">Balcão</button>
     <button class="aba" data-visao="atrasos" role="tab">Atrasos</button>
+    <button class="aba" data-visao="agenda" role="tab">Agenda</button>
     <button class="aba" data-visao="cadastro" role="tab">Cadastrar</button>
   </nav>
 </header>
@@ -92,6 +93,24 @@
     </div>
     <div id="estado-atrasos" class="estado" role="status" aria-live="polite"></div>
     <ul id="lista-emprestados" class="resultados"></ul>
+  </section>
+
+  <!-- --------------------------------------------------------------- agenda -->
+  <!-- Aberta a todos: quem palestra e sobre o quê é informação pública da
+       casa. O e-mail de quem reservou não vem para cá. -->
+  <section id="visao-agenda" class="visao oculta">
+    <p class="dica">
+      As reuniões vêm da página de agendamento do Google Agenda e são
+      atualizadas todo dia de madrugada. O tema é preenchido aqui.
+    </p>
+
+    <label>
+      Seu nome (para preencher tema)
+      <input id="quem-tema" placeholder="só necessário ao gravar um tema">
+    </label>
+
+    <div id="estado-agenda" class="estado" role="status" aria-live="polite"></div>
+    <ul id="lista-reunioes" class="resultados"></ul>
   </section>
 
   <!-- ------------------------------------------------------------- cadastro -->
