@@ -169,6 +169,39 @@
   .aviso p { margin: 0 0 .5rem; }
   .escolhas { display: flex; flex-direction: column; gap: .5rem; }
   .escolhas button { width: 100%; }
+  /* Abas de segundo nível, dentro do Cadastrar. Menores que as do topo, para
+     a hierarquia ficar óbvia sem precisar de explicação. */
+  .abas-internas { display: flex; gap: .25rem; margin-bottom: 1rem; }
+  .aba-interna {
+    background: var(--fundo-suave);
+    color: var(--tinta-fraca);
+    border: 1px solid var(--borda);
+    font-weight: 400;
+    padding: .4rem .9rem;
+  }
+  .aba-interna.ativa {
+    background: var(--acento);
+    color: #fff;
+    border-color: var(--acento);
+    font-weight: 600;
+  }
+
+  /* Ficha do exemplar no balcão. Grande e legível: é lida em pé, de relance. */
+  .ficha {
+    border: 1px solid var(--borda);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+  .ficha h2 { margin: 0 0 .1rem; font-size: 1.15rem; }
+  .ficha .selo { font-size: .95rem; }
+
+  .escolhas-linha { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+  /* Linha de empréstimo na lista de atrasos. */
+  .atrasado { border-left: 4px solid var(--emprestado); padding-left: .7rem; }
+  .dias-atraso { color: var(--emprestado); font-weight: 600; }
+
   button.discreto {
     background: var(--fundo);
     color: var(--tinta-fraca);

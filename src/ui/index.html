@@ -8,6 +8,8 @@
   <h1><?= nomeCasa ?></h1>
   <nav class="abas" role="tablist">
     <button class="aba ativa" data-visao="busca" role="tab">Buscar</button>
+    <button class="aba" data-visao="balcao" role="tab">Balcão</button>
+    <button class="aba" data-visao="atrasos" role="tab">Atrasos</button>
     <button class="aba" data-visao="cadastro" role="tab">Cadastrar</button>
   </nav>
 </header>
@@ -36,9 +38,117 @@
     <ul id="resultados" class="resultados"></ul>
   </section>
 
+  <!-- --------------------------------------------------------------- balcão -->
+  <!-- Empréstimo e devolução na mesma tela: é o mesmo balcão, a mesma pessoa
+       e o mesmo livro na mão. Trocar de aba entre entregar e receber seria
+       atrito puro. -->
+  <section id="visao-balcao" class="visao oculta">
+    <label>
+      Quem está atendendo
+      <input id="atendente" placeholder="seu nome" autocomplete="off">
+    </label>
+
+    <label>
+      Tombo do livro
+      <input id="tombo" inputmode="numeric" placeholder="o número da etiqueta"
+             autocomplete="off" enterkeyhint="search">
+    </label>
+    <div id="estado-tombo" class="estado" role="status" aria-live="polite"></div>
+
+    <!-- Ficha do exemplar, depois de digitado o tombo -->
+    <div id="ficha" class="ficha oculta">
+      <h2 id="ficha-titulo"></h2>
+      <p id="ficha-autoria" class="autoria"></p>
+      <p id="ficha-meta" class="meta"></p>
+      <p><span id="ficha-selo" class="selo"></span></p>
+
+      <!-- disponível: escolher a pessoa e emprestar -->
+      <div id="acao-emprestar" class="oculta">
+        <label>
+          Para quem
+          <input id="pessoa" placeholder="comece a digitar o nome"
+                 autocomplete="off">
+        </label>
+        <ul id="pessoas-achadas" class="candidatos"></ul>
+        <p id="pessoa-escolhida" class="dica"></p>
+        <button type="button" id="btn-emprestar" disabled>Emprestar</button>
+      </div>
+
+      <!-- emprestado: devolver ou renovar -->
+      <div id="acao-devolver" class="oculta escolhas">
+        <button type="button" id="btn-devolver">Registrar devolução</button>
+        <button type="button" id="btn-renovar" class="discreto">
+          Renovar o prazo
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- -------------------------------------------------------------- atrasos -->
+  <section id="visao-atrasos" class="visao oculta">
+    <div class="escolhas-linha">
+      <button type="button" id="btn-atrasados">Só os atrasados</button>
+      <button type="button" id="btn-todos" class="discreto">Tudo emprestado</button>
+    </div>
+    <div id="estado-atrasos" class="estado" role="status" aria-live="polite"></div>
+    <ul id="lista-emprestados" class="resultados"></ul>
+  </section>
+
   <!-- ------------------------------------------------------------- cadastro -->
   <section id="visao-cadastro" class="visao oculta">
-    <form id="form-cadastro" autocomplete="off">
+    <div class="abas-internas">
+      <button type="button" class="aba-interna ativa" data-bloco="obra">Obra</button>
+      <button type="button" class="aba-interna" data-bloco="pessoa">Pessoa</button>
+    </div>
+
+    <!-- Cadastro de frequentador. Sem ele não há a quem emprestar. -->
+    <form id="form-pessoa" class="bloco-cadastro oculta" autocomplete="off">
+      <fieldset>
+        <legend>Frequentador</legend>
+
+        <label>
+          Seu nome (quem está cadastrando)
+          <input name="quem_registrou" required placeholder="para o registro interno">
+        </label>
+
+        <label>
+          Nome <span class="obrigatorio">*</span>
+          <input name="nome" required>
+        </label>
+
+        <div class="par">
+          <label>
+            Telefone
+            <input name="telefone" inputmode="tel">
+          </label>
+          <label>
+            E-mail
+            <input name="email" type="email">
+          </label>
+        </div>
+
+        <p class="dica">
+          Telefone e e-mail são opcionais — a casa não vai negar livro a quem
+          não quis dar. Servem para avisar de atraso e, no caso do e-mail, para
+          ligar a inscrição de palestrante ao cadastro.
+        </p>
+
+        <label class="caixa">
+          <input type="checkbox" name="palestrante">
+          Também é palestrante
+        </label>
+
+        <label>
+          Observação
+          <input name="observacao">
+        </label>
+      </fieldset>
+
+      <button type="submit" id="btn-salvar-pessoa">Salvar pessoa</button>
+      <div id="estado-pessoa" class="estado" role="status" aria-live="polite"></div>
+    </form>
+
+    <form id="form-cadastro" class="bloco-cadastro" autocomplete="off">
 
       <fieldset>
         <legend>Quem está cadastrando</legend>

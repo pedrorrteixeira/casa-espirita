@@ -12,6 +12,8 @@ const assert = require('node:assert/strict');
 
 const {
   normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria, resumirEdicoes, acharTituloEquivalente,
+  calcularSituacao, acharEmprestimoAberto, calcularDataPrevista,
+  estaAtrasado, diasDeAtraso,
   SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO
 } = require('../src/dominio.js');
 
@@ -451,4 +453,120 @@ test('acervo vazio e entrada vazia não quebram', () => {
   assert.equal(acharTituloEquivalente(null, { titulo: 'Nosso Lar' }), null);
   assert.equal(acharTituloEquivalente(ACERVO, { titulo: '' }), null);
   assert.equal(acharTituloEquivalente(ACERVO, null), null);
+});
+
+// --- empréstimo: situação, prazo e atraso ------------------------------------
+
+const emprestimo = (extra) => Object.assign({
+  id_emprestimo: 1, tombo: 1, id_pessoa: 1,
+  data_emprestimo: new Date(2026, 7, 1),
+  data_prevista: new Date(2026, 7, 22),
+  data_devolucao: '', renovacoes: 0
+}, extra);
+
+test('exemplar ativo e sem empréstimo aberto está disponível', () => {
+  assert.equal(calcularSituacao(exemplar({ tombo: 1 }), []), SITUACAO_DISPONIVEL);
+});
+
+test('exemplar com empréstimo aberto está emprestado — regra 1', () => {
+  assert.equal(
+    calcularSituacao(exemplar({ tombo: 1 }), [emprestimo({ tombo: 1 })]),
+    SITUACAO_EMPRESTADO
+  );
+});
+
+test('empréstimo já devolvido não prende o exemplar', () => {
+  assert.equal(
+    calcularSituacao(exemplar({ tombo: 1 }), [
+      emprestimo({ tombo: 1, data_devolucao: new Date(2026, 7, 10) })
+    ]),
+    SITUACAO_DISPONIVEL
+  );
+});
+
+test('empréstimo de outro tombo não interfere', () => {
+  assert.equal(
+    calcularSituacao(exemplar({ tombo: 1 }), [emprestimo({ tombo: 99 })]),
+    SITUACAO_DISPONIVEL
+  );
+});
+
+test('exemplar baixado está baixado, tenha empréstimo ou não — regra 10', () => {
+  assert.equal(
+    calcularSituacao(exemplar({ tombo: 1, ativo: 'NÃO' }), []),
+    SITUACAO_BAIXADO
+  );
+});
+
+test('calcularSituacao lê os empréstimos, não a coluna de fórmula', () => {
+  // A fórmula da planilha pode estar desatualizada no meio de uma gravação.
+  // Se ela mandasse, a decisão de emprestar sairia de um valor velho.
+  const mentindo = exemplar({ tombo: 1, situacao: 'disponível' });
+  assert.equal(
+    calcularSituacao(mentindo, [emprestimo({ tombo: 1 })]),
+    SITUACAO_EMPRESTADO
+  );
+});
+
+test('data prevista é o empréstimo mais o prazo — regra 3', () => {
+  const prevista = calcularDataPrevista(new Date(2026, 7, 1), 21);
+  assert.equal(prevista.getFullYear(), 2026);
+  assert.equal(prevista.getMonth(), 7);
+  assert.equal(prevista.getDate(), 22);
+});
+
+test('data prevista atravessa o mês e o ano corretamente', () => {
+  const virandoMes = calcularDataPrevista(new Date(2026, 7, 25), 21);
+  assert.equal(virandoMes.getMonth(), 8);
+  assert.equal(virandoMes.getDate(), 15);
+
+  const virandoAno = calcularDataPrevista(new Date(2026, 11, 20), 21);
+  assert.equal(virandoAno.getFullYear(), 2027);
+  assert.equal(virandoAno.getMonth(), 0);
+  assert.equal(virandoAno.getDate(), 10);
+});
+
+test('prazo inválido estoura em vez de gerar data errada', () => {
+  assert.throws(() => calcularDataPrevista(new Date(2026, 7, 1), 0), /prazo/);
+  assert.throws(() => calcularDataPrevista(new Date(2026, 7, 1), 'muitos'), /prazo/);
+  assert.throws(() => calcularDataPrevista('', 21), /Data de empréstimo/);
+});
+
+test('devolver no próprio dia do vencimento não é atraso', () => {
+  const noPrazo = emprestimo({ data_prevista: new Date(2026, 7, 22) });
+  assert.equal(estaAtrasado(noPrazo, new Date(2026, 7, 22)), false);
+});
+
+test('um dia depois do vencimento é atraso', () => {
+  const vencido = emprestimo({ data_prevista: new Date(2026, 7, 22) });
+  assert.equal(estaAtrasado(vencido, new Date(2026, 7, 23)), true);
+  assert.equal(diasDeAtraso(vencido, new Date(2026, 7, 30)), 8);
+});
+
+test('empréstimo devolvido nunca está atrasado, mesmo que fora do prazo', () => {
+  // O histórico registra o atraso, mas a lista de cobrança não pode chamar de
+  // volta um livro que já voltou.
+  const devolvidoTarde = emprestimo({
+    data_prevista: new Date(2026, 7, 22),
+    data_devolucao: new Date(2026, 8, 5)
+  });
+  assert.equal(estaAtrasado(devolvidoTarde, new Date(2026, 8, 30)), false);
+  assert.equal(diasDeAtraso(devolvidoTarde, new Date(2026, 8, 30)), 0);
+});
+
+test('hora do dia não decide atraso', () => {
+  // Devolver às 19h30 do dia do vencimento é em dia.
+  const noPrazo = emprestimo({ data_prevista: new Date(2026, 7, 22, 8, 0) });
+  assert.equal(estaAtrasado(noPrazo, new Date(2026, 7, 22, 19, 30)), false);
+});
+
+test('acharEmprestimoAberto devolve o aberto e ignora os fechados', () => {
+  const historico = [
+    emprestimo({ id_emprestimo: 1, tombo: 5, data_devolucao: new Date(2026, 5, 1) }),
+    emprestimo({ id_emprestimo: 2, tombo: 5, data_devolucao: '' })
+  ];
+  assert.equal(acharEmprestimoAberto(historico, 5).id_emprestimo, 2);
+  assert.equal(acharEmprestimoAberto(historico, 6), null);
+  assert.equal(acharEmprestimoAberto([], 5), null);
+  assert.equal(acharEmprestimoAberto(null, 5), null);
 });

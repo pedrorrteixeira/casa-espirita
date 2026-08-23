@@ -437,6 +437,306 @@
     formulario.elements.titulo.focus();
   }
 
+  // ----------------------------------------------------------------- balcão
+  // Empréstimo e devolução na mesma tela. Vai ser usada em pé, no celular,
+  // com o livro numa mão: o caminho é digitar o tombo e confirmar.
+
+  var atendente = $('#atendente');
+  var campoTombo = $('#tombo');
+  var estadoTombo = $('#estado-tombo');
+  var ficha = $('#ficha');
+  var pessoaEscolhida = null;
+  var tomboEmVoo = 0;
+  var temporizadorTombo = null;
+
+  // Quem atende é a mesma pessoa durante um plantão inteiro. Guardar poupa
+  // redigitar a cada livro — e é dado do voluntário, não do frequentador.
+  try {
+    atendente.value = localStorage.getItem('atendente') || '';
+  } catch (erro) { /* navegador sem armazenamento: segue sem lembrar */ }
+
+  atendente.addEventListener('change', function () {
+    try { localStorage.setItem('atendente', atendente.value.trim()); } catch (erro) {}
+  });
+
+  campoTombo.addEventListener('input', function () {
+    clearTimeout(temporizadorTombo);
+    temporizadorTombo = setTimeout(carregarTombo, 350);
+  });
+
+  function carregarTombo() {
+    var valor = campoTombo.value.trim();
+    ficha.classList.add('oculta');
+    limparEscolhaDePessoa();
+
+    if (!valor) { dizer(estadoTombo, ''); return; }
+
+    var esta = ++tomboEmVoo;
+    dizer(estadoTombo, 'Procurando o tombo…');
+
+    google.script.run
+      .withSuccessHandler(function (dados) {
+        if (esta !== tomboEmVoo) return;
+        dizer(estadoTombo, '');
+        mostrarFicha(dados);
+      })
+      .withFailureHandler(function (erro) {
+        if (esta !== tomboEmVoo) return;
+        dizer(estadoTombo, erro.message || 'Não consegui achar esse tombo.', 'erro');
+      })
+      .verExemplar(valor);
+  }
+
+  function mostrarFicha(dados) {
+    $('#ficha-titulo').textContent = dados.titulo;
+    $('#ficha-autoria').textContent = dados.autoria;
+
+    var meta = ['tombo ' + dados.tombo];
+    if (dados.edicao) meta.push(dados.edicao);
+    if (dados.estado) meta.push('estado: ' + dados.estado);
+    $('#ficha-meta').textContent = meta.join(' · ');
+
+    var selo = $('#ficha-selo');
+    var emprestado = dados.situacao === 'emprestado';
+    var baixado = dados.situacao === 'baixado';
+
+    // Aqui PODE aparecer o nome de quem está com o livro: é tela de balcão,
+    // não a busca pública. A distinção é a seção 6 da especificação.
+    if (emprestado) {
+      selo.textContent = 'com ' + dados.com_quem + ' — devolver até ' +
+        dados.data_prevista +
+        (dados.dias_de_atraso > 0
+          ? ' (' + dados.dias_de_atraso + ' dia(s) de atraso)'
+          : '');
+    } else {
+      selo.textContent = dados.situacao;
+    }
+    selo.className = 'selo ' +
+      (emprestado ? 'emprestado' : baixado ? 'sem_exemplar' : 'disponivel');
+
+    $('#acao-emprestar').classList.toggle('oculta', dados.situacao !== 'disponível');
+    $('#acao-devolver').classList.toggle('oculta', !emprestado);
+    ficha.classList.remove('oculta');
+  }
+
+  // --- escolher a pessoa
+  var campoPessoa = $('#pessoa');
+  var listaPessoas = $('#pessoas-achadas');
+  var temporizadorPessoa = null;
+
+  campoPessoa.addEventListener('input', function () {
+    limparEscolhaDePessoa(true);
+    clearTimeout(temporizadorPessoa);
+    temporizadorPessoa = setTimeout(procurarPessoas, 300);
+  });
+
+  function procurarPessoas() {
+    var termo = campoPessoa.value.trim();
+    listaPessoas.innerHTML = '';
+    if (termo.length < 2) return;
+
+    google.script.run
+      .withSuccessHandler(function (achadas) {
+        listaPessoas.innerHTML = '';
+        if (!achadas.length) {
+          $('#pessoa-escolhida').textContent =
+            'Ninguém com esse nome. Cadastre em Cadastrar → Pessoa.';
+          return;
+        }
+        achadas.forEach(function (pessoa) {
+          var item = document.createElement('li');
+          var botao = document.createElement('button');
+          botao.type = 'button';
+          botao.className = 'candidato';
+          botao.textContent = pessoa.nome;
+          botao.addEventListener('click', function () {
+            pessoaEscolhida = pessoa;
+            campoPessoa.value = pessoa.nome;
+            listaPessoas.innerHTML = '';
+            $('#pessoa-escolhida').textContent = 'Vai levar: ' + pessoa.nome;
+            $('#btn-emprestar').disabled = false;
+          });
+          item.appendChild(botao);
+          listaPessoas.appendChild(item);
+        });
+      })
+      .withFailureHandler(function (erro) {
+        $('#pessoa-escolhida').textContent = erro.message || 'Não consegui buscar.';
+      })
+      .buscarPessoas(termo);
+  }
+
+  function limparEscolhaDePessoa(manterTexto) {
+    pessoaEscolhida = null;
+    $('#btn-emprestar').disabled = true;
+    $('#pessoa-escolhida').textContent = '';
+    listaPessoas.innerHTML = '';
+    if (!manterTexto) campoPessoa.value = '';
+  }
+
+  // --- as três ações do balcão
+  $('#btn-emprestar').addEventListener('click', function () {
+    if (!pessoaEscolhida || !exigirAtendente()) return;
+    acaoDeBalcao(this, 'Emprestando…', function (run) {
+      return run.registrarEmprestimo(campoTombo.value.trim(),
+        pessoaEscolhida.id_pessoa, atendente.value.trim(), '');
+    }, function (r) {
+      return 'Emprestado a ' + r.nome + '. Devolver até ' + r.data_prevista + '.';
+    });
+  });
+
+  $('#btn-devolver').addEventListener('click', function () {
+    if (!exigirAtendente()) return;
+    acaoDeBalcao(this, 'Registrando devolução…', function (run) {
+      return run.registrarDevolucao(campoTombo.value.trim(), atendente.value.trim());
+    }, function (r) {
+      return r.dias_de_atraso > 0
+        ? 'Devolvido com ' + r.dias_de_atraso + ' dia(s) de atraso.'
+        : 'Devolvido em dia.';
+    });
+  });
+
+  $('#btn-renovar').addEventListener('click', function () {
+    if (!exigirAtendente()) return;
+    acaoDeBalcao(this, 'Renovando…', function (run) {
+      return run.renovar(campoTombo.value.trim(), atendente.value.trim());
+    }, function (r) {
+      return 'Renovado até ' + r.data_prevista + ' (renovação ' + r.renovacoes + ').';
+    });
+  });
+
+  function exigirAtendente() {
+    if (atendente.value.trim()) return true;
+    dizer(estadoTombo, 'Escreva seu nome antes — toda operação fica registrada.', 'erro');
+    atendente.focus();
+    return false;
+  }
+
+  /**
+   * As três ações têm a mesma coreografia: desabilita o botão, chama, mostra o
+   * recado e limpa para o próximo livro. Repetir isso em três lugares é como
+   * um botão acaba travado depois de uma falha.
+   */
+  function acaoDeBalcao(botao, aguardando, chamar, recado) {
+    botao.disabled = true;
+    dizer(estadoTombo, aguardando);
+
+    chamar(google.script.run
+      .withSuccessHandler(function (resposta) {
+        botao.disabled = false;
+        dizer(estadoTombo, recado(resposta), 'ok');
+        ficha.classList.add('oculta');
+        campoTombo.value = '';
+        limparEscolhaDePessoa();
+        campoTombo.focus();
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer(estadoTombo, erro.message || 'Não consegui completar.', 'erro');
+      }));
+  }
+
+  // ---------------------------------------------------------------- atrasos
+  var listaEmprestados = $('#lista-emprestados');
+  var estadoAtrasos = $('#estado-atrasos');
+
+  $('#btn-atrasados').addEventListener('click', function () { listar(true); });
+  $('#btn-todos').addEventListener('click', function () { listar(false); });
+
+  function listar(somenteAtrasados) {
+    listaEmprestados.innerHTML = '';
+    dizer(estadoAtrasos, 'Carregando…');
+
+    google.script.run
+      .withSuccessHandler(function (linhas) {
+        if (!linhas.length) {
+          dizer(estadoAtrasos, somenteAtrasados
+            ? 'Nenhum livro atrasado.'
+            : 'Nenhum livro emprestado no momento.');
+          return;
+        }
+        dizer(estadoAtrasos, linhas.length + ' livro(s)');
+        linhas.forEach(function (linha) {
+          listaEmprestados.appendChild(itemEmprestado(linha));
+        });
+      })
+      .withFailureHandler(function (erro) {
+        dizer(estadoAtrasos, erro.message || 'Não consegui carregar.', 'erro');
+      })
+      .listarEmprestados(somenteAtrasados);
+  }
+
+  function itemEmprestado(linha) {
+    var item = document.createElement('li');
+    item.className = 'resultado' + (linha.dias_de_atraso > 0 ? ' atrasado' : '');
+
+    item.appendChild(elemento('h2', linha.titulo));
+    if (linha.autoria) item.appendChild(elemento('p', linha.autoria, 'autoria'));
+    item.appendChild(elemento('p',
+      'tombo ' + linha.tombo + ' · com ' + linha.nome, 'meta'));
+
+    var prazo = elemento('p', '', 'meta');
+    if (linha.dias_de_atraso > 0) {
+      prazo.appendChild(elemento('span',
+        linha.dias_de_atraso + ' dia(s) de atraso', 'dias-atraso'));
+      prazo.appendChild(document.createTextNode(' — venceu em ' + linha.data_prevista));
+    } else {
+      prazo.textContent = 'devolver até ' + linha.data_prevista;
+    }
+    if (Number(linha.renovacoes) > 0) {
+      prazo.appendChild(document.createTextNode(
+        ' · ' + linha.renovacoes + ' renovação(ões)'));
+    }
+    item.appendChild(prazo);
+
+    return item;
+  }
+
+  // --------------------------------------------------- cadastro: abas internas
+  document.querySelectorAll('.aba-interna').forEach(function (aba) {
+    aba.addEventListener('click', function () {
+      document.querySelectorAll('.aba-interna').forEach(function (outra) {
+        outra.classList.toggle('ativa', outra === aba);
+      });
+      $('#form-cadastro').classList.toggle('oculta', aba.dataset.bloco !== 'obra');
+      $('#form-pessoa').classList.toggle('oculta', aba.dataset.bloco !== 'pessoa');
+    });
+  });
+
+  // --------------------------------------------------------- cadastro: pessoa
+  var formPessoa = $('#form-pessoa');
+  var estadoPessoa = $('#estado-pessoa');
+
+  formPessoa.addEventListener('submit', function (evento) {
+    evento.preventDefault();
+    var botao = $('#btn-salvar-pessoa');
+
+    var dados = {};
+    Array.prototype.forEach.call(formPessoa.elements, function (campo) {
+      if (!campo.name) return;
+      dados[campo.name] = campo.type === 'checkbox' ? campo.checked : campo.value.trim();
+    });
+    var quem = dados.quem_registrou;
+    delete dados.quem_registrou;
+
+    botao.disabled = true;
+    dizer(estadoPessoa, 'Salvando…');
+
+    google.script.run
+      .withSuccessHandler(function (id) {
+        botao.disabled = false;
+        dizer(estadoPessoa, dados.nome + ' cadastrado (nº ' + id + ').', 'ok');
+        formPessoa.reset();
+        formPessoa.elements.quem_registrou.value = quem;
+        formPessoa.elements.nome.focus();
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer(estadoPessoa, erro.message || 'Não consegui salvar.', 'erro');
+      })
+      .criarPessoa(dados, quem);
+  });
+
   // ------------------------------------------------------------- auxiliares
   /**
    * Diz o que conferir na autoria. O Google marca o autor espiritual com

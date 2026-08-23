@@ -214,6 +214,88 @@ var SITUACAO_EMPRESTADO = 'emprestado';
 var SITUACAO_BAIXADO = 'baixado';
 
 /**
+ * Situação de um exemplar, calculada a partir dos empréstimos.
+ *
+ * NÃO lê a coluna derivada `situacao`. Aquela fórmula é para quem olha a
+ * planilha; para decidir se pode emprestar, ela não serve: dentro de uma
+ * gravação a fórmula pode ainda não ter recalculado, e a decisão sairia de um
+ * valor velho. A verdade é a aba `Emprestimos` (D7), e é o que isto lê.
+ */
+function calcularSituacao(exemplar, emprestimos) {
+  if (!exemplar) return null;
+  if (String(exemplar.ativo).trim() !== 'SIM') return SITUACAO_BAIXADO;
+
+  return acharEmprestimoAberto(emprestimos, exemplar.tombo)
+    ? SITUACAO_EMPRESTADO
+    : SITUACAO_DISPONIVEL;
+}
+
+/**
+ * O empréstimo aberto de um tombo, ou null.
+ *
+ * "Aberto" é `data_devolucao` vazia — essa é a definição, não uma convenção
+ * (D8). Um tombo tem no máximo um, e é o que as fórmulas derivadas assumem.
+ */
+function acharEmprestimoAberto(emprestimos, tombo) {
+  var alvo = Number(tombo);
+  var abertos = (emprestimos || []).filter(function (emprestimo) {
+    return Number(emprestimo.tombo) === alvo && semValor_(emprestimo.data_devolucao);
+  });
+  return abertos.length ? abertos[0] : null;
+}
+
+/**
+ * Data prevista de devolução: empréstimo + prazo (regra 3).
+ *
+ * Soma pelos componentes da data, não por milissegundos, para o horário de
+ * verão não empurrar a data um dia para trás.
+ */
+function calcularDataPrevista(dataEmprestimo, prazoDias) {
+  var inicio = comoData_(dataEmprestimo);
+  if (!inicio) throw new Error('Data de empréstimo inválida.');
+
+  var prazo = Number(prazoDias);
+  if (!isFinite(prazo) || prazo <= 0) {
+    throw new Error('O prazo de devolução precisa ser um número de dias.');
+  }
+
+  return new Date(
+    inicio.getFullYear(),
+    inicio.getMonth(),
+    inicio.getDate() + Math.round(prazo)
+  );
+}
+
+/**
+ * Empréstimo em atraso: ainda aberto e com a data prevista já passada.
+ *
+ * `hoje` vem por parâmetro para a função continuar pura e testável — data do
+ * sistema dentro de função de domínio torna o teste dependente do calendário.
+ *
+ * Compara só a data, sem hora: devolver no próprio dia do vencimento, às 19h,
+ * não é atraso.
+ */
+function estaAtrasado(emprestimo, hoje) {
+  if (!emprestimo) return false;
+  if (!semValor_(emprestimo.data_devolucao)) return false;   // já devolvido
+
+  var prevista = comoData_(emprestimo.data_prevista);
+  var referencia = comoData_(hoje);
+  if (!prevista || !referencia) return false;
+
+  return soData_(prevista).getTime() < soData_(referencia).getTime();
+}
+
+/** Quantos dias de atraso. Zero quando está em dia. */
+function diasDeAtraso(emprestimo, hoje) {
+  if (!estaAtrasado(emprestimo, hoje)) return 0;
+
+  var prevista = soData_(comoData_(emprestimo.data_prevista));
+  var referencia = soData_(comoData_(hoje));
+  return Math.round((referencia.getTime() - prevista.getTime()) / 86400000);
+}
+
+/**
  * Resume a disponibilidade de um título a partir dos seus exemplares.
  *
  * É a função que alimenta a busca pública, então tem uma responsabilidade
@@ -267,6 +349,20 @@ function comoData_(valor) {
   if (valor instanceof Date) return isFinite(valor.getTime()) ? valor : null;
   var data = new Date(valor);
   return isFinite(data.getTime()) ? data : null;
+}
+
+/**
+ * Célula sem valor. Nome distinto de propósito:  tem um
+ *  equivalente, e no escopo global único do Apps Script duas
+ * definições do mesmo nome se sobrescrevem em silêncio.
+ */
+function semValor_(valor) {
+  return valor === '' || valor === null || valor === undefined;
+}
+
+/** A mesma data, à meia-noite. Para comparar dia com dia, sem hora. */
+function soData_(data) {
+  return new Date(data.getFullYear(), data.getMonth(), data.getDate());
 }
 
 function limpar_(valor) {
@@ -333,6 +429,11 @@ if (typeof module !== 'undefined') {
     resumirDisponibilidade: resumirDisponibilidade,
     resumirEdicoes: resumirEdicoes,
     acharTituloEquivalente: acharTituloEquivalente,
+    calcularSituacao: calcularSituacao,
+    acharEmprestimoAberto: acharEmprestimoAberto,
+    calcularDataPrevista: calcularDataPrevista,
+    estaAtrasado: estaAtrasado,
+    diasDeAtraso: diasDeAtraso,
     SITUACAO_DISPONIVEL: SITUACAO_DISPONIVEL,
     SITUACAO_EMPRESTADO: SITUACAO_EMPRESTADO,
     SITUACAO_BAIXADO: SITUACAO_BAIXADO

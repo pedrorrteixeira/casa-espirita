@@ -70,8 +70,11 @@ pessoa consegue buscar.
 - [x] 🤖 Tela de cadastro de título e exemplar.
 - [x] 🤖 Botão de busca por ISBN chamando a API do Google Books, com
       preenchimento dos campos e fallback manual silencioso quando não achar.
-- [ ] 👤 Cadastrar 20 livros reais do acervo para validar o modelo antes de
-      catalogar tudo.
+- [x] 👤 Cadastrar livros reais do acervo para validar o modelo antes de
+      catalogar tudo. O teste com os primeiros pegou três coisas: gravação
+      recusada em coluna depois das derivadas, autoria com três campos onde
+      cabiam dois, e obra duplicável. Todas corrigidas antes de catalogar em
+      volume — que era exatamente o objetivo deste passo.
 
 **Aceite:** buscar "andré luiz" retorna a série; buscar "chico" retorna as
 psicografias; um título com zero exemplares aparece na busca marcado como não
@@ -83,16 +86,19 @@ disponível na casa; a busca pública não expõe nome de nenhum frequentador.
 
 Objetivo: substituir o caderno.
 
-- [ ] 🤖 `dominio.js`: `calcularSituacao()`, `calcularDataPrevista()`,
+- [x] 🤖 `pessoas.js` e tela de cadastro de frequentador. **Não estava no plano
+      original**: a fase diz "busca a pessoa pelo nome", mas nada preenchia a
+      aba `Pessoas`. Sem isso não há a quem emprestar.
+- [x] 🤖 `dominio.js`: `calcularSituacao()`, `calcularDataPrevista()`,
       `estaAtrasado()` — puras, com testes.
-- [ ] 🤖 `emprestimos.js`: `registrarEmprestimo()`, `registrarDevolucao()`,
+- [x] 🤖 `emprestimos.js`: `registrarEmprestimo()`, `registrarDevolucao()`,
       `renovar()`. Todas dentro de `LockService`, todas gravando na aba `Log`.
-- [ ] 🤖 Testes das regras 1, 5, 6 e 7 (inclusive os caminhos de erro:
+- [x] 🤖 Testes das regras 1, 5, 6 e 7 (inclusive os caminhos de erro:
       exemplar já emprestado, pessoa inativa, devolução sem empréstimo aberto).
-- [ ] 🤖 Tela de empréstimo: busca o exemplar pelo tombo, busca a pessoa pelo
+- [x] 🤖 Tela de empréstimo: busca o exemplar pelo tombo, busca a pessoa pelo
       nome, confirma. Duas etapas no máximo — vai ser usada em pé, no celular.
-- [ ] 🤖 Tela de devolução: digita o tombo, confirma.
-- [ ] 🤖 Tela "livros em atraso" para o atendente.
+- [x] 🤖 Tela de devolução: digita o tombo, confirma.
+- [x] 🤖 Tela "livros em atraso" para o atendente.
 - [ ] 👤 Etiquetar os exemplares com o número de tombo.
 
 **Aceite:** dois empréstimos simultâneos do mesmo tombo — o segundo falha com
@@ -168,6 +174,7 @@ biblioteca-casa-espirita/
 │   ├── planilha.js        # todo acesso a SpreadsheetApp
 │   ├── catalogo.js
 │   ├── emprestimos.js
+│   ├── pessoas.js         # cadastro de frequentador (não previsto no plano)
 │   ├── agenda.js
 │   ├── gatilhos.js
 │   ├── setup.js           # criarEstruturaPlanilha()

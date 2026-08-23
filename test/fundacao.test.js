@@ -143,3 +143,31 @@ test('as fórmulas apontam para as colunas certas de Exemplares', () => {
   assert.equal(exemplares.cabecalhos[0], 'tombo');
   assert.equal(titulos.cabecalhos[0], 'id_titulo');
 });
+
+test('nenhum nome global é declarado em dois arquivos de src/', () => {
+  // Apps Script concatena tudo num escopo global só. Duas definições do mesmo
+  // nome não dão erro: a última silenciosamente vence, e qual é a última
+  // depende da ordem de concatenação. Já aconteceu aqui com LOCK_ESPERA_MS,
+  // e por pouco não aconteceu com ehVazio_ — que existe em planilha.js e por
+  // isso se chama semValor_ em dominio.js.
+  const declaracoes = new Map();
+
+  for (const arquivo of listarJs(SRC)) {
+    const nome = path.basename(arquivo);
+    const texto = fs.readFileSync(arquivo, 'utf8');
+    const achados = texto.matchAll(/^(?:function|var|let|const)\s+(\w+)/gm);
+
+    for (const [, simbolo] of achados) {
+      if (!declaracoes.has(simbolo)) declaracoes.set(simbolo, []);
+      const onde = declaracoes.get(simbolo);
+      if (!onde.includes(nome)) onde.push(nome);
+    }
+  }
+
+  const colisoes = [...declaracoes]
+    .filter(([, arquivos]) => arquivos.length > 1)
+    .map(([simbolo, arquivos]) => `${simbolo}: ${arquivos.join(' e ')}`);
+
+  assert.deepEqual(colisoes, [],
+    `mesmo nome declarado em arquivos diferentes:\n${colisoes.join('\n')}`);
+});
