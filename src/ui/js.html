@@ -700,6 +700,7 @@
       });
       $('#form-cadastro').classList.toggle('oculta', aba.dataset.bloco !== 'obra');
       $('#form-pessoa').classList.toggle('oculta', aba.dataset.bloco !== 'pessoa');
+      $('#form-editar-pessoa').classList.toggle('oculta', aba.dataset.bloco !== 'editar');
     });
   });
 
@@ -735,6 +736,131 @@
         dizer(estadoPessoa, erro.message || 'Não consegui salvar.', 'erro');
       })
       .criarPessoa(dados, quem);
+  });
+
+  // -------------------------------------------------- cadastro: alterar pessoa
+  var formEditar = $('#form-editar-pessoa');
+  var estadoEditar = $('#estado-editar');
+  var camposEditar = $('#campos-editar');
+  var buscaEditar = $('#busca-editar');
+  var listaEditar = $('#pessoas-editar');
+  var pessoaEmEdicao = null;
+  var temporizadorEditar = null;
+
+  buscaEditar.addEventListener('input', function () {
+    clearTimeout(temporizadorEditar);
+    temporizadorEditar = setTimeout(procurarParaEditar, 300);
+  });
+
+  function procurarParaEditar() {
+    var termo = buscaEditar.value.trim();
+    listaEditar.innerHTML = '';
+    if (termo.length < 2) return;
+
+    google.script.run
+      .withSuccessHandler(function (achadas) {
+        listaEditar.innerHTML = '';
+        if (!achadas.length) {
+          dizer(estadoEditar, 'Ninguém com esse nome.');
+          return;
+        }
+        dizer(estadoEditar, '');
+        achadas.forEach(function (pessoa) {
+          var item = document.createElement('li');
+          var botao = document.createElement('button');
+          botao.type = 'button';
+          botao.className = 'candidato';
+          // Inativo aparece marcado: é justamente quem alguém vem reativar.
+          botao.textContent = pessoa.nome + (pessoa.ativo ? '' : '  (inativo)');
+          botao.addEventListener('click', function () { carregarPessoa(pessoa.id_pessoa); });
+          item.appendChild(botao);
+          listaEditar.appendChild(item);
+        });
+      })
+      .withFailureHandler(function (erro) {
+        dizer(estadoEditar, erro.message || 'Não consegui buscar.', 'erro');
+      })
+      .buscarPessoasParaEditar(termo);
+  }
+
+  function carregarPessoa(idPessoa) {
+    dizer(estadoEditar, 'Carregando…');
+
+    google.script.run
+      .withSuccessHandler(function (pessoa) {
+        pessoaEmEdicao = pessoa;
+        listaEditar.innerHTML = '';
+        buscaEditar.value = '';
+        dizer(estadoEditar, '');
+
+        $('#editando-quem').textContent =
+          'Alterando: ' + pessoa.nome + ' (nº ' + pessoa.id_pessoa + ')';
+
+        formEditar.elements.nome.value = pessoa.nome;
+        formEditar.elements.telefone.value = '';
+        formEditar.elements.email.value = '';
+        formEditar.elements.limpar_telefone.checked = false;
+        formEditar.elements.limpar_email.checked = false;
+        formEditar.elements.frequentador.checked = pessoa.frequentador;
+        formEditar.elements.palestrante.checked = pessoa.palestrante;
+        formEditar.elements.ativo.checked = pessoa.ativo;
+        formEditar.elements.observacao.value = pessoa.observacao || '';
+
+        // Só diz SE existe, nunca o valor.
+        $('#tem-telefone').textContent = pessoa.tem_telefone
+          ? '(há um gravado)' : '(vazio)';
+        $('#tem-email').textContent = pessoa.tem_email
+          ? '(há um gravado)' : '(vazio)';
+
+        camposEditar.classList.remove('oculta');
+        formEditar.elements.nome.focus();
+      })
+      .withFailureHandler(function (erro) {
+        dizer(estadoEditar, erro.message || 'Não consegui carregar.', 'erro');
+      })
+      .verPessoa(idPessoa);
+  }
+
+  formEditar.addEventListener('submit', function (evento) {
+    evento.preventDefault();
+    if (!pessoaEmEdicao) return;
+
+    var botao = $('#btn-salvar-edicao');
+    var quem = formEditar.elements.quem_registrou.value.trim();
+    if (!quem) {
+      dizer(estadoEditar, 'Escreva seu nome — toda alteração fica registrada.', 'erro');
+      formEditar.elements.quem_registrou.focus();
+      return;
+    }
+
+    var mudancas = {
+      nome: formEditar.elements.nome.value.trim(),
+      telefone: formEditar.elements.telefone.value.trim(),
+      email: formEditar.elements.email.value.trim(),
+      limpar_telefone: formEditar.elements.limpar_telefone.checked,
+      limpar_email: formEditar.elements.limpar_email.checked,
+      frequentador: formEditar.elements.frequentador.checked,
+      palestrante: formEditar.elements.palestrante.checked,
+      ativo: formEditar.elements.ativo.checked,
+      observacao: formEditar.elements.observacao.value.trim()
+    };
+
+    botao.disabled = true;
+    dizer(estadoEditar, 'Salvando…');
+
+    google.script.run
+      .withSuccessHandler(function () {
+        botao.disabled = false;
+        dizer(estadoEditar, mudancas.nome + ' atualizado.', 'ok');
+        camposEditar.classList.add('oculta');
+        pessoaEmEdicao = null;
+        buscaEditar.focus();
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer(estadoEditar, erro.message || 'Não consegui salvar.', 'erro');
+      })
+      .atualizarPessoa(pessoaEmEdicao.id_pessoa, mudancas, quem);
   });
 
   // ------------------------------------------------------------- auxiliares

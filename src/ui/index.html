@@ -98,7 +98,8 @@
   <section id="visao-cadastro" class="visao oculta">
     <div class="abas-internas">
       <button type="button" class="aba-interna ativa" data-bloco="obra">Obra</button>
-      <button type="button" class="aba-interna" data-bloco="pessoa">Pessoa</button>
+      <button type="button" class="aba-interna" data-bloco="pessoa">Pessoa nova</button>
+      <button type="button" class="aba-interna" data-bloco="editar">Alterar pessoa</button>
     </div>
 
     <!-- Cadastro de frequentador. Sem ele não há a quem emprestar. -->
@@ -146,6 +147,84 @@
 
       <button type="submit" id="btn-salvar-pessoa">Salvar pessoa</button>
       <div id="estado-pessoa" class="estado" role="status" aria-live="polite"></div>
+    </form>
+
+    <!-- Edição de cadastro. Separada do cadastro novo de propósito: são dois
+         gestos diferentes, e misturá-los faria alguém sobrescrever uma pessoa
+         achando que estava criando outra. -->
+    <form id="form-editar-pessoa" class="bloco-cadastro oculta" autocomplete="off">
+      <fieldset>
+        <legend>Alterar cadastro</legend>
+
+        <label>
+          Seu nome (quem está alterando)
+          <input name="quem_registrou" required placeholder="para o registro interno">
+        </label>
+
+        <label>
+          Procurar a pessoa
+          <input id="busca-editar" placeholder="comece a digitar o nome">
+        </label>
+        <ul id="pessoas-editar" class="candidatos"></ul>
+
+        <div id="campos-editar" class="oculta">
+          <p id="editando-quem" class="dica"></p>
+
+          <label>
+            Nome
+            <input name="nome" required>
+          </label>
+
+          <p class="dica">
+            Telefone e e-mail <strong>não são exibidos</strong>: o sistema abre
+            por um link sem senha, e mostrar aqui publicaria o contato dos
+            frequentadores. Deixe em branco para manter o que está gravado, ou
+            escreva um valor novo para substituir. Para ler o que está lá, use
+            a planilha.
+          </p>
+
+          <div class="par">
+            <label>
+              Telefone <span id="tem-telefone" class="dica"></span>
+              <input name="telefone" inputmode="tel" placeholder="deixe vazio para manter">
+            </label>
+            <label>
+              E-mail <span id="tem-email" class="dica"></span>
+              <input name="email" type="email" placeholder="deixe vazio para manter">
+            </label>
+          </div>
+
+          <label class="caixa">
+            <input type="checkbox" name="limpar_telefone"> Apagar o telefone gravado
+          </label>
+          <label class="caixa">
+            <input type="checkbox" name="limpar_email"> Apagar o e-mail gravado
+          </label>
+
+          <label class="caixa">
+            <input type="checkbox" name="frequentador"> Frequentador
+          </label>
+          <label class="caixa">
+            <input type="checkbox" name="palestrante"> Palestrante
+          </label>
+          <label class="caixa">
+            <input type="checkbox" name="ativo"> Cadastro ativo
+          </label>
+          <p class="dica">
+            Desmarcar "ativo" impede novos empréstimos a esta pessoa, sem
+            apagar nada. É como se afasta alguém que mudou de cidade ou está
+            com pendência.
+          </p>
+
+          <label>
+            Observação
+            <input name="observacao">
+          </label>
+
+          <button type="submit" id="btn-salvar-edicao">Salvar alteração</button>
+        </div>
+      </fieldset>
+      <div id="estado-editar" class="estado" role="status" aria-live="polite"></div>
     </form>
 
     <form id="form-cadastro" class="bloco-cadastro" autocomplete="off">

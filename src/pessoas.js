@@ -93,3 +93,125 @@ function lerPessoa_(idPessoa) {
   });
   return achadas.length ? achadas[0] : null;
 }
+
+/**
+ * Ficha de uma pessoa para a tela de edição.
+ *
+ * NÃO devolve telefone nem e-mail — só se estão preenchidos. O sistema mora
+ * numa URL de acesso anônimo, e devolver o contato aqui publicaria a agenda
+ * dos frequentadores a quem tiver o link, bastando chamar isto com id 1, 2,
+ * 3… É a restrição 4 do CLAUDE.md.
+ *
+ * Quem precisa LER um telefone abre a planilha. Pela tela dá para trocar, não
+ * para consultar.
+ */
+function verPessoa(idPessoa) {
+  var pessoa = lerPessoa_(idPessoa);
+  if (!pessoa) throw new Error('Pessoa não encontrada.');
+
+  return {
+    id_pessoa: pessoa.id_pessoa,
+    nome: pessoa.nome,
+    tem_telefone: limparCampo_(pessoa.telefone) !== '',
+    tem_email: limparCampo_(pessoa.email) !== '',
+    frequentador: String(pessoa.frequentador).trim() === 'SIM',
+    palestrante: String(pessoa.palestrante).trim() === 'SIM',
+    ativo: String(pessoa.ativo).trim() === 'SIM',
+    observacao: pessoa.observacao
+  };
+}
+
+/**
+ * Altera o cadastro de uma pessoa.
+ *
+ * Telefone e e-mail só são gravados quando vêm preenchidos: a tela não sabe o
+ * valor atual, então string vazia significa "não mexer", e não "apagar". Sem
+ * isso, salvar qualquer alteração de nome apagaria o contato de quem tinha.
+ *
+ * Para apagar de fato, existe `limpar_telefone` / `limpar_email` — explícito,
+ * porque apagar contato tem que ser um ato deliberado.
+ */
+function atualizarPessoa(idPessoa, mudancas, quemRegistrou) {
+  return comTrava_(function () {
+    var pessoa = lerPessoa_(idPessoa);
+    if (!pessoa) throw new Error('Pessoa não encontrada.');
+
+    var dados = mudancas || {};
+    var aplicar = {};
+
+    if (dados.nome !== undefined) {
+      var nome = limparCampo_(dados.nome);
+      if (!nome) throw new Error('O nome não pode ficar vazio.');
+
+      // Renomear para o nome de outra pessoa criaria duas fichas idênticas.
+      var outra = acharPessoaPeloNome_(nome);
+      if (outra && Number(outra.id_pessoa) !== Number(idPessoa)) {
+        throw new Error(
+          'Já existe outra pessoa chamada "' + outra.nome + '" (nº ' +
+          outra.id_pessoa + ').'
+        );
+      }
+      aplicar.nome = nome;
+    }
+
+    // Vazio é "não mexer". Quem não vê o valor atual não pode apagá-lo por
+    // omissão — foi a decisão de não expor contato na tela que criou isso.
+    var telefone = limparCampo_(dados.telefone);
+    if (telefone) aplicar.telefone = telefone;
+    if (dados.limpar_telefone) aplicar.telefone = '';
+
+    var email = limparCampo_(dados.email);
+    if (email) aplicar.email = email;
+    if (dados.limpar_email) aplicar.email = '';
+
+    if (dados.frequentador !== undefined) {
+      aplicar.frequentador = dados.frequentador ? 'SIM' : 'NÃO';
+    }
+    if (dados.palestrante !== undefined) {
+      aplicar.palestrante = dados.palestrante ? 'SIM' : 'NÃO';
+    }
+    if (dados.ativo !== undefined) {
+      aplicar.ativo = dados.ativo ? 'SIM' : 'NÃO';
+    }
+    if (dados.observacao !== undefined) {
+      aplicar.observacao = limparCampo_(dados.observacao);
+    }
+
+    if (Object.keys(aplicar).length === 0) return Number(idPessoa);
+
+    atualizarCelulas_(ABA_PESSOAS, pessoa._linha, aplicar);
+
+    // Quais campos mudaram, nunca os valores: o Log é visível e fica retido.
+    registrarLog_(quemRegistrou, 'atualizar', 'pessoa', idPessoa,
+      Object.keys(aplicar).join(', '));
+    return Number(idPessoa);
+  });
+}
+
+/**
+ * Busca pessoas para a tela de edição — inclusive as inativas.
+ *
+ * `buscarPessoas` filtra os inativos porque serve ao empréstimo, e pessoa
+ * inativa não pega livro (regra 5). Mas justamente quem está inativo é quem
+ * alguém vai querer reativar.
+ */
+function buscarPessoasParaEditar(termo) {
+  var alvo = normalizarTexto(termo);
+  if (alvo.length < 2) return [];
+
+  return lerPessoas()
+    .filter(function (pessoa) {
+      return normalizarTexto(pessoa.nome).indexOf(alvo) !== -1;
+    })
+    .sort(function (a, b) {
+      return normalizarTexto(a.nome).localeCompare(normalizarTexto(b.nome));
+    })
+    .slice(0, 15)
+    .map(function (pessoa) {
+      return {
+        id_pessoa: pessoa.id_pessoa,
+        nome: pessoa.nome,
+        ativo: String(pessoa.ativo).trim() === 'SIM'
+      };
+    });
+}
