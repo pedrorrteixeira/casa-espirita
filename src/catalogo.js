@@ -317,7 +317,22 @@ function buscarPorIsbn(isbn) {
   } catch (erro) {
     return null;  // sem internet ou fora do ar: o manual continua valendo
   }
-  if (resposta.getResponseCode() !== 200) return null;
+
+  var codigo = resposta.getResponseCode();
+
+  // 429 e 5xx são "tente de novo", não "não existe". Confundir os dois manda
+  // o voluntário digitar tudo à mão quando bastava esperar um minuto — e a
+  // API do Google limita por IP quando a chamada não leva chave, então isto
+  // acontece de verdade.
+  if (codigo === 429) {
+    throw new Error('O Google recusou a consulta por excesso de acessos. ' +
+      'Espere um minuto e tente de novo.');
+  }
+  if (codigo >= 500) {
+    throw new Error('A busca de livros do Google está fora do ar agora. ' +
+      'Tente daqui a pouco, ou preencha à mão.');
+  }
+  if (codigo !== 200) return null;
 
   var dados;
   try {
