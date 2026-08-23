@@ -112,6 +112,8 @@ var CONFIG_PADRAO = [
   ['id_calendario', '', 'PREENCHER NA FASE 3: ID do calendário das reuniões.'],
   ['horario_reuniao', '19:30', 'Horário fixo das reuniões de segunda-feira.'],
   ['nome_casa', '', 'PREENCHER: nome da casa, aparece no cabeçalho do sistema.'],
+  ['url_sistema', '', 'PREENCHER: o link do sistema. Vai nos e-mails ' +
+    'automaticos, para o palestrante saber onde escrever o tema.'],
   ['chave_api_livros', '', 'OPCIONAL: chave da API de livros do Google. Sem ' +
     'ela a busca por ISBN quase sempre falha, porque a cota é compartilhada ' +
     'com todo mundo. É gratuita e não pede cartão. Ver PLANO.md.']

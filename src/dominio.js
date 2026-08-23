@@ -201,6 +201,97 @@ function resumirEdicoes(exemplares) {
 }
 
 /**
+ * Monta o aviso de atrasos: um e-mail só, com todos.
+ *
+ * Nunca um e-mail por atraso. A cota de conta Gmail comum é de 100
+ * destinatários por dia, e três livros atrasados não podem virar três
+ * mensagens — a seção 7 da especificação é explícita.
+ *
+ * Devolve também uma `chave`: a identidade do conjunto de atrasos. É o que
+ * permite ao gatilho não reenviar todo dia a mesma lista, que é como um aviso
+ * vira ruído e para de ser lido.
+ */
+function montarAvisoDeAtrasos(emprestados) {
+  var atrasados = (emprestados || []).filter(function (item) {
+    return Number(item.dias_de_atraso) > 0;
+  });
+
+  if (!atrasados.length) return null;
+
+  // O mais atrasado primeiro: é a ordem em que alguém vai agir.
+  var ordenados = atrasados.slice().sort(function (a, b) {
+    return Number(b.dias_de_atraso) - Number(a.dias_de_atraso);
+  });
+
+  var linhas = ordenados.map(function (item) {
+    return '• ' + item.titulo +
+      '\n  tombo ' + item.tombo +
+      ' · com ' + item.nome +
+      ' · venceu em ' + item.data_prevista +
+      ' (' + item.dias_de_atraso + ' dia' + (item.dias_de_atraso > 1 ? 's' : '') + ')';
+  });
+
+  var quantos = ordenados.length;
+  return {
+    assunto: 'Biblioteca: ' + quantos + ' livro' + (quantos > 1 ? 's' : '') + ' em atraso',
+    corpo: [
+      quantos === 1
+        ? 'Um livro está em atraso:'
+        : quantos + ' livros estão em atraso:',
+      '',
+      linhas.join('\n\n'),
+      '',
+      '—',
+      'Aviso automático do sistema da biblioteca. Não responda a este e-mail.'
+    ].join('\n'),
+    // Tombos ordenados: a chave muda quando entra ou sai um livro da lista,
+    // e NÃO muda só porque o atraso aumentou de 3 para 4 dias.
+    chave: ordenados.map(function (item) { return item.tombo; })
+      .sort(function (a, b) { return Number(a) - Number(b); })
+      .join(',')
+  };
+}
+
+/**
+ * Escolhe a reunião de quem precisa ser cobrado pelo tema.
+ *
+ * A mais próxima dentro da janela, com palestrante inscrito, e-mail conhecido
+ * e tema ainda vazio. Devolve null quando não há ninguém a cobrar — que é o
+ * caso mais comum, e não deve gerar e-mail nenhum.
+ */
+function escolherReuniaoSemTema(reunioes, hoje, diasDeAntecedencia) {
+  var referencia = comoData_(hoje);
+  if (!referencia) return null;
+
+  var inicio = soData_(referencia);
+  var limite = new Date(
+    inicio.getFullYear(), inicio.getMonth(),
+    inicio.getDate() + Number(diasDeAntecedencia || 7)
+  );
+
+  var candidatas = (reunioes || []).filter(function (reuniao) {
+    if (limpar_(reuniao.tema)) return false;
+    if (!limpar_(reuniao.email_reservado)) return false;
+
+    var status = limpar_(reuniao.status);
+    if (status === STATUS_CANCELADA || status === STATUS_REALIZADA) return false;
+
+    var quando = comoData_(reuniao.data);
+    if (!quando) return false;
+
+    var dia = soData_(quando).getTime();
+    return dia >= inicio.getTime() && dia <= limite.getTime();
+  });
+
+  if (!candidatas.length) return null;
+
+  candidatas.sort(function (a, b) {
+    return soData_(comoData_(a.data)).getTime() - soData_(comoData_(b.data)).getTime();
+  });
+  return candidatas[0];
+}
+
+/**
  * Status possíveis de uma reunião.
  * `vaga_aberta` existe para data criada à mão na planilha, sem reserva ainda.
  */
@@ -574,6 +665,8 @@ if (typeof module !== 'undefined') {
     estaAtrasado: estaAtrasado,
     diasDeAtraso: diasDeAtraso,
     planejarSincronizacao: planejarSincronizacao,
+    montarAvisoDeAtrasos: montarAvisoDeAtrasos,
+    escolherReuniaoSemTema: escolherReuniaoSemTema,
     SITUACAO_DISPONIVEL: SITUACAO_DISPONIVEL,
     SITUACAO_EMPRESTADO: SITUACAO_EMPRESTADO,
     SITUACAO_BAIXADO: SITUACAO_BAIXADO

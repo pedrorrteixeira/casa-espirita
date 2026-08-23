@@ -14,6 +14,7 @@ const {
   normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria, resumirEdicoes, acharTituloEquivalente,
   calcularSituacao, acharEmprestimoAberto, calcularDataPrevista,
   estaAtrasado, diasDeAtraso, planejarSincronizacao,
+  montarAvisoDeAtrasos, escolherReuniaoSemTema,
   SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO
 } = require('../src/dominio.js');
 
@@ -736,4 +737,144 @@ test('entradas vazias não quebram', () => {
     { criar: [], atualizar: [], cancelar: [] });
   assert.deepEqual(planejarSincronizacao(null, null, null, null),
     { criar: [], atualizar: [], cancelar: [] });
+});
+
+// --- montarAvisoDeAtrasos ----------------------------------------------------
+
+const emprestado = (extra) => Object.assign({
+  tombo: 1, titulo: 'Nosso Lar', nome: 'Maria da Silva',
+  data_prevista: '22/08/2026', dias_de_atraso: 0
+}, extra);
+
+test('sem atraso não há aviso — e-mail nenhum é enviado', () => {
+  // Mandar "0 atrasos" todo dia treina o admin a ignorar a mensagem.
+  assert.equal(montarAvisoDeAtrasos([]), null);
+  assert.equal(montarAvisoDeAtrasos(null), null);
+  assert.equal(montarAvisoDeAtrasos([emprestado({ dias_de_atraso: 0 })]), null);
+});
+
+test('três atrasos viram UM aviso, não três', () => {
+  // A cota é de 100 destinatários por dia. Um e-mail por atraso a queimaria.
+  const aviso = montarAvisoDeAtrasos([
+    emprestado({ tombo: 1, dias_de_atraso: 3 }),
+    emprestado({ tombo: 2, dias_de_atraso: 10, titulo: 'Os Mensageiros' }),
+    emprestado({ tombo: 3, dias_de_atraso: 1, titulo: 'A Gênese' })
+  ]);
+
+  assert.equal(aviso.assunto, 'Biblioteca: 3 livros em atraso');
+  assert.ok(aviso.corpo.includes('Nosso Lar'));
+  assert.ok(aviso.corpo.includes('Os Mensageiros'));
+  assert.ok(aviso.corpo.includes('A Gênese'));
+});
+
+test('o mais atrasado vem primeiro — é a ordem de agir', () => {
+  const aviso = montarAvisoDeAtrasos([
+    emprestado({ tombo: 1, titulo: 'Recente', dias_de_atraso: 2 }),
+    emprestado({ tombo: 2, titulo: 'Antigo', dias_de_atraso: 40 })
+  ]);
+  assert.ok(aviso.corpo.indexOf('Antigo') < aviso.corpo.indexOf('Recente'));
+});
+
+test('um livro só usa o singular', () => {
+  const aviso = montarAvisoDeAtrasos([emprestado({ dias_de_atraso: 1 })]);
+  assert.equal(aviso.assunto, 'Biblioteca: 1 livro em atraso');
+  assert.ok(aviso.corpo.includes('(1 dia)'), 'devia dizer "1 dia", não "1 dias"');
+});
+
+test('a chave muda quando entra ou sai livro da lista', () => {
+  const um = montarAvisoDeAtrasos([emprestado({ tombo: 1, dias_de_atraso: 3 })]);
+  const dois = montarAvisoDeAtrasos([
+    emprestado({ tombo: 1, dias_de_atraso: 3 }),
+    emprestado({ tombo: 2, dias_de_atraso: 1 })
+  ]);
+  assert.notEqual(um.chave, dois.chave);
+});
+
+test('a chave NÃO muda só porque o atraso aumentou', () => {
+  // É isto que impede o mesmo aviso de ser reenviado todo dia. Sem essa
+  // distinção, o admin recebe a mesma lista diariamente e para de abrir.
+  const ontem = montarAvisoDeAtrasos([emprestado({ tombo: 1, dias_de_atraso: 3 })]);
+  const hoje = montarAvisoDeAtrasos([emprestado({ tombo: 1, dias_de_atraso: 4 })]);
+  assert.equal(ontem.chave, hoje.chave);
+});
+
+test('a chave independe da ordem de chegada', () => {
+  const a = montarAvisoDeAtrasos([
+    emprestado({ tombo: 5, dias_de_atraso: 1 }),
+    emprestado({ tombo: 2, dias_de_atraso: 9 })
+  ]);
+  const b = montarAvisoDeAtrasos([
+    emprestado({ tombo: 2, dias_de_atraso: 9 }),
+    emprestado({ tombo: 5, dias_de_atraso: 1 })
+  ]);
+  assert.equal(a.chave, b.chave);
+});
+
+test('o aviso não pede resposta', () => {
+  // Vai de uma caixa que ninguém lê. Convidar resposta faria alguém escrever
+  // para o vazio.
+  const aviso = montarAvisoDeAtrasos([emprestado({ dias_de_atraso: 1 })]);
+  assert.ok(aviso.corpo.includes('Não responda'));
+});
+
+// --- escolherReuniaoSemTema --------------------------------------------------
+
+const paraCobrar = (extra) => Object.assign({
+  id_reuniao: 1,
+  data: new Date(2026, 8, 7),
+  nome_reservado: 'Maria da Silva',
+  email_reservado: 'maria@exemplo.com',
+  tema: '',
+  status: 'reservada'
+}, extra);
+
+const SEGUNDA = new Date(2026, 8, 1);
+
+test('cobra a reunião mais próxima sem tema', () => {
+  const escolhida = escolherReuniaoSemTema([
+    paraCobrar({ id_reuniao: 1, data: new Date(2026, 8, 7) }),
+    paraCobrar({ id_reuniao: 2, data: new Date(2026, 8, 4) })
+  ], SEGUNDA, 7);
+  assert.equal(escolhida.id_reuniao, 2, 'a mais próxima primeiro');
+});
+
+test('reunião que já tem tema não é cobrada', () => {
+  assert.equal(escolherReuniaoSemTema(
+    [paraCobrar({ tema: 'A prece', status: 'tema_confirmado' })], SEGUNDA, 7), null);
+});
+
+test('sem e-mail não há a quem cobrar', () => {
+  // A reserva vale, mas o lembrete não tem destino.
+  assert.equal(escolherReuniaoSemTema(
+    [paraCobrar({ email_reservado: '' })], SEGUNDA, 7), null);
+});
+
+test('cancelada e realizada não são cobradas', () => {
+  for (const status of ['cancelada', 'realizada']) {
+    assert.equal(escolherReuniaoSemTema([paraCobrar({ status: status })], SEGUNDA, 7),
+      null, `status ${status} não devia ser cobrado`);
+  }
+});
+
+test('reunião fora da janela não é cobrada ainda', () => {
+  // Cobrar tema com dois meses de antecedência é incômodo, não lembrete.
+  assert.equal(escolherReuniaoSemTema(
+    [paraCobrar({ data: new Date(2026, 10, 3) })], SEGUNDA, 7), null);
+});
+
+test('reunião que já passou não é cobrada', () => {
+  assert.equal(escolherReuniaoSemTema(
+    [paraCobrar({ data: new Date(2026, 7, 24) })], SEGUNDA, 7), null);
+});
+
+test('reunião hoje ainda conta, a do último dia da janela também', () => {
+  assert.ok(escolherReuniaoSemTema([paraCobrar({ data: SEGUNDA })], SEGUNDA, 7));
+  assert.ok(escolherReuniaoSemTema(
+    [paraCobrar({ data: new Date(2026, 8, 8) })], SEGUNDA, 7));
+});
+
+test('lista vazia devolve null, não quebra', () => {
+  assert.equal(escolherReuniaoSemTema([], SEGUNDA, 7), null);
+  assert.equal(escolherReuniaoSemTema(null, SEGUNDA, 7), null);
+  assert.equal(escolherReuniaoSemTema([paraCobrar()], null, 7), null);
 });

@@ -137,13 +137,13 @@ dia seguinte com nome, e-mail e data corretos; cancelar no Agenda marca
 
 ## Fase 4 — Automações
 
-- [ ] 🤖 Gatilho diário: **um** e-mail consolidado para o admin com a lista de
+- [x] 🤖 Gatilho diário: **um** e-mail consolidado para o admin com a lista de
       atrasos. Nunca um e-mail por atraso — a cota é de 100/dia.
-- [ ] 🤖 Gatilho semanal: e-mail ao palestrante da próxima reunião pedindo o
+- [x] 🤖 Gatilho semanal: e-mail ao palestrante da próxima reunião pedindo o
       tema, se ainda estiver vazio.
-- [ ] 🤖 Gatilho mensal: cópia da planilha via `DriveApp` para uma pasta
+- [x] 🤖 Gatilho mensal: cópia da planilha via `DriveApp` para uma pasta
       `Backups`, nomeada com a data. Manter os 12 últimos.
-- [ ] 🤖 Guarda de cota: checar `MailApp.getRemainingDailyQuota()` antes de
+- [x] 🤖 Guarda de cota: checar `MailApp.getRemainingDailyQuota()` antes de
       qualquer envio em laço e registrar no `Log` se estourar.
 
 **Aceite:** com três livros atrasados, chega um e-mail só; a pasta `Backups`
