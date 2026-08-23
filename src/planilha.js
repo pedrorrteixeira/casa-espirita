@@ -40,8 +40,8 @@ var ABA_LOG = 'Log';
  * a coluna inteira com "" e o Apps Script conta como conteúdo.
  */
 var COLUNAS_DERIVADAS = {
-  Titulos: [16, 17],        // P qtd_exemplares, Q qtd_disponiveis
-  Exemplares: [7, 8, 9]     // G situacao, H com_quem, I previsao_devolucao
+  Titulos: [13, 14],           // M qtd_exemplares, N qtd_disponiveis
+  Exemplares: [10, 11, 12]     // J situacao, K com_quem, L previsao_devolucao
 };
 
 function ehColunaDerivada_(nome, coluna) {

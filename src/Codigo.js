@@ -23,6 +23,8 @@ function onOpen() {
     .addItem('Repor chaves padrão em Config', 'popularConfigPadrao')
     .addSeparator()
     .addItem('Diagnóstico: busca de livros do Google', 'diagnosticarGoogleBooks')
+    .addItem('Migrar para o modelo de edições (uma vez só)',
+      'migrarParaModeloDeEdicoes')
     .addToUi();
 }
 

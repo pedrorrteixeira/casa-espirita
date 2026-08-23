@@ -81,49 +81,31 @@
           <input name="subtitulo">
         </label>
 
-        <p class="dica">
-          Obra <strong>não</strong> psicografada: preencha só <em>Autor</em>.
-          Psicografia: deixe <em>Autor</em> vazio e preencha
-          <em>autor espiritual</em> e <em>médium</em> — o frequentador procura
-          pelos dois.
-        </p>
-
-        <label>
-          Autor
-          <input name="autor" placeholder="Allan Kardec">
+        <label class="caixa">
+          <input type="checkbox" name="psicografada" id="psicografada">
+          Obra psicografada
         </label>
 
-        <div class="par">
-          <label>
-            Autor espiritual
-            <input name="autor_espiritual" placeholder="André Luiz">
-          </label>
-          <label>
-            Médium
-            <input name="medium" placeholder="Francisco Cândido Xavier (Chico Xavier)">
-          </label>
-        </div>
+        <label id="rotulo-autoria">
+          Autor
+          <input name="autor_ou_medium" placeholder="Allan Kardec">
+        </label>
+
+        <label id="campo-espiritual" class="oculta">
+          Autor espiritual
+          <input name="autor_espiritual" placeholder="André Luiz">
+        </label>
 
         <p class="dica">
-          Quando o nome popular for diferente do formal, grave os dois, como no
-          exemplo acima. É o que faz buscar "chico" encontrar.
+          Quando o nome popular for diferente do formal, grave os dois:
+          <em>Francisco Cândido Xavier (Chico Xavier)</em>. É o que faz buscar
+          "chico" encontrar.
         </p>
 
         <div class="par">
           <label>
             Tradutor
             <input name="tradutor">
-          </label>
-          <label>
-            Editora
-            <input name="editora">
-          </label>
-        </div>
-
-        <div class="par">
-          <label>
-            Ano
-            <input name="ano" inputmode="numeric">
           </label>
           <label>
             Categoria
@@ -173,11 +155,31 @@
           aparece na busca como indisponível e alimenta a lista de doação.
         </p>
 
-        <div id="campos-exemplar" class="par">
-          <label>
-            Estado
-            <select name="estado_exemplar" id="estado-exemplar"></select>
-          </label>
+        <div id="campos-exemplar">
+          <p class="dica">
+            Editora, ano e edição descrevem <em>este</em> exemplar. A casa pode
+            ter o mesmo livro em edições diferentes, e cada um leva a sua.
+          </p>
+          <div class="par">
+            <label>
+              Editora
+              <input name="editora" placeholder="FEB Editora">
+            </label>
+            <label>
+              Ano
+              <input name="ano" inputmode="numeric">
+            </label>
+          </div>
+          <div class="par">
+            <label>
+              Edição
+              <input name="edicao" placeholder="3ª ed., reimpressão…">
+            </label>
+            <label>
+              Estado
+              <select name="estado_exemplar" id="estado-exemplar"></select>
+            </label>
+          </div>
           <label>
             Doado por
             <input name="doado_por">

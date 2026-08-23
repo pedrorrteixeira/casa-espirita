@@ -13,8 +13,8 @@
   // Campos que a consulta ao Google governa. Ela sobrescreve todos, inclusive
   // com vazio: manter metade do livro anterior montaria uma ficha com dados de
   // duas obras diferentes.
-  var CAMPOS_DA_CONSULTA = ['titulo', 'subtitulo', 'autor', 'autor_espiritual',
-    'medium', 'editora', 'ano', 'sinopse'];
+  var CAMPOS_DA_CONSULTA = ['titulo', 'subtitulo', 'autor_ou_medium',
+    'autor_espiritual', 'editora', 'ano', 'sinopse'];
 
   // ---------------------------------------------------------------- navegação
   document.querySelectorAll('.aba').forEach(function (aba) {
@@ -96,8 +96,8 @@
       if (obra.serie) {
         meta.push(obra.serie + (obra.ordem_na_serie ? ' nº ' + obra.ordem_na_serie : ''));
       }
-      if (obra.editora) meta.push(obra.editora);
-      if (obra.ano) meta.push(obra.ano);
+      // Editora e ano vêm dos exemplares e podem ser vários.
+      if (obra.edicoes && obra.edicoes.length) meta.push(obra.edicoes.join(' / '));
       if (meta.length) item.appendChild(elemento('p', meta.join(' · '), 'meta'));
 
       var selo = elemento('span', textoDeDisponibilidade(obra), 'selo ' + obra.estado);
@@ -144,6 +144,33 @@
   caixaExemplar.addEventListener('change', function () {
     camposExemplar.classList.toggle('oculta', !caixaExemplar.checked);
   });
+
+  /**
+   * "Obra psicografada" decide o papel do campo de autoria.
+   *
+   * O banco tem uma coluna só para os dois: obra de autor e psicografia nunca
+   * têm os dois preenchidos. Quem diz qual papel aquele nome exerce é o campo
+   * `autor_espiritual` estar cheio ou vazio — então a caixa só muda o rótulo
+   * e mostra ou esconde o campo do espírito.
+   */
+  var caixaPsicografada = $('#psicografada');
+  var campoEspiritual = $('#campo-espiritual');
+  var rotuloAutoria = $('#rotulo-autoria');
+
+  function ajustarAutoria() {
+    var psicografada = caixaPsicografada.checked;
+    campoEspiritual.classList.toggle('oculta', !psicografada);
+    rotuloAutoria.childNodes[0].nodeValue = psicografada ? '\n          Médium\n          ' : '\n          Autor\n          ';
+    formulario.elements.autor_ou_medium.placeholder = psicografada
+      ? 'Francisco Cândido Xavier (Chico Xavier)'
+      : 'Allan Kardec';
+    // Desmarcar significa "não é psicografia": o espírito tem que sair junto,
+    // senão fica um autor_espiritual órfão mudando o sentido da ficha.
+    if (!psicografada) formulario.elements.autor_espiritual.value = '';
+  }
+
+  caixaPsicografada.addEventListener('change', ajustarAutoria);
+  ajustarAutoria();
 
   // ISBN: atalho, não caminho principal. Não achar é normal e não é erro.
   $('#btn-isbn').addEventListener('click', function () {
@@ -229,7 +256,7 @@
         botao.disabled = false;
         aviso.textContent = erro.message || 'Não consegui consultar agora.';
       })
-      .buscarLivrosPorTitulo(titulo, formulario.elements.autor.value);
+      .buscarLivrosPorTitulo(titulo, formulario.elements.autor_ou_medium.value);
   });
 
   function itemCandidato(livro, aviso, lista) {
@@ -244,8 +271,8 @@
     // A autoria aparece já resolvida: em psicografia `autor` vem vazio, e
     // mostrar só ele deixaria o candidato sem identificação nenhuma.
     var quem = livro.autor_espiritual
-      ? livro.autor_espiritual + (livro.medium ? ' / méd. ' + livro.medium : '')
-      : livro.autor;
+      ? livro.autor_espiritual + (livro.autor_ou_medium ? ' / méd. ' + livro.autor_ou_medium : '')
+      : livro.autor_ou_medium;
 
     var detalhes = [quem, livro.editora, livro.ano, livro.isbn]
       .filter(function (parte) { return parte; })
@@ -277,6 +304,7 @@
 
     var quem = dados.quem_registrou;
     delete dados.quem_registrou;
+    delete dados.psicografada;   // controle de tela, não coluna
 
     botao.disabled = true;
     dizer(estadoCadastro, 'Salvando…');
@@ -295,10 +323,13 @@
         // série ou da mesma doação.
         var serie = formulario.elements.serie.value;
         var doador = formulario.elements.doado_por.value;
+        var editora = formulario.elements.editora.value;
         formulario.reset();
         formulario.elements.quem_registrou.value = quem;
         formulario.elements.serie.value = serie;
         formulario.elements.doado_por.value = doador;
+        formulario.elements.editora.value = editora;
+        ajustarAutoria();
         formulario.elements.titulo.focus();
       })
       .withFailureHandler(function (erro) {
@@ -315,6 +346,12 @@
    * médium acaba no campo Autor, e aí alguém precisa mover.
    */
   function recadoDeAutoria(livro) {
+    // A consulta preencheu autor_espiritual? Então é psicografia, e a caixa
+    // tem que refletir isso — senão o rótulo diria "Autor" sobre um médium.
+    caixaPsicografada.checked = !!livro.autor_espiritual;
+    ajustarAutoria();
+    formulario.elements.autor_espiritual.value = livro.autor_espiritual || '';
+
     if (livro.autor_espiritual) {
       return 'Psicografia reconhecida: autor espiritual e médium foram ' +
         'separados. Confira, e escolha a categoria.';

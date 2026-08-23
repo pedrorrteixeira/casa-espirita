@@ -105,3 +105,41 @@ test('nenhuma coluna de fórmula é escrita por catalogo.js', () => {
   assert.deepEqual(problemas, [],
     `catalogo.js monta registro com coluna derivada: ${problemas.join(', ')}`);
 });
+
+test('as fórmulas apontam para as colunas certas de Exemplares', () => {
+  // As ARRAYFORMULA referenciam colunas por LETRA. Reordenar cabeçalhos sem
+  // reescrever as fórmulas quebra tudo em silêncio: a situação de todo
+  // exemplar viraria lixo e nenhum erro seria levantado. Aconteceu na
+  // migração para o modelo de edições, quando `ativo` foi de F para I.
+  const setup = require('../src/setup.js');
+  const { ESTRUTURA_ABAS } = setup;
+
+  const exemplares = ESTRUTURA_ABAS.find((a) => a.nome === 'Exemplares');
+  const titulos = ESTRUTURA_ABAS.find((a) => a.nome === 'Titulos');
+
+  const letra = (cabecalhos, campo) => {
+    const i = cabecalhos.indexOf(campo);
+    assert.notEqual(i, -1, `a coluna ${campo} sumiu`);
+    return String.fromCharCode(65 + i);   // só vale até Z, e as abas cabem
+  };
+
+  const fonte = fs.readFileSync(path.join(SRC, 'setup.js'), 'utf8');
+
+  // situacao lê `ativo` da própria aba
+  const colAtivo = letra(exemplares.cabecalhos, 'ativo');
+  assert.ok(fonte.includes(`IF(${colAtivo}2:${colAtivo}<>"SIM","baixado"`),
+    `F_SITUACAO devia ler ativo em ${colAtivo}, e não lê`);
+
+  // qtd_exemplares conta os ativos de Exemplares
+  assert.ok(fonte.includes(`Exemplares!$${colAtivo}$2:$${colAtivo},"SIM"`),
+    `F_QTD_EXEMPLARES devia contar Exemplares!${colAtivo}, e não conta`);
+
+  // qtd_disponiveis lê a coluna situacao de Exemplares
+  const colSituacao = letra(exemplares.cabecalhos, 'situacao');
+  assert.ok(fonte.includes(`Exemplares!$${colSituacao}$2:$${colSituacao},"disponível"`),
+    `F_QTD_DISPONIVEIS devia ler Exemplares!${colSituacao}, e não lê`);
+
+  // as duas abas usam a coluna A como chave nas fórmulas
+  assert.equal(exemplares.cabecalhos[0], 'tombo');
+  assert.equal(titulos.cabecalhos[0], 'id_titulo');
+});

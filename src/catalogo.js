@@ -37,12 +37,9 @@ function criarTitulo(dados, quemRegistrou) {
       id_titulo: proximoId_(ABA_TITULOS, 'id_titulo'),
       titulo: nome,
       subtitulo: limparCampo_(dados.subtitulo),
-      autor: limparCampo_(dados.autor),
+      autor_ou_medium: limparCampo_(dados.autor_ou_medium),
       autor_espiritual: limparCampo_(dados.autor_espiritual),
-      medium: limparCampo_(dados.medium),
       tradutor: limparCampo_(dados.tradutor),
-      editora: limparCampo_(dados.editora),
-      ano: limparCampo_(dados.ano),
       isbn: limparCampo_(dados.isbn),
       categoria: limparCampo_(dados.categoria),
       serie: limparCampo_(dados.serie),
@@ -69,9 +66,9 @@ function atualizarTitulo(idTitulo, mudancas, quemRegistrou) {
     if (!titulo) throw new Error('Título ' + idTitulo + ' não existe.');
 
     var permitidos = [
-      'titulo', 'subtitulo', 'autor', 'autor_espiritual', 'medium', 'tradutor',
-      'editora', 'ano', 'isbn', 'categoria', 'serie', 'ordem_na_serie',
-      'sinopse', 'link_online', 'observacao'
+      'titulo', 'subtitulo', 'autor_ou_medium', 'autor_espiritual', 'tradutor',
+      'isbn', 'categoria', 'serie', 'ordem_na_serie', 'sinopse', 'link_online',
+      'observacao'
     ];
 
     var aplicar = {};
@@ -131,6 +128,9 @@ function criarExemplar(dados, quemRegistrou) {
     var registro = {
       tombo: proximoId_(ABA_EXEMPLARES, 'tombo'),
       id_titulo: idTitulo,
+      edicao: limparCampo_(dados.edicao),
+      editora: limparCampo_(dados.editora),
+      ano: limparCampo_(dados.ano),
       estado: estado,
       doado_por: limparCampo_(dados.doado_por),
       data_entrada: dados.data_entrada instanceof Date ? dados.data_entrada : new Date(),
@@ -226,7 +226,8 @@ function buscarNoAcervo(termo) {
   });
 
   return achados.map(function (titulo) {
-    var resumo = resumirDisponibilidade(porTitulo[Number(titulo.id_titulo)] || []);
+    var meus = porTitulo[Number(titulo.id_titulo)] || [];
+    var resumo = resumirDisponibilidade(meus);
     return {
       id_titulo: titulo.id_titulo,
       titulo: titulo.titulo,
@@ -235,9 +236,10 @@ function buscarNoAcervo(termo) {
       categoria: titulo.categoria,
       serie: titulo.serie,
       ordem_na_serie: titulo.ordem_na_serie,
-      editora: titulo.editora,
-      ano: titulo.ano,
       link_online: titulo.link_online,
+      // Editora e ano agora vêm dos exemplares, e podem ser vários. A busca
+      // mostra o título, então resume o que existe na estante.
+      edicoes: resumirEdicoes(meus),
       estado: resumo.estado,
       total: resumo.total,
       disponiveis: resumo.disponiveis,
@@ -261,18 +263,16 @@ function verTitulo(idTitulo) {
     titulo: titulo.titulo,
     subtitulo: titulo.subtitulo,
     autoria: montarAutoria(titulo),
-    autor: titulo.autor,
+    autor_ou_medium: titulo.autor_ou_medium,
     autor_espiritual: titulo.autor_espiritual,
-    medium: titulo.medium,
     tradutor: titulo.tradutor,
-    editora: titulo.editora,
-    ano: titulo.ano,
     isbn: titulo.isbn,
     categoria: titulo.categoria,
     serie: titulo.serie,
     ordem_na_serie: titulo.ordem_na_serie,
     sinopse: titulo.sinopse,
     link_online: titulo.link_online,
+    edicoes: resumirEdicoes(exemplares),
     estado: resumo.estado,
     total: resumo.total,
     disponiveis: resumo.disponiveis,
@@ -299,6 +299,9 @@ function cadastrarTituloComExemplar(dados, quemRegistrou) {
   if (dados && dados.criar_exemplar) {
     resposta.tombo = criarExemplar({
       id_titulo: idTitulo,
+      edicao: dados.edicao,
+      editora: dados.editora,
+      ano: dados.ano,
       estado: dados.estado_exemplar,
       doado_por: dados.doado_por
     }, quemRegistrou);
@@ -427,9 +430,8 @@ function consultarGoogleBooks_(consulta, quantos) {
     return {
       titulo: livro.title || '',
       subtitulo: livro.subtitle || '',
-      autor: autoria.autor,
+      autor_ou_medium: autoria.autor_ou_medium,
       autor_espiritual: autoria.autor_espiritual,
-      medium: autoria.medium,
       editora: livro.publisher || '',
       ano: String(livro.publishedDate || '').substring(0, 4),
       sinopse: livro.description || '',
@@ -512,9 +514,8 @@ function diagnosticarGoogleBooks() {
           // dois lado a lado é o que permite conferir a separação de
           // psicografia sem abrir a tela de cadastro.
           var autoria = separarAutoria(livro.authors);
-          separado = 'autor: "' + autoria.autor + '"' +
-            ' | autor_espiritual: "' + autoria.autor_espiritual + '"' +
-            ' | medium: "' + autoria.medium + '"';
+          separado = 'autor_ou_medium: "' + autoria.autor_ou_medium + '"' +
+            ' | autor_espiritual: "' + autoria.autor_espiritual + '"';
         }
       } catch (erro) { /* corpo não é JSON: o próprio corpo vai no relatório */ }
 

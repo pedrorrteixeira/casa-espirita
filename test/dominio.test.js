@@ -11,7 +11,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-  normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria,
+  normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria, resumirEdicoes,
   SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO
 } = require('../src/dominio.js');
 
@@ -21,9 +21,8 @@ const ACERVO = [
   {
     id_titulo: 1,
     titulo: 'Nosso Lar',
-    autor: '',
+    autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
     autor_espiritual: 'André Luiz',
-    medium: 'Francisco Cândido Xavier (Chico Xavier)',
     serie: 'A Vida no Mundo Espiritual',
     ordem_na_serie: 1,
     categoria: 'romance'
@@ -31,9 +30,8 @@ const ACERVO = [
   {
     id_titulo: 2,
     titulo: 'Os Mensageiros',
-    autor: '',
+    autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
     autor_espiritual: 'André Luiz',
-    medium: 'Francisco Cândido Xavier (Chico Xavier)',
     serie: 'A Vida no Mundo Espiritual',
     ordem_na_serie: 2,
     categoria: 'romance'
@@ -41,9 +39,8 @@ const ACERVO = [
   {
     id_titulo: 3,
     titulo: 'Paulo e Estêvão',
-    autor: '',
+    autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
     autor_espiritual: 'Emmanuel',
-    medium: 'Francisco Cândido Xavier (Chico Xavier)',
     serie: '',
     ordem_na_serie: '',
     categoria: 'romance'
@@ -51,9 +48,8 @@ const ACERVO = [
   {
     id_titulo: 4,
     titulo: 'O Livro dos Espíritos',
-    autor: 'Allan Kardec',
+    autor_ou_medium: 'Allan Kardec',
     autor_espiritual: '',
-    medium: '',
     tradutor: 'Guillon Ribeiro',
     serie: '',
     ordem_na_serie: '',
@@ -62,9 +58,8 @@ const ACERVO = [
   {
     id_titulo: 5,
     titulo: 'Vida e Sexo',
-    autor: '',
+    autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
     autor_espiritual: 'Emmanuel',
-    medium: 'Francisco Cândido Xavier (Chico Xavier)',
     serie: '',
     ordem_na_serie: '',
     categoria: 'estudo'
@@ -100,14 +95,14 @@ test('montarAutoria distingue obra psicografada de obra de autor', () => {
 
 test('montarAutoria cobre os campos preenchidos pela metade', () => {
   assert.equal(montarAutoria({ autor_espiritual: 'Emmanuel' }), 'Emmanuel');
-  assert.equal(montarAutoria({ medium: 'Divaldo Franco' }), 'psicografia de Divaldo Franco');
+  assert.equal(montarAutoria({ autor_ou_medium: 'Divaldo Franco' }), 'Divaldo Franco');
   assert.equal(montarAutoria({}), '');
   assert.equal(montarAutoria(null), '');
 
   // A especificação manda deixar `autor` vazio em psicografia. Se vier
   // preenchido assim mesmo, a forma psicografada ganha por ser mais específica.
   assert.equal(
-    montarAutoria({ autor: 'Chico Xavier', autor_espiritual: 'Emmanuel', medium: 'Chico Xavier' }),
+    montarAutoria({ autor_ou_medium: 'Chico Xavier', autor_espiritual: 'Emmanuel' }),
     'Emmanuel (psicografia de Chico Xavier)'
   );
 });
@@ -213,7 +208,7 @@ test('busca não altera a lista recebida', () => {
 test('título com zero exemplares aparece na busca', () => {
   // D5: catalogar obra que a casa não tem é recurso, não bug — alimenta a
   // lista de doação desejada. A busca não filtra por disponibilidade.
-  const semExemplar = [{ id_titulo: 9, titulo: 'A Gênese', autor: 'Allan Kardec' }];
+  const semExemplar = [{ id_titulo: 9, titulo: 'A Gênese', autor_ou_medium: 'Allan Kardec' }];
   assert.deepEqual(idsDe(buscarTitulos(semExemplar, 'genese')), [9]);
 });
 
@@ -307,7 +302,7 @@ test('separa médium de autor espiritual pela marca (Espírito)', () => {
   // Resposta real do Google para intitle:"Nosso Lar".
   assert.deepEqual(
     separarAutoria(['Francisco Cândido Xavier', 'André Luiz (Espírito)']),
-    { autor: '', autor_espiritual: 'André Luiz', medium: 'Francisco Cândido Xavier' }
+    { autor_ou_medium: 'Francisco Cândido Xavier', autor_espiritual: 'André Luiz' }
   );
 });
 
@@ -315,19 +310,19 @@ test('a marca decide, não a ordem', () => {
   // O médium costuma vir primeiro, mas não dá para contar com isso.
   assert.deepEqual(
     separarAutoria(['Emmanuel (Espírito)', 'Francisco Cândido Xavier']),
-    { autor: '', autor_espiritual: 'Emmanuel', medium: 'Francisco Cândido Xavier' }
+    { autor_ou_medium: 'Francisco Cândido Xavier', autor_espiritual: 'Emmanuel' }
   );
 });
 
 test('sem marca nenhuma é obra de autor, não psicografia', () => {
   assert.deepEqual(
     separarAutoria(['Allan Kardec']),
-    { autor: 'Allan Kardec', autor_espiritual: '', medium: '' }
+    { autor_ou_medium: 'Allan Kardec', autor_espiritual: '' }
   );
   assert.deepEqual(
     separarAutoria(['George Orwell', 'Heloisa Jahn', 'Alexandre Hubner']),
-    { autor: 'George Orwell; Heloisa Jahn; Alexandre Hubner',
-      autor_espiritual: '', medium: '' }
+    { autor_ou_medium: 'George Orwell; Heloisa Jahn; Alexandre Hubner',
+      autor_espiritual: '' }
   );
 });
 
@@ -342,21 +337,20 @@ test('parêntese que não é marca de espírito fica no nome', () => {
   // A convenção de catalogação da casa põe o apelido entre parênteses.
   assert.deepEqual(
     separarAutoria(['Francisco Cândido Xavier (Chico Xavier)', 'André Luiz (Espírito)']),
-    { autor: '',
-      autor_espiritual: 'André Luiz',
-      medium: 'Francisco Cândido Xavier (Chico Xavier)' }
+    { autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
+      autor_espiritual: 'André Luiz' }
   );
 });
 
 test('aceita string com ponto e vírgula, não só lista', () => {
   assert.deepEqual(
     separarAutoria('Francisco Cândido Xavier; André Luiz (Espírito)'),
-    { autor: '', autor_espiritual: 'André Luiz', medium: 'Francisco Cândido Xavier' }
+    { autor_ou_medium: 'Francisco Cândido Xavier', autor_espiritual: 'André Luiz' }
   );
 });
 
 test('entrada vazia ou estranha não quebra', () => {
-  const vazio = { autor: '', autor_espiritual: '', medium: '' };
+  const vazio = { autor_ou_medium: '', autor_espiritual: '' };
   assert.deepEqual(separarAutoria([]), vazio);
   assert.deepEqual(separarAutoria(null), vazio);
   assert.deepEqual(separarAutoria(undefined), vazio);
@@ -366,6 +360,47 @@ test('entrada vazia ou estranha não quebra', () => {
 test('psicografia sem médium identificado ainda é psicografia', () => {
   assert.deepEqual(
     separarAutoria(['André Luiz (Espírito)']),
-    { autor: '', autor_espiritual: 'André Luiz', medium: '' }
+    { autor_ou_medium: '', autor_espiritual: 'André Luiz' }
   );
+});
+
+// --- resumirEdicoes ----------------------------------------------------------
+
+test('lista as edições distintas dos exemplares ativos', () => {
+  // O mesmo título com dois exemplares de edições diferentes: é o caso que
+  // motivou mover editora e ano do título para o exemplar.
+  assert.deepEqual(resumirEdicoes([
+    exemplar({ tombo: 1, editora: 'FEB Editora', ano: 1978 }),
+    exemplar({ tombo: 2, editora: 'Petit', ano: 2015 })
+  ]), ['FEB Editora 1978', 'Petit 2015']);
+});
+
+test('edição repetida aparece uma vez só', () => {
+  // Três cópias da mesma edição são uma linha na tela, não três.
+  assert.deepEqual(resumirEdicoes([
+    exemplar({ tombo: 1, editora: 'FEB Editora', ano: 2013 }),
+    exemplar({ tombo: 2, editora: 'FEB Editora', ano: 2013 }),
+    exemplar({ tombo: 3, editora: 'FEB Editora', ano: 2013 })
+  ]), ['FEB Editora 2013']);
+});
+
+test('exemplar baixado não entra na lista de edições', () => {
+  // A edição de um livro perdido não ajuda ninguém a decidir se vem buscar.
+  assert.deepEqual(resumirEdicoes([
+    exemplar({ tombo: 1, ativo: 'NÃO', editora: 'LAKE', ano: 1972 }),
+    exemplar({ tombo: 2, editora: 'FEB Editora', ano: 2013 })
+  ]), ['FEB Editora 2013']);
+});
+
+test('exemplar sem editora nem ano não vira linha vazia', () => {
+  assert.deepEqual(resumirEdicoes([exemplar({ editora: '', ano: '' })]), []);
+  assert.deepEqual(resumirEdicoes([]), []);
+  assert.deepEqual(resumirEdicoes(null), []);
+});
+
+test('editora sem ano, e ano sem editora, ainda informam algo', () => {
+  // Edição antiga costuma ter um dos dois ilegível.
+  assert.deepEqual(resumirEdicoes([exemplar({ editora: 'FEB Editora', ano: '' })]),
+    ['FEB Editora']);
+  assert.deepEqual(resumirEdicoes([exemplar({ editora: '', ano: 1978 })]), ['1978']);
 });

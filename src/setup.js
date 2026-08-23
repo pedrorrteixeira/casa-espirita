@@ -56,10 +56,14 @@ var LISTA_CATEGORIA = [
 // SUMIFS funciona onde MATCH com condição composta não vetorizaria dentro de
 // ARRAYFORMULA: somar a coluna devolve o valor daquela única linha.
 
+// ATENÇÃO às letras de coluna: elas seguem a ordem dos cabeçalhos logo abaixo.
+// Em `Exemplares`, `ativo` é a coluna I e `situacao` a J. Mexer na ordem dos
+// cabeçalhos sem mexer aqui quebra tudo em silêncio — o teste
+// "as fórmulas apontam para as colunas certas" existe para pegar isso.
 var F_SITUACAO =
   '=ARRAYFORMULA(IF(A2:A="","",' +
-  'IF(F2:F="","(preencher ativo)",' +
-  'IF(F2:F<>"SIM","baixado",' +
+  'IF(I2:I="","(preencher ativo)",' +
+  'IF(I2:I<>"SIM","baixado",' +
   'IF(COUNTIFS(Emprestimos!$B$2:$B,A2:A,Emprestimos!$F$2:$F,"")>0,' +
   '"emprestado","disponível")))))';
 
@@ -74,15 +78,16 @@ var F_PREVISAO =
   'SUMIFS(Emprestimos!$E$2:$E,Emprestimos!$B$2:$B,A2:A,Emprestimos!$F$2:$F,""))))';
 
 // Exemplar baixado não conta: qtd_exemplares é o que a casa realmente tem.
+// Exemplares!I = ativo.
 var F_QTD_EXEMPLARES =
   '=ARRAYFORMULA(IF(A2:A="","",' +
-  'COUNTIFS(Exemplares!$B$2:$B,A2:A,Exemplares!$F$2:$F,"SIM")))';
+  'COUNTIFS(Exemplares!$B$2:$B,A2:A,Exemplares!$I$2:$I,"SIM")))';
 
 // Casa a string "disponível" produzida por F_SITUACAO. Mudar a palavra lá e
-// não aqui quebra a contagem.
+// não aqui quebra a contagem. Exemplares!J = situacao.
 var F_QTD_DISPONIVEIS =
   '=ARRAYFORMULA(IF(A2:A="","",' +
-  'COUNTIFS(Exemplares!$B$2:$B,A2:A,Exemplares!$G$2:$G,"disponível")))';
+  'COUNTIFS(Exemplares!$B$2:$B,A2:A,Exemplares!$J$2:$J,"disponível")))';
 
 // --- Valores padrão da aba Config --------------------------------------------
 
@@ -107,42 +112,52 @@ var ESTRUTURA_ABAS = [
     larguras: { 1: 200, 2: 260, 3: 440 }
   },
   {
+    // `autor_ou_medium` é um campo só para os dois papéis, porque nunca são
+    // preenchidos ao mesmo tempo: obra de autor tem autor, psicografia tem
+    // médium. Quem diz qual dos dois é `autor_espiritual` estar preenchido.
+    //
+    // `editora` e `ano` NÃO ficam aqui: descrevem o objeto físico, e a casa
+    // pode ter o mesmo livro em três edições. Vivem em `Exemplares`.
+    // `isbn` fica, como chave da consulta ao Google — é atalho de cadastro,
+    // não afirmação sobre cada exemplar.
     nome: 'Titulos',
     cabecalhos: [
-      'id_titulo', 'titulo', 'subtitulo', 'autor', 'autor_espiritual', 'medium',
-      'tradutor', 'editora', 'ano', 'isbn', 'categoria', 'serie',
-      'ordem_na_serie', 'sinopse', 'link_online', 'qtd_exemplares',
-      'qtd_disponiveis', 'observacao'
+      'id_titulo', 'titulo', 'subtitulo', 'autor_ou_medium', 'autor_espiritual',
+      'tradutor', 'isbn', 'categoria', 'serie', 'ordem_na_serie', 'sinopse',
+      'link_online', 'qtd_exemplares', 'qtd_disponiveis', 'observacao'
     ],
     formatos: [
-      { colunas: [1, 9, 13, 16, 17], formato: '0' },
-      { colunas: [10], formato: '@' }
+      { colunas: [1, 10, 13, 14], formato: '0' },
+      { colunas: [7], formato: '@' }
     ],
-    validacoes: [{ coluna: 11, lista: LISTA_CATEGORIA, bloqueia: false }],
-    formulas: { 16: F_QTD_EXEMPLARES, 17: F_QTD_DISPONIVEIS },
-    colunasProtegidas: [[16, 17]],
+    validacoes: [{ coluna: 8, lista: LISTA_CATEGORIA, bloqueia: false }],
+    formulas: { 13: F_QTD_EXEMPLARES, 14: F_QTD_DISPONIVEIS },
+    colunasProtegidas: [[13, 14]],
     larguras: {
-      2: 280, 3: 220, 4: 190, 5: 190, 6: 190, 7: 170, 8: 170,
-      12: 200, 14: 340, 15: 240, 18: 240
+      2: 280, 3: 220, 4: 230, 5: 200, 6: 170,
+      9: 200, 11: 340, 12: 240, 15: 240
     }
   },
   {
+    // Edição, editora e ano moram aqui porque descrevem o exemplar físico:
+    // um Nosso Lar da FEB de 1978 e outro da Petit de 2015 são o mesmo
+    // título com objetos diferentes na estante.
     nome: 'Exemplares',
     cabecalhos: [
-      'tombo', 'id_titulo', 'estado', 'doado_por', 'data_entrada', 'ativo',
-      'situacao', 'com_quem', 'previsao_devolucao'
+      'tombo', 'id_titulo', 'edicao', 'editora', 'ano', 'estado', 'doado_por',
+      'data_entrada', 'ativo', 'situacao', 'com_quem', 'previsao_devolucao'
     ],
     formatos: [
-      { colunas: [1, 2], formato: '0' },
-      { colunas: [5, 9], formato: 'dd/mm/yyyy' }
+      { colunas: [1, 2, 5], formato: '0' },
+      { colunas: [8, 12], formato: 'dd/mm/yyyy' }
     ],
     validacoes: [
-      { coluna: 3, lista: LISTA_ESTADO, bloqueia: true },
-      { coluna: 6, lista: LISTA_SIM_NAO, bloqueia: true }
+      { coluna: 6, lista: LISTA_ESTADO, bloqueia: true },
+      { coluna: 9, lista: LISTA_SIM_NAO, bloqueia: true }
     ],
-    formulas: { 7: F_SITUACAO, 8: F_COM_QUEM, 9: F_PREVISAO },
-    colunasProtegidas: [[7, 9]],
-    larguras: { 4: 200, 7: 150, 8: 220, 9: 160 }
+    formulas: { 10: F_SITUACAO, 11: F_COM_QUEM, 12: F_PREVISAO },
+    colunasProtegidas: [[10, 12]],
+    larguras: { 3: 170, 4: 190, 7: 200, 10: 150, 11: 220, 12: 160 }
   },
   {
     nome: 'Pessoas',
@@ -459,3 +474,167 @@ function ordenarAbas_(ss, nomes) {
 
 // Exporta para o `node --test`. Em Apps Script a guarda nao dispara.
 if (typeof module !== 'undefined') { module.exports = { ESTRUTURA_ABAS: ESTRUTURA_ABAS }; }
+
+// --- Migração ----------------------------------------------------------------
+
+/**
+ * Migração única para o modelo novo:
+ *   Titulos    `autor` + `medium` viram `autor_ou_medium`;
+ *              `editora` e `ano` saem daqui.
+ *   Exemplares ganham `edicao`, `editora` e `ano`.
+ *
+ * Roda uma vez, pelo menu. Depois vira ruído e pode ser apagada.
+ *
+ * O perigo aqui é específico e vale explicar: `criarEstruturaPlanilha()` só
+ * escreve cabeçalho, e não move dado nenhum. Rodar a estrutura nova por cima
+ * da planilha antiga renomearia as colunas SEM mexer no conteúdo — a coluna
+ * do médium passaria a se chamar `tradutor` com os nomes dos médiuns dentro,
+ * e ninguém veria erro. Por isso a migração lê tudo ANTES, e é ela quem
+ * chama a criação da estrutura.
+ */
+function migrarParaModeloDeEdicoes() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ui = SpreadsheetApp.getUi();
+
+  var titulos = ss.getSheetByName('Titulos');
+  var exemplares = ss.getSheetByName('Exemplares');
+  if (!titulos || !exemplares) {
+    throw new Error('Faltam as abas Titulos e Exemplares.');
+  }
+
+  var cabTitulos = titulos.getRange(1, 1, 1, titulos.getLastColumn()).getValues()[0];
+  if (cabTitulos.indexOf('autor_ou_medium') !== -1) {
+    ui.alert('Já migrado', 'A planilha já está no modelo novo. Nada a fazer.', ui.ButtonSet.OK);
+    return;
+  }
+  if (cabTitulos.indexOf('autor') === -1) {
+    throw new Error('Não reconheço a estrutura desta planilha. Não vou mexer.');
+  }
+
+  var resposta = ui.alert(
+    'Migrar a planilha',
+    'Vou reorganizar as abas Titulos e Exemplares:\n\n' +
+    '• autor e medium viram um campo só\n' +
+    '• editora e ano passam do título para o exemplar\n\n' +
+    'Uma cópia de segurança da planilha inteira é criada antes. Continuar?',
+    ui.ButtonSet.YES_NO
+  );
+  if (resposta !== ui.Button.YES) return;
+
+  // Backup primeiro. Se algo der errado no meio, existe para onde voltar.
+  var copia = DriveApp.getFileById(ss.getId())
+    .makeCopy('Backup antes da migração — ' +
+      Utilities.formatDate(new Date(), SETUP_FUSO, 'yyyy-MM-dd HH.mm'));
+  console.log('Backup criado: %s', copia.getUrl());
+
+  var linhasTitulos = lerParaObjetos_(titulos);
+  var linhasExemplares = lerParaObjetos_(exemplares);
+
+  // editora e ano do título vão para cada exemplar dele, que é a única
+  // informação que temos: no modelo antigo a casa não distinguia edições.
+  var edicaoDoTitulo = {};
+  linhasTitulos.forEach(function (titulo) {
+    edicaoDoTitulo[String(titulo.id_titulo)] = {
+      editora: titulo.editora || '',
+      ano: titulo.ano || ''
+    };
+  });
+
+  titulos.clear();
+  exemplares.clear();
+  criarEstruturaPlanilha();
+
+  gravarMigrado_(ss.getSheetByName('Titulos'), linhasTitulos, function (velho) {
+    return {
+      id_titulo: velho.id_titulo,
+      titulo: velho.titulo,
+      subtitulo: velho.subtitulo,
+      // Os dois nunca estavam preenchidos ao mesmo tempo; o que houver vale.
+      autor_ou_medium: velho.autor || velho.medium || '',
+      autor_espiritual: velho.autor_espiritual,
+      tradutor: velho.tradutor,
+      isbn: velho.isbn,
+      categoria: velho.categoria,
+      serie: velho.serie,
+      ordem_na_serie: velho.ordem_na_serie,
+      sinopse: velho.sinopse,
+      link_online: velho.link_online,
+      observacao: velho.observacao
+    };
+  });
+
+  gravarMigrado_(ss.getSheetByName('Exemplares'), linhasExemplares, function (velho) {
+    var edicao = edicaoDoTitulo[String(velho.id_titulo)] || { editora: '', ano: '' };
+    return {
+      tombo: velho.tombo,
+      id_titulo: velho.id_titulo,
+      edicao: '',
+      editora: edicao.editora,
+      ano: edicao.ano,
+      estado: velho.estado,
+      doado_por: velho.doado_por,
+      data_entrada: velho.data_entrada,
+      ativo: velho.ativo
+    };
+  });
+
+  ui.alert(
+    'Migração concluída',
+    linhasTitulos.length + ' título(s) e ' + linhasExemplares.length +
+    ' exemplar(es) movidos.\n\nA cópia de segurança está no seu Drive como ' +
+    '"Backup antes da migração".',
+    ui.ButtonSet.OK
+  );
+}
+
+/** Lê uma aba como lista de objetos, usando os cabeçalhos que ela TEM hoje. */
+function lerParaObjetos_(aba) {
+  var colunas = aba.getLastColumn();
+  if (colunas === 0) return [];
+
+  var cabecalhos = aba.getRange(1, 1, 1, colunas).getValues()[0];
+
+  // getLastRow() mente onde há ARRAYFORMULA, então conta pela coluna A.
+  var maximo = aba.getMaxRows();
+  var chave = aba.getRange(2, 1, maximo - 1, 1).getValues();
+  var ultima = 1;
+  for (var i = chave.length - 1; i >= 0; i--) {
+    if (String(chave[i][0]).trim() !== '') { ultima = i + 2; break; }
+  }
+  if (ultima < 2) return [];
+
+  return aba.getRange(2, 1, ultima - 1, colunas).getValues().map(function (linha) {
+    var registro = {};
+    cabecalhos.forEach(function (cabecalho, c) {
+      if (cabecalho !== '') registro[String(cabecalho)] = linha[c];
+    });
+    return registro;
+  });
+}
+
+/** Regrava as linhas já convertidas, pulando as colunas de fórmula. */
+function gravarMigrado_(aba, linhas, converter) {
+  if (!linhas.length) return;
+
+  var cabecalhos = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0];
+  var derivadas = COLUNAS_DERIVADAS[aba.getName()] || [];
+
+  linhas.forEach(function (velho, i) {
+    var novo = converter(velho);
+    var trecho = [];
+    var inicio = 0;
+
+    for (var c = 1; c <= cabecalhos.length; c++) {
+      if (derivadas.indexOf(c) !== -1) {
+        if (trecho.length) aba.getRange(i + 2, inicio, 1, trecho.length).setValues([trecho]);
+        trecho = [];
+        inicio = 0;
+        continue;
+      }
+      if (!trecho.length) inicio = c;
+      var campo = String(cabecalhos[c - 1]);
+      trecho.push(novo[campo] === undefined ? '' : novo[campo]);
+    }
+    if (trecho.length) aba.getRange(i + 2, inicio, 1, trecho.length).setValues([trecho]);
+  });
+}

@@ -43,14 +43,14 @@ function normalizarTexto(texto) {
 function montarAutoria(titulo) {
   if (!titulo) return '';
 
-  var autor = limpar_(titulo.autor);
+  var principal = limpar_(titulo.autor_ou_medium);
   var espiritual = limpar_(titulo.autor_espiritual);
-  var medium = limpar_(titulo.medium);
 
-  if (espiritual && medium) return espiritual + ' (psicografia de ' + medium + ')';
+  // `autor_espiritual` preenchido é o que define psicografia. É ele que diz
+  // qual papel o outro campo está exercendo.
+  if (espiritual && principal) return espiritual + ' (psicografia de ' + principal + ')';
   if (espiritual) return espiritual;
-  if (medium) return 'psicografia de ' + medium;
-  return autor;
+  return principal;
 }
 
 /**
@@ -118,16 +118,43 @@ function separarAutoria(autores) {
     else encarnados.push(nome);
   });
 
-  // Sem autor espiritual não há psicografia: quem sobra é autor comum.
-  if (!espirituais.length) {
-    return { autor: encarnados.join('; '), autor_espiritual: '', medium: '' };
-  }
-
+  // Um campo só para os dois papéis: quem está encarnado é o autor quando não
+  // há espírito na ficha, e o médium quando há.
   return {
-    autor: '',
-    autor_espiritual: espirituais.join('; '),
-    medium: encarnados.join('; ')
+    autor_ou_medium: encarnados.join('; '),
+    autor_espiritual: espirituais.join('; ')
   };
+}
+
+/**
+ * Lista as edições distintas presentes entre os exemplares ativos de um
+ * título — "FEB Editora 1978", "Petit 2015".
+ *
+ * Existe porque editora e ano descrevem o objeto físico, não a obra: a casa
+ * pode ter o mesmo livro em três edições. Como a busca mostra o título e não
+ * o exemplar, ela precisa resumir o que existe na estante.
+ *
+ * Exemplar baixado não entra: a edição de um livro perdido não ajuda ninguém
+ * a decidir se vem buscar.
+ */
+function resumirEdicoes(exemplares) {
+  var vistas = {};
+  var lista = [];
+
+  (exemplares || []).forEach(function (exemplar) {
+    if (String(exemplar.ativo).trim() !== 'SIM') return;
+
+    var partes = [limpar_(exemplar.editora), limpar_(exemplar.ano)]
+      .filter(function (parte) { return parte !== ''; });
+    if (!partes.length) return;
+
+    var texto = partes.join(' ');
+    if (vistas[texto]) return;
+    vistas[texto] = true;
+    lista.push(texto);
+  });
+
+  return lista;
 }
 
 /**
@@ -208,9 +235,8 @@ function limpar_(valor) {
 function camposDeBusca_(titulo) {
   return normalizarTexto([
     titulo.titulo,
-    titulo.autor,
+    titulo.autor_ou_medium,
     titulo.autor_espiritual,
-    titulo.medium,
     titulo.serie
   ].join(' '));
 }
@@ -262,6 +288,7 @@ if (typeof module !== 'undefined') {
     buscarTitulos: buscarTitulos,
     separarAutoria: separarAutoria,
     resumirDisponibilidade: resumirDisponibilidade,
+    resumirEdicoes: resumirEdicoes,
     SITUACAO_DISPONIVEL: SITUACAO_DISPONIVEL,
     SITUACAO_EMPRESTADO: SITUACAO_EMPRESTADO,
     SITUACAO_BAIXADO: SITUACAO_BAIXADO
