@@ -246,3 +246,65 @@ test('nenhum nome global é declarado em dois arquivos de src/', () => {
   assert.deepEqual(colisoes, [],
     `mesmo nome declarado em arquivos diferentes:\n${colisoes.join('\n')}`);
 });
+
+test('nenhuma declaração ficou engolida por um comentário', () => {
+  // node --check não pega isto: um `var X = 1` dentro de um bloco /* */ é
+  // comentário válido, o arquivo compila, e X fica indefinido em tempo de
+  // execução. Aconteceu com LIMITE_DE_NOMES — a busca de pessoa passaria a
+  // devolver lista vazia, sem erro nenhum.
+  const problemas = [];
+
+  for (const arquivo of listarJs(SRC)) {
+    const texto = fs.readFileSync(arquivo, 'utf8');
+    const semComentarios = texto.replace(/\/\*[\s\S]*?\*\//g, '');
+
+    const declaradas = [...texto.matchAll(/^(?:var|function)\s+(\w+)/gm)]
+      .map(([, nome]) => nome);
+    const vivas = new Set([...semComentarios.matchAll(/^(?:var|function)\s+(\w+)/gm)]
+      .map(([, nome]) => nome));
+
+    for (const nome of declaradas) {
+      if (!vivas.has(nome)) {
+        problemas.push(`${path.basename(arquivo)}: "${nome}" está dentro de um comentário`);
+      }
+    }
+  }
+
+  assert.deepEqual(problemas, [], problemas.join('\n'));
+});
+
+test('o JavaScript das telas compila', () => {
+  // `npm test` conferia src/*.js e ignorava o script dentro de ui/js.html —
+  // que é metade do sistema. Uma quebra de sintaxe ali passava por todos os
+  // testes e ia para produção. Aconteceu duas vezes.
+  //
+  // `new Function` analisa sem executar, então `document` e `google.script.run`
+  // não precisam existir aqui.
+  const html = fs.readFileSync(path.join(SRC, 'ui', 'js.html'), 'utf8');
+  const script = /<script>([\s\S]*)<\/script>/.exec(html);
+
+  assert.ok(script, 'ui/js.html perdeu o bloco <script>');
+
+  try {
+    new Function(script[1]);
+  } catch (erro) {
+    assert.fail(`ui/js.html não compila: ${erro.message}`);
+  }
+});
+
+test('as telas não montam HTML por concatenação de texto', () => {
+  // Título de livro e nome de pessoa são digitados por gente e podem conter
+  // < e &. innerHTML com texto vindo do servidor é injeção esperando acontecer.
+  // Limpar com innerHTML = '' é seguro e continua permitido.
+  const html = fs.readFileSync(path.join(SRC, 'ui', 'js.html'), 'utf8');
+  const suspeitas = [];
+
+  html.split(/\r?\n/).forEach((linha, i) => {
+    if (!/\.innerHTML\s*=/.test(linha)) return;
+    if (/\.innerHTML\s*=\s*''\s*;/.test(linha)) return;   // só limpando
+    suspeitas.push(`ui/js.html:${i + 1}: ${linha.trim()}`);
+  });
+
+  assert.deepEqual(suspeitas, [],
+    `innerHTML com conteúdo:\n${suspeitas.join('\n')}`);
+});

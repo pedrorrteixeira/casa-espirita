@@ -536,8 +536,17 @@
     if (termo.length < 2) return;
 
     google.script.run
-      .withSuccessHandler(function (achadas) {
+      .withSuccessHandler(function (resposta) {
+        var achadas = resposta.pessoas;
         listaPessoas.innerHTML = '';
+        // Avisa quando a lista foi cortada. Numa casa com cinco "Maria", o
+        // atendente precisa saber que não está vendo todas — senão empresta
+        // para a Maria errada achando que era a única.
+        if (resposta.sobraram) {
+          $('#pessoa-escolhida').textContent =
+            'Mostrando ' + achadas.length + '. Há mais ' + resposta.sobraram +
+            ' com esse nome — escreva mais letras.';
+        }
         if (!achadas.length) {
           $('#pessoa-escolhida').textContent =
             'Ninguém com esse nome. Cadastre em Cadastrar → Pessoa.';

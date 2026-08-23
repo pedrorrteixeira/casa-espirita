@@ -44,7 +44,16 @@ function sincronizarReunioes() {
     fim: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + JANELA_FUTURO_DIAS)
   };
 
-  var eventos = calendario.getEvents(janela.inicio, janela.fim).map(traduzirEvento_);
+  // O fuso e o id são lidos UMA vez e passados adiante. Lê-los dentro de
+  // `traduzirEvento_` significava reler a aba Config inteira a cada evento —
+  // com as segundas de um ano, cinquenta e duas leituras por sincronização.
+  var contexto = {
+    idCalendario: normalizarTexto(idCalendario),
+    fuso: SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone()
+  };
+
+  var eventos = calendario.getEvents(janela.inicio, janela.fim)
+    .map(function (evento) { return traduzirEvento_(evento, contexto); });
 
   return comTrava_(function () {
     var plano = planejarSincronizacao(
@@ -94,7 +103,7 @@ function sincronizarReunioes() {
  * para fração de dia e a exibição dependeria do fuso da planilha — para um
  * campo que nunca é calculado, texto é mais honesto.
  */
-function traduzirEvento_(evento) {
+function traduzirEvento_(evento, contexto) {
   var inicio = evento.getStartTime();
   var convidados = evento.getGuestList();
 
@@ -102,10 +111,9 @@ function traduzirEvento_(evento) {
   var email = '';
 
   // Ignora a própria casa na lista: quem interessa é quem reservou.
-  var idCalendario = normalizarTexto(lerConfig('id_calendario', ''));
   for (var i = 0; i < convidados.length; i++) {
     var candidato = normalizarTexto(convidados[i].getEmail());
-    if (candidato && candidato !== idCalendario) {
+    if (candidato && candidato !== contexto.idCalendario) {
       email = convidados[i].getEmail();
       nome = convidados[i].getName() || '';
       break;
@@ -117,11 +125,7 @@ function traduzirEvento_(evento) {
   return {
     id_evento_calendar: evento.getId(),
     data: new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate()),
-    horario: Utilities.formatDate(
-      inicio,
-      SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(),
-      'HH:mm'
-    ),
+    horario: Utilities.formatDate(inicio, contexto.fuso, 'HH:mm'),
     nome_reservado: nome,
     email_reservado: email,
     data_inscricao: evento.getDateCreated()

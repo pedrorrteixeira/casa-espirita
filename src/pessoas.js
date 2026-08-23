@@ -12,6 +12,9 @@
  * empréstimo, e o `Log` nunca recebe nome, só id.
  */
 
+/** Quantos nomes a busca devolve por vez. O resto é contado, não escondido. */
+var LIMITE_DE_NOMES = 15;
+
 /**
  * Cadastra uma pessoa. Só o nome é obrigatório — a casa não vai negar livro a
  * quem não quis dar telefone.
@@ -60,20 +63,26 @@ function criarPessoa(dados, quemRegistrou) {
  */
 function buscarPessoas(termo) {
   var alvo = normalizarTexto(termo);
-  if (alvo.length < 2) return [];
+  if (alvo.length < 2) return { pessoas: [], sobraram: 0 };
 
-  return lerPessoas()
+  var achadas = lerPessoas()
     .filter(function (pessoa) {
       return String(pessoa.ativo).trim() === 'SIM' &&
         normalizarTexto(pessoa.nome).indexOf(alvo) !== -1;
     })
     .sort(function (a, b) {
       return normalizarTexto(a.nome).localeCompare(normalizarTexto(b.nome));
-    })
-    .slice(0, 15)
-    .map(function (pessoa) {
-      return { id_pessoa: pessoa.id_pessoa, nome: pessoa.nome };
     });
+
+  // Diz quantas ficaram de fora, em vez de cortar calado. Numa casa com cinco
+  // "Maria", o atendente precisa saber que a lista está incompleta — senão
+  // empresta para a Maria errada achando que era a única.
+  return {
+    pessoas: achadas.slice(0, LIMITE_DE_NOMES).map(function (pessoa) {
+      return { id_pessoa: pessoa.id_pessoa, nome: pessoa.nome };
+    }),
+    sobraram: Math.max(0, achadas.length - LIMITE_DE_NOMES)
+  };
 }
 
 /** Pessoa com nome equivalente, ou null. Compara normalizado. */
@@ -206,7 +215,7 @@ function buscarPessoasParaEditar(termo) {
     .sort(function (a, b) {
       return normalizarTexto(a.nome).localeCompare(normalizarTexto(b.nome));
     })
-    .slice(0, 15)
+    .slice(0, LIMITE_DE_NOMES)
     .map(function (pessoa) {
       return {
         id_pessoa: pessoa.id_pessoa,

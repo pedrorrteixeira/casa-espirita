@@ -22,6 +22,11 @@ var DIAS_PARA_REENVIAR_AVISO = 7;
 var DIAS_DE_ANTECEDENCIA_TEMA = 7;
 var BACKUPS_A_MANTER = 12;
 
+// Nomes longos de propósito: são o que distingue o que este código criou do
+// que é de outra pessoa. A poda só toca em arquivo com este prefixo.
+var PASTA_BACKUP = 'Backups — Biblioteca Casa Espírita';
+var PREFIXO_BACKUP = 'Biblioteca — backup ';
+
 // --- Instalação --------------------------------------------------------------
 
 /**
@@ -242,7 +247,7 @@ function fazerBackup() {
   var planilha = SpreadsheetApp.getActiveSpreadsheet();
   var pasta = pastaDeBackups_();
 
-  var nome = 'Biblioteca — backup ' +
+  var nome = PREFIXO_BACKUP +
     Utilities.formatDate(new Date(), SETUP_FUSO, 'yyyy-MM-dd');
 
   DriveApp.getFileById(planilha.getId()).makeCopy(nome, pasta);
@@ -252,23 +257,38 @@ function fazerBackup() {
     nome + (apagados ? ' · ' + apagados + ' antigo(s) removido(s)' : ''));
 }
 
+/**
+ * A pasta das cópias.
+ *
+ * O nome é longo de propósito. `getFoldersByName` varre o Drive inteiro,
+ * inclusive pastas compartilhadas: uma pasta chamada só "Backups" tem chance
+ * real de já existir por outro motivo — e a poda passaria a mexer nela.
+ */
 function pastaDeBackups_() {
-  var achadas = DriveApp.getFoldersByName('Backups');
-  return achadas.hasNext() ? achadas.next() : DriveApp.createFolder('Backups');
+  var achadas = DriveApp.getFoldersByName(PASTA_BACKUP);
+  return achadas.hasNext() ? achadas.next() : DriveApp.createFolder(PASTA_BACKUP);
 }
 
 /**
  * Mantém só as 12 cópias mais recentes.
  *
- * Manda para a lixeira, não apaga de vez: se a poda tiver algum defeito, o
- * arquivo ainda é recuperável por 30 dias. A regra 15 fala de linha de
- * planilha, não de arquivo de backup — aqui a limpeza é o objetivo.
+ * SÓ MEXE NO QUE ESTE CÓDIGO CRIOU. A versão anterior mandava para a lixeira
+ * qualquer arquivo da pasta, sem olhar o nome — se alguém guardasse um
+ * documento ali, ou se a pasta já existisse por outro motivo, o gatilho mensal
+ * apagaria material alheio. Era o defeito mais perigoso do sistema: destruía
+ * dado fora do nosso alcance, uma vez por mês, sem ninguém ver.
+ *
+ * Manda para a lixeira, não apaga de vez: se a poda ainda tiver defeito, o
+ * arquivo é recuperável por 30 dias. A regra 15 fala de linha de planilha; aqui
+ * a limpeza é o objetivo.
  */
 function podarBackups_(pasta) {
   var copias = [];
   var arquivos = pasta.getFiles();
+
   while (arquivos.hasNext()) {
     var arquivo = arquivos.next();
+    if (arquivo.getName().indexOf(PREFIXO_BACKUP) !== 0) continue;   // não é nosso
     copias.push({ arquivo: arquivo, quando: arquivo.getDateCreated().getTime() });
   }
 
