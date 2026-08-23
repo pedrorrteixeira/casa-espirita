@@ -30,6 +30,54 @@ test('appsscript.json tem a configuração que o Apps Script espera', () => {
   assert.equal(manifesto.webapp.access, 'ANYONE_ANONYMOUS');
 });
 
+test('o acesso ao calendário é somente leitura — regra 12 no OAuth', () => {
+  // A regra 12 diz que a sincronização é unidirecional: o código lê o Agenda e
+  // nunca cria nem apaga evento. Com `calendar.readonly` isso deixa de ser
+  // disciplina e passa a ser impossível — um `createEvent` escrito por engano
+  // falha na camada de permissão, não em revisão de código.
+  const manifesto = JSON.parse(
+    fs.readFileSync(path.join(SRC, 'appsscript.json'), 'utf8'));
+  const escopos = manifesto.oauthScopes || [];
+
+  assert.ok(escopos.includes('https://www.googleapis.com/auth/calendar.readonly'),
+    'falta o escopo de leitura do calendário');
+
+  for (const amplo of ['https://www.googleapis.com/auth/calendar',
+                       'https://www.google.com/calendar/feeds']) {
+    assert.equal(escopos.includes(amplo), false,
+      `escopo de escrita no calendário (${amplo}) viola a regra 12`);
+  }
+});
+
+test('todo serviço do Google usado em src/ tem escopo declarado', () => {
+  // Escopo declarado a menos = erro de permissão em produção, como aconteceu
+  // com o CalendarApp. A menos, porque declarar o manifesto desliga a
+  // detecção automática do Apps Script.
+  const manifesto = JSON.parse(
+    fs.readFileSync(path.join(SRC, 'appsscript.json'), 'utf8'));
+  const escopos = (manifesto.oauthScopes || []).join(' ');
+
+  const exigidos = {
+    SpreadsheetApp: 'spreadsheets',
+    CalendarApp: 'calendar',
+    DriveApp: 'drive',
+    UrlFetchApp: 'script.external_request',
+    ScriptApp: 'script.scriptapp',
+    MailApp: 'script.send_mail'
+  };
+
+  const fontes = listarJs(SRC).map((a) => fs.readFileSync(a, 'utf8')).join('\n');
+  const faltando = [];
+
+  for (const [servico, escopo] of Object.entries(exigidos)) {
+    if (fontes.includes(servico + '.') && !escopos.includes(escopo)) {
+      faltando.push(`${servico} usado, mas falta escopo com "${escopo}"`);
+    }
+  }
+
+  assert.deepEqual(faltando, [], faltando.join('\n'));
+});
+
 test('nenhum arquivo de src/ usa módulos — Apps Script não tem', () => {
   // Apps Script concatena os arquivos num escopo global único. import/export
   // quebram o push; require quebra em tempo de execução. A única exceção é a
