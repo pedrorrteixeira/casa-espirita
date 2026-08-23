@@ -111,12 +111,17 @@ nada; a aba `Log` registra as três operações.
 
 Objetivo: palestrante se inscreve sozinho e o dado chega na planilha.
 
-- [ ] 👤 Criar o calendário "Reuniões Públicas" na conta da casa.
-- [ ] 👤 Criar a página de agendamento: segundas, horário fixo, um slot por data,
+- [x] 👤 Criar o calendário "Reuniões Públicas" na conta da casa.
+- [x] 👤 Criar a página de agendamento: segundas, horário fixo, um slot por data,
       janela de agendamento estendida para 365 dias.
-- [ ] 👤 Testar a reserva com dois e-mails diferentes na mesma data e confirmar
-      que o segundo não consegue.
-- [ ] 👤 Colocar `id_calendario` na aba `Config`.
+- [x] 👤 Testar a reserva com dois e-mails diferentes na mesma data e confirmar
+      que o segundo não consegue. **Confirmado**: o Google recusa o segundo,
+      então o D4 se sustenta. O único caminho que restaria para duas reuniões
+      na mesma data é digitar a linha à mão na planilha — e a sincronização
+      ignora linha sem `id_evento_calendar`, então o conflito ficaria
+      invisível. Não é impedido (a regra 11 diz que a garantia é do Google,
+      não do código), mas passou a ser destacado em vermelho na aba.
+- [x] 👤 Colocar `id_calendario` na aba `Config`.
 - [x] 🤖 `agenda.js`: `sincronizarReunioes()` — lê os eventos do período, faz
       upsert em `Reunioes` por `id_evento_calendar`, resolve `id_palestrante`
       por e-mail, marca como `cancelada` o que sumiu do Agenda.

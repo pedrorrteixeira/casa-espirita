@@ -192,6 +192,33 @@ test('as fórmulas apontam para as colunas certas de Exemplares', () => {
   assert.equal(titulos.cabecalhos[0], 'id_titulo');
 });
 
+test('o destaque de reunião duplicada aponta para data e status', () => {
+  // Mesma armadilha das ARRAYFORMULA: a formatação condicional referencia
+  // colunas por letra. Reordenar os cabeçalhos de Reunioes sem reescrever a
+  // fórmula faria o destaque comparar as colunas erradas — e um conflito de
+  // data passaria despercebido, que é justamente o que ele existe para pegar.
+  const { ESTRUTURA_ABAS } = require('../src/setup.js');
+  const reunioes = ESTRUTURA_ABAS.find((a) => a.nome === 'Reunioes');
+
+  assert.ok(reunioes.destaques && reunioes.destaques.length,
+    'Reunioes perdeu o destaque de data duplicada');
+
+  const letra = (campo) => {
+    const i = reunioes.cabecalhos.indexOf(campo);
+    assert.notEqual(i, -1, `a coluna ${campo} sumiu`);
+    return String.fromCharCode(65 + i);
+  };
+
+  const formula = reunioes.destaques[0].formula;
+  const colData = letra('data');
+  const colStatus = letra('status');
+
+  assert.ok(formula.includes(`$${colData}$2:$${colData}`),
+    `devia contar pela coluna ${colData} (data)`);
+  assert.ok(formula.includes(`$${colStatus}$2:$${colStatus}`),
+    `devia filtrar pela coluna ${colStatus} (status)`);
+});
+
 test('nenhum nome global é declarado em dois arquivos de src/', () => {
   // Apps Script concatena tudo num escopo global só. Duas definições do mesmo
   // nome não dão erro: a última silenciosamente vence, e qual é a última

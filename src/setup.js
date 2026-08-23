@@ -89,6 +89,21 @@ var F_QTD_DISPONIVEIS =
   '=ARRAYFORMULA(IF(A2:A="","",' +
   'COUNTIFS(Exemplares!$B$2:$B,A2:A,Exemplares!$J$2:$J,"disponível")))';
 
+/**
+ * Destaca duas reuniões não canceladas na mesma data.
+ *
+ * A regra 11 diz que uma reunião por data é garantia do Google Agenda, não
+ * do código — e é verdade para quem reserva pela página de agendamento. Mas
+ * quem tem a planilha pode digitar uma linha à mão, e a sincronização ignora
+ * linha sem id_evento_calendar. O conflito ficaria invisível, e dois
+ * palestrantes achariam que falam na mesma noite.
+ *
+ * Não impede: mostra, no lugar onde o erro é cometido.
+ * Reunioes!B = data, Reunioes!H = status.
+ */
+var F_REUNIAO_DUPLICADA =
+  '=AND($B2<>"",COUNTIFS($B$2:$B,$B2,$H$2:$H,"<>cancelada")>1)';
+
 // --- Valores padrão da aba Config --------------------------------------------
 
 var CONFIG_PADRAO = [
@@ -203,6 +218,7 @@ var ESTRUTURA_ABAS = [
       { colunas: [10], formato: 'dd/mm/yyyy hh:mm' }
     ],
     validacoes: [{ coluna: 8, lista: LISTA_STATUS_REUNIAO, bloqueia: true }],
+    destaques: [{ formula: F_REUNIAO_DUPLICADA, cor: '#fce8e6' }],
     larguras: { 5: 220, 6: 250, 7: 300, 8: 150, 9: 300, 10: 150 }
   },
   {
@@ -362,6 +378,8 @@ function configurarAba_(ss, spec, sep) {
     aba.getRange(2, Number(col)).setFormula(comSeparador_(spec.formulas[col], sep));
   });
 
+  aplicarDestaques_(aba, spec, nCols, linhasDados, sep);
+
   Object.keys(spec.larguras || {}).forEach(function (col) {
     aba.setColumnWidth(Number(col), spec.larguras[col]);
   });
@@ -409,6 +427,28 @@ function separadorDeFormula_(ss) {
  */
 function comSeparador_(formula, sep) {
   return sep === ',' ? formula : formula.split(',').join(sep);
+}
+
+/**
+ * Formatação condicional: pinta a linha quando a fórmula dá verdadeiro.
+ *
+ * SUBSTITUI as regras anteriores em vez de acrescentar. Empilhar faria cada
+ * execução do setup deixar mais uma cópia da mesma regra na aba.
+ */
+function aplicarDestaques_(aba, spec, nCols, linhasDados, sep) {
+  var destaques = spec.destaques || [];
+  if (!destaques.length) return;
+
+  var alvo = aba.getRange(2, 1, linhasDados, nCols);
+  var regras = destaques.map(function (destaque) {
+    return SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied(comSeparador_(destaque.formula, sep))
+      .setBackground(destaque.cor)
+      .setRanges([alvo])
+      .build();
+  });
+
+  aba.setConditionalFormatRules(regras);
 }
 
 function criarValidacao_(lista, bloqueia) {
