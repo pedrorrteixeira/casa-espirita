@@ -21,6 +21,8 @@ function onOpen() {
     .createMenu('Biblioteca')
     .addItem('Criar / atualizar estrutura da planilha', 'criarEstruturaPlanilha')
     .addItem('Repor chaves padrão em Config', 'popularConfigPadrao')
+    .addSeparator()
+    .addItem('Diagnóstico: busca de livros do Google', 'diagnosticarGoogleBooks')
     .addToUi();
 }
 

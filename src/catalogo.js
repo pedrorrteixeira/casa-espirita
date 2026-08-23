@@ -356,6 +356,13 @@ function consultarGoogleBooks_(consulta, quantos) {
     + '?q=' + encodeURIComponent(consulta)
     + '&maxResults=' + quantos;
 
+  // Sem chave, o Google atribui a chamada a um projeto anônimo compartilhado
+  // por todo mundo que usa Apps Script — e essa cota diária vive estourada.
+  // Com chave, a cota passa a ser da casa. A chave é opcional de propósito:
+  // sem ela o sistema segue funcionando, só que a consulta vai falhar mais.
+  var chave = limparCampo_(lerConfig('chave_api_livros', ''));
+  if (chave) url += '&key=' + encodeURIComponent(chave);
+
   var resposta;
   try {
     resposta = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
@@ -369,9 +376,17 @@ function consultarGoogleBooks_(consulta, quantos) {
   // o voluntário digitar tudo à mão quando bastava esperar um minuto — e a
   // API do Google limita por IP quando a chamada não leva chave, então isto
   // acontece de verdade.
+  // Cota DIÁRIA, não rajada: esperar alguns minutos não resolve. Sem chave, a
+  // cota é de um projeto anônimo compartilhado e costuma já estar estourada.
   if (codigo === 429) {
-    throw new Error('O Google recusou a consulta por excesso de acessos. ' +
-      'Espere um minuto e tente de novo.');
+    throw new Error(
+      chave
+        ? 'A cota diária da chave da casa acabou. Volta amanhã; até lá, ' +
+          'preencha à mão.'
+        : 'Cota diária do Google esgotada. Ela é compartilhada com todo mundo ' +
+          'que usa Apps Script sem chave própria. Ver "chave_api_livros" na ' +
+          'aba Config.'
+    );
   }
   if (codigo >= 500) {
     throw new Error('A busca de livros do Google está fora do ar agora. ' +
@@ -420,4 +435,82 @@ function formatarData_(data) {
     SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(),
     'dd/MM/yyyy'
   );
+}
+
+// --- Diagnóstico -------------------------------------------------------------
+
+/**
+ * Bate na API do Google Books com quatro consultas diferentes e mostra o
+ * resultado cru numa janela da planilha.
+ *
+ * Existe porque o editor do Apps Script não abre neste navegador, então não há
+ * como ler o log de execução. Sem isto, "a busca não funcionou" pode ser
+ * limite de acesso, bloqueio, consulta malformada ou obra realmente ausente —
+ * e cada um pede uma resposta diferente.
+ */
+function diagnosticarGoogleBooks() {
+  var testes = [
+    { nome: 'ISBN 9788501924919 (o que você tentou)', consulta: 'isbn:9788501924919' },
+    { nome: 'ISBN 9788535914849 (livro comum, controle)', consulta: 'isbn:9788535914849' },
+    { nome: 'Título "Nosso Lar"', consulta: 'intitle:"Nosso Lar"' },
+    { nome: 'Palavra solta "kardec"', consulta: 'kardec' }
+  ];
+
+  var chave = limparCampo_(lerConfig('chave_api_livros', ''));
+  var linhas = [
+    'Consulta à API de livros do Google, a partir deste script:',
+    'Chave própria em Config: ' + (chave ? 'SIM (' + chave.length + ' caracteres)' : 'NÃO'),
+    ''
+  ];
+
+  testes.forEach(function (teste) {
+    var url = 'https://www.googleapis.com/books/v1/volumes'
+      + '?q=' + encodeURIComponent(teste.consulta) + '&maxResults=3'
+      + (chave ? '&key=' + encodeURIComponent(chave) : '');
+    linhas.push('### ' + teste.nome);
+    try {
+      var resposta = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+      var codigo = resposta.getResponseCode();
+      var corpo = resposta.getContentText();
+
+      var total = '(não consegui ler)';
+      var primeiro = '';
+      try {
+        var dados = JSON.parse(corpo);
+        total = dados.totalItems;
+        if (dados.items && dados.items.length) {
+          var livro = dados.items[0].volumeInfo || {};
+          primeiro = livro.title + ' / ' + (livro.authors || []).join('; ') +
+            ' / ' + livro.publisher;
+        }
+      } catch (erro) { /* corpo não é JSON: o próprio corpo vai no relatório */ }
+
+      linhas.push('  HTTP ' + codigo + '   totalItems: ' + total);
+      if (primeiro) linhas.push('  1º: ' + primeiro);
+      if (codigo !== 200) linhas.push('  corpo: ' + corpo.substring(0, 400));
+    } catch (erro) {
+      linhas.push('  EXCEÇÃO: ' + erro.message);
+    }
+    linhas.push('');
+  });
+
+  linhas.push('Como ler:');
+  linhas.push('  HTTP 200 + totalItems 0 = a obra não está no Google. Normal.');
+  linhas.push('  HTTP 429 = limite de acesso. Resolve com chave de API.');
+  linhas.push('  HTTP 403 = bloqueio. Também costuma pedir chave de API.');
+  linhas.push('  EXCEÇÃO = a chamada nem saiu.');
+
+  mostrarRelatorio_('Diagnóstico — busca de livros', linhas.join('\n'));
+}
+
+/** Janela com texto pré-formatado. Alert simples corta texto longo. */
+function mostrarRelatorio_(titulo, texto) {
+  var escapado = String(texto)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  var html = HtmlService
+    .createHtmlOutput('<pre style="font:12px/1.45 monospace;white-space:pre-wrap">' +
+      escapado + '</pre>')
+    .setWidth(640)
+    .setHeight(480);
+  SpreadsheetApp.getUi().showModalDialog(html, titulo);
 }

@@ -221,6 +221,47 @@ amarrada ao navegador pessoal do voluntário, que é o mesmo motivo do D11.
 
 ---
 
+## Chave da API de livros do Google (opcional)
+
+Sem chave, a consulta por ISBN e por título **quase sempre falha**. Não é
+cobertura ruim do acervo: é cota. O Google atribui chamada sem chave a um
+projeto anônimo compartilhado por todo mundo que usa Apps Script, e a cota
+diária dele vive estourada. Verificado em 22/08/2026 — as quatro consultas do
+diagnóstico voltaram HTTP 429, inclusive a de livro comum usada como controle:
+
+```
+Quota exceeded for quota metric 'Queries' and limit 'Queries per day'
+of service 'books.googleapis.com' for consumer 'project_number:624717413613'
+```
+
+Com chave própria, a cota passa a ser da casa (1.000 consultas/dia no plano
+gratuito, folgado para catalogar um acervo inteiro). **É gratuita e não pede
+cartão de crédito** — a API de livros não exige conta de faturamento.
+
+Passos, logado na conta da casa:
+
+1. `console.cloud.google.com` → criar projeto, nome "Biblioteca Casa Espírita".
+2. Menu → **APIs e serviços → Biblioteca** → procurar **Books API** → Ativar.
+3. Menu → **APIs e serviços → Credenciais** → Criar credenciais → **Chave de API**.
+4. Na chave criada → **Restringir chave** → em "Restrições de API", escolher
+   **Restringir chave** e marcar só **Books API**. Sem isso a chave serve para
+   qualquer API do Google e o estrago de um vazamento é maior.
+5. Copiar a chave e colar na aba `Config`, linha `chave_api_livros`.
+6. Conferir em `Biblioteca → Diagnóstico: busca de livros do Google` — o
+   relatório diz se achou a chave e mostra o HTTP de cada consulta.
+
+A chave fica na planilha, e não em `PropertiesService`, por dois motivos: o
+editor do Apps Script não abre no navegador em uso (ver Fase 0), e toda
+configuração mora no `Config` por decisão de projeto. É chave de leitura de
+dado público, restrita a uma API, numa planilha que só dois administradores
+acessam — o risco é pequeno e o ganho de manutenção é grande.
+
+**Se preferir não fazer nada disso**, o sistema funciona: o cadastro manual
+está completo e a especificação sempre tratou o preenchimento automático como
+atalho, não como caminho principal.
+
+---
+
 ## Comandos
 
 ```bash
