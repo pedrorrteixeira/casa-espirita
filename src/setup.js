@@ -456,3 +456,6 @@ function ordenarAbas_(ss, nomes) {
     ss.moveActiveSheet(i + 1);
   });
 }
+
+// Exporta para o `node --test`. Em Apps Script a guarda nao dispara.
+if (typeof module !== 'undefined') { module.exports = { ESTRUTURA_ABAS: ESTRUTURA_ABAS }; }

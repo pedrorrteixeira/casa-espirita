@@ -29,13 +29,25 @@ var ABA_SUGESTOES = 'Sugestoes';
 var ABA_LOG = 'Log';
 
 /**
- * Abas cuja coluna derivada é ARRAYFORMULA. Nestas, `getLastRow()` não serve
- * e escrita é limitada às colunas antes da primeira derivada.
+ * Colunas que são ARRAYFORMULA, por aba, em base 1.
+ *
+ * É um CONJUNTO, não uma fronteira. Em `Exemplares` as derivadas são as três
+ * últimas, mas em `Titulos` elas ficam no MEIO: P e Q são fórmula e R
+ * (`observacao`) volta a ser escrita normal. Tratar isso como "tudo a partir
+ * da coluna 16" recusava gravar a observação de qualquer título.
+ *
+ * Nas abas listadas aqui, `getLastRow()` também não serve — a fórmula preenche
+ * a coluna inteira com "" e o Apps Script conta como conteúdo.
  */
-var PRIMEIRA_COLUNA_DERIVADA = {
-  Titulos: 16,     // P: qtd_exemplares
-  Exemplares: 7    // G: situacao
+var COLUNAS_DERIVADAS = {
+  Titulos: [16, 17],        // P qtd_exemplares, Q qtd_disponiveis
+  Exemplares: [7, 8, 9]     // G situacao, H com_quem, I previsao_devolucao
 };
+
+function ehColunaDerivada_(nome, coluna) {
+  var derivadas = COLUNAS_DERIVADAS[nome];
+  return !!derivadas && derivadas.indexOf(coluna) !== -1;
+}
 
 var CACHE_SEGUNDOS = 300;              // 5 minutos, como pede o PLANO.md
 var CACHE_LIMITE_PEDACO = 90 * 1024;   // o CacheService corta em 100KB por chave
@@ -76,7 +88,7 @@ function lerAba_(nome) {
  */
 function ultimaLinhaDeDados_(aba) {
   var nome = aba.getName();
-  if (!PRIMEIRA_COLUNA_DERIVADA[nome]) return aba.getLastRow();
+  if (!COLUNAS_DERIVADAS[nome]) return aba.getLastRow();
 
   var maximo = aba.getMaxRows();
   if (maximo < 2) return 1;
@@ -195,8 +207,6 @@ function escreverLinha_(nome, registro) {
   var totalColunas = aba.getLastColumn();
   var cabecalhos = aba.getRange(1, 1, 1, totalColunas).getValues()[0];
 
-  var limite = PRIMEIRA_COLUNA_DERIVADA[nome] || (totalColunas + 1);
-
   // Confere antes de montar nada: campo com nome errado tem que estourar, não
   // sumir calado. Um `observacoes` no lugar de `observacao` seria perda de
   // dado que ninguém notaria.
@@ -206,7 +216,7 @@ function escreverLinha_(nome, registro) {
     if (posicao === -1) {
       throw new Error('A coluna "' + campo + '" não existe na aba ' + nome + '.');
     }
-    if (posicao >= limite - 1) {
+    if (ehColunaDerivada_(nome, posicao + 1)) {
       throw new Error(
         'Tentativa de escrever na coluna derivada "' + campo + '" de ' + nome +
         '. Essa coluna é ARRAYFORMULA — escrever nela quebra a fórmula com #REF!.'
@@ -214,15 +224,32 @@ function escreverLinha_(nome, registro) {
     }
   });
 
-  var valores = [];
-  for (var c = 0; c < limite - 1; c++) {
-    var campo = String(cabecalhos[c]);
-    valores.push(registro[campo] === undefined ? '' : registro[campo]);
-  }
-
   var linha = ultimaLinhaDeDados_(aba) + 1;
-  aba.getRange(linha, 1, 1, valores.length).setValues([valores]);
+
+  // Grava em trechos contíguos, pulando as derivadas. Em `Titulos` são dois
+  // trechos (A:O e R), porque P e Q ficam no meio. Um `setValues` cobrindo
+  // A:R passaria por cima das fórmulas.
+  var trecho = [];
+  var inicio = 0;
+  for (var c = 1; c <= totalColunas; c++) {
+    if (ehColunaDerivada_(nome, c)) {
+      gravarTrecho_(aba, linha, inicio, trecho);
+      trecho = [];
+      inicio = 0;
+      continue;
+    }
+    if (!trecho.length) inicio = c;
+    var campo = String(cabecalhos[c - 1]);
+    trecho.push(registro[campo] === undefined ? '' : registro[campo]);
+  }
+  gravarTrecho_(aba, linha, inicio, trecho);
+
   return linha;
+}
+
+function gravarTrecho_(aba, linha, inicio, valores) {
+  if (!valores.length) return;
+  aba.getRange(linha, inicio, 1, valores.length).setValues([valores]);
 }
 
 /**
@@ -233,14 +260,13 @@ function escreverLinha_(nome, registro) {
 function atualizarCelulas_(nome, linha, mudancas) {
   var aba = abaOuErro_(nome);
   var cabecalhos = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0];
-  var limite = PRIMEIRA_COLUNA_DERIVADA[nome] || (aba.getLastColumn() + 1);
 
   Object.keys(mudancas).forEach(function (campo) {
     var posicao = cabecalhos.indexOf(campo);
     if (posicao === -1) {
       throw new Error('A coluna "' + campo + '" não existe em ' + nome + '.');
     }
-    if (posicao >= limite - 1) {
+    if (ehColunaDerivada_(nome, posicao + 1)) {
       throw new Error(
         'Tentativa de escrever na coluna derivada "' + campo + '" de ' + nome + '.'
       );
@@ -394,3 +420,6 @@ function invalidarCacheTitulos_() {
   }
   cache.removeAll(chaves);
 }
+
+// Exporta para o `node --test`. Em Apps Script a guarda não dispara.
+if (typeof module !== 'undefined') { module.exports = { COLUNAS_DERIVADAS: COLUNAS_DERIVADAS }; }

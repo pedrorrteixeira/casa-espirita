@@ -57,3 +57,51 @@ function listarJs(dir) {
     return entrada.name.endsWith('.js') ? [caminho] : [];
   });
 }
+
+test('planilha.js e setup.js concordam sobre quais colunas são fórmula', () => {
+  // Este teste existe por causa de um bug real: planilha.js tratava "derivada"
+  // como fronteira ("tudo a partir da coluna 16") em vez de conjunto. Em
+  // Titulos as fórmulas ficam no MEIO — P e Q — e observacao, em R, volta a
+  // ser escrita normal. O resultado foi recusar gravar a observação de
+  // qualquer título, e só apareceu quando alguém tentou cadastrar um livro.
+  //
+  // Acrescentar uma coluna de fórmula em setup.js sem atualizar planilha.js
+  // reintroduziria a mesma classe de bug, em silêncio.
+  const { ESTRUTURA_ABAS } = require('../src/setup.js');
+  const { COLUNAS_DERIVADAS } = require('../src/planilha.js');
+
+  for (const aba of ESTRUTURA_ABAS) {
+    const naSetup = Object.keys(aba.formulas || {}).map(Number).sort((a, b) => a - b);
+    const naPlanilha = (COLUNAS_DERIVADAS[aba.nome] || []).slice().sort((a, b) => a - b);
+
+    assert.deepEqual(naPlanilha, naSetup,
+      `a aba ${aba.nome} tem fórmula nas colunas [${naSetup}] segundo setup.js, ` +
+      `mas planilha.js conhece [${naPlanilha}]`);
+  }
+});
+
+test('nenhuma coluna de fórmula é escrita por catalogo.js', () => {
+  // A recusa de escrita mora em planilha.js, mas o nome do campo vem de quem
+  // chama. Se catalogo.js montar um registro com `situacao` ou
+  // `qtd_exemplares`, o erro só aparece em produção.
+  const { ESTRUTURA_ABAS } = require('../src/setup.js');
+
+  const derivadas = new Set();
+  for (const aba of ESTRUTURA_ABAS) {
+    for (const coluna of Object.keys(aba.formulas || {})) {
+      derivadas.add(aba.cabecalhos[Number(coluna) - 1]);
+    }
+  }
+
+  const catalogo = fs.readFileSync(path.join(SRC, 'catalogo.js'), 'utf8');
+  const problemas = [];
+  for (const campo of derivadas) {
+    // Procura o campo como chave de objeto: `situacao:` ou `'situacao':`.
+    if (new RegExp(`^\s*'?${campo}'?\s*:`, 'm').test(catalogo)) {
+      problemas.push(campo);
+    }
+  }
+
+  assert.deepEqual(problemas, [],
+    `catalogo.js monta registro com coluna derivada: ${problemas.join(', ')}`);
+});
