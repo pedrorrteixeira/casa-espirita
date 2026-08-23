@@ -8,6 +8,19 @@
  * O acesso à planilha é todo por `planilha.js`. Nada de `SpreadsheetApp` aqui.
  */
 
+/**
+ * País informado à API de livros do Google.
+ *
+ * Sem ele, a chamada volta 403 "Cannot determine user location for
+ * geographically restricted operation": a API restringe conteúdo por país e,
+ * vindo de servidor, não há navegador nem IP de usuário para o Google inferir
+ * a origem — então ele recusa em vez de adivinhar.
+ *
+ * Fica como constante, e não na aba Config, porque não é configuração que um
+ * voluntário mude: é onde a casa está.
+ */
+var PAIS_API_LIVROS = 'BR';
+
 // --- Títulos -----------------------------------------------------------------
 
 /**
@@ -354,7 +367,8 @@ function buscarLivrosPorTitulo(titulo, autor) {
 function consultarGoogleBooks_(consulta, quantos) {
   var url = 'https://www.googleapis.com/books/v1/volumes'
     + '?q=' + encodeURIComponent(consulta)
-    + '&maxResults=' + quantos;
+    + '&maxResults=' + quantos
+    + '&country=' + PAIS_API_LIVROS;
 
   // Sem chave, o Google atribui a chamada a um projeto anônimo compartilhado
   // por todo mundo que usa Apps Script — e essa cota diária vive estourada.
@@ -466,6 +480,7 @@ function diagnosticarGoogleBooks() {
   testes.forEach(function (teste) {
     var url = 'https://www.googleapis.com/books/v1/volumes'
       + '?q=' + encodeURIComponent(teste.consulta) + '&maxResults=3'
+      + '&country=' + PAIS_API_LIVROS
       + (chave ? '&key=' + encodeURIComponent(chave) : '');
     linhas.push('### ' + teste.nome);
     try {
@@ -495,10 +510,13 @@ function diagnosticarGoogleBooks() {
   });
 
   linhas.push('Como ler:');
-  linhas.push('  HTTP 200 + totalItems 0 = a obra não está no Google. Normal.');
-  linhas.push('  HTTP 429 = limite de acesso. Resolve com chave de API.');
-  linhas.push('  HTTP 403 = bloqueio. Também costuma pedir chave de API.');
-  linhas.push('  EXCEÇÃO = a chamada nem saiu.');
+  linhas.push('  HTTP 200 + totalItems 0 = a obra não está no Google. Normal,');
+  linhas.push('    e a resposta que interessa: mede a cobertura do acervo.');
+  linhas.push('  HTTP 200 + totalItems > 0 = funcionando.');
+  linhas.push('  HTTP 429 = cota diária esgotada. Falta chave própria em Config.');
+  linhas.push('  HTTP 403 unknownLocation = falta o parâmetro country na URL.');
+  linhas.push('  HTTP 403 outro motivo = chave inválida ou Books API desativada.');
+  linhas.push('  EXCEÇÃO = a chamada nem saiu do Apps Script.');
 
   mostrarRelatorio_('Diagnóstico — busca de livros', linhas.join('\n'));
 }
