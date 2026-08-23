@@ -10,6 +10,111 @@
 
   var $ = function (selecao) { return document.querySelector(selecao); };
 
+  /**
+   * Quem está usando o sistema.
+   *
+   * A sessão vem do link mágico, trocada pelo servidor no carregamento, e fica
+   * aqui — nunca numa URL. URL vai parar em histórico, print e grupo de
+   * WhatsApp.
+   *
+   * Esconder aba por perfil é conveniência, NÃO segurança: quem abrir o
+   * console do navegador chama google.script.run direto. Quem protege é a
+   * guarda no servidor; isto aqui só evita mostrar botão que vai dar erro.
+   */
+  var EU = { sessao: '', nome: '', perfil: '' };
+
+  var entrada = ENTRADA_DO_SERVIDOR;
+  if (entrada) {
+    EU = { sessao: entrada.sessao, nome: entrada.nome, perfil: entrada.perfil };
+    try { localStorage.setItem('sessao', EU.sessao); } catch (erro) {}
+    // Tira o código da barra de endereços: ele já foi usado, e deixá-lo à
+    // mostra convida a compartilhar um link que não funciona mais.
+    try {
+      history.replaceState(null, '', location.pathname);
+    } catch (erro) {}
+  } else {
+    try { EU.sessao = localStorage.getItem('sessao') || ''; } catch (erro) {}
+  }
+
+  function podeVer(acao) {
+    var ordem = ['consulta', 'atendente', 'bibliotecario', 'admin'];
+    var exige = {
+      emprestar: 'atendente', ver_atrasos: 'atendente', definir_tema: 'atendente',
+      cadastrar_obra: 'bibliotecario', editar_pessoa: 'bibliotecario'
+    };
+    return ordem.indexOf(EU.perfil) >= ordem.indexOf(exige[acao] || 'admin');
+  }
+
+  function mostrarIdentidade() {
+    var entrou = !!EU.perfil;
+    $('#quem-sou').textContent = entrou ? EU.nome + ' · ' + EU.perfil : '';
+    $('#btn-entrar').classList.toggle('oculta', entrou);
+    $('#btn-sair').classList.toggle('oculta', !entrou);
+
+    document.querySelectorAll('.aba[data-exige]').forEach(function (aba) {
+      aba.classList.toggle('oculta', !podeVer(aba.dataset.exige));
+    });
+  }
+
+  /** Sessão guardada pode ter vencido enquanto a aba estava fechada. */
+  function conferirSessao() {
+    if (!EU.sessao) { mostrarIdentidade(); return; }
+
+    google.script.run
+      .withSuccessHandler(function (quem) {
+        if (quem) { EU.nome = quem.nome; EU.perfil = quem.perfil; }
+        else { esquecerSessao(); }
+        mostrarIdentidade();
+      })
+      .withFailureHandler(function () { esquecerSessao(); mostrarIdentidade(); })
+      .verSessao(EU.sessao);
+  }
+
+  function esquecerSessao() {
+    EU = { sessao: '', nome: '', perfil: '' };
+    try { localStorage.removeItem('sessao'); } catch (erro) {}
+  }
+
+  $('#btn-entrar').addEventListener('click', function () {
+    irPara('entrada');
+  });
+
+  $('#btn-sair').addEventListener('click', function () {
+    var sessao = EU.sessao;
+    esquecerSessao();
+    mostrarIdentidade();
+    irPara('busca');
+    google.script.run.encerrarSessao(sessao);
+  });
+
+  $('#form-entrar').addEventListener('submit', function (evento) {
+    evento.preventDefault();
+    var botao = $('#btn-pedir-link');
+    botao.disabled = true;
+    dizer($('#estado-entrada'), 'Enviando…');
+
+    google.script.run
+      .withSuccessHandler(function (recado) {
+        botao.disabled = false;
+        dizer($('#estado-entrada'), recado, 'ok');
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer($('#estado-entrada'), erro.message || 'Não consegui enviar.', 'erro');
+      })
+      .pedirAcesso(this.elements.email.value);
+  });
+
+  /** Troca de visão por código, para os botões que não são aba. */
+  function irPara(visao) {
+    document.querySelectorAll('.aba').forEach(function (aba) {
+      aba.classList.toggle('ativa', aba.dataset.visao === visao);
+    });
+    document.querySelectorAll('.visao').forEach(function (secao) {
+      secao.classList.toggle('oculta', secao.id !== 'visao-' + visao);
+    });
+  }
+
   // Campos que a consulta ao Google governa. Ela sobrescreve todos, inclusive
   // com vazio: manter metade do livro anterior montaria uma ficha com dados de
   // duas obras diferentes.
@@ -218,7 +323,7 @@
         botao.disabled = false;
         aviso.textContent = erro.message || 'Não consegui consultar agora.';
       })
-      .buscarPorIsbn(campo.value);
+      .buscarPorIsbn(EU.sessao, campo.value);
   });
 
   // Busca por título: saída para quando o ISBN não acha, o que é comum em
@@ -256,7 +361,7 @@
         botao.disabled = false;
         aviso.textContent = erro.message || 'Não consegui consultar agora.';
       })
-      .buscarLivrosPorTitulo(titulo, formulario.elements.autor_ou_medium.value);
+      .buscarLivrosPorTitulo(EU.sessao, titulo, formulario.elements.autor_ou_medium.value);
   });
 
   function itemCandidato(livro, aviso, lista) {
@@ -327,7 +432,7 @@
         botao.disabled = false;
         dizer(estadoCadastro, erro.message || 'Não consegui conferir.', 'erro');
       })
-      .verificarTituloExistente(dadosDoFormulario().dados);
+      .verificarTituloExistente(EU.sessao, dadosDoFormulario().dados);
   });
 
   function mostrarDuplicata(existente) {
@@ -358,12 +463,12 @@
         dizer(estadoCadastro,
           'Exemplar acrescentado à obra ' + id + '. Etiquete o livro com o ' +
           'tombo ' + tombo + '.', 'ok');
-        limparFormulario(pacote.quem);
+        limparFormulario();
       })
       .withFailureHandler(function (erro) {
         dizer(estadoCadastro, erro.message || 'Não consegui acrescentar.', 'erro');
       })
-      .acrescentarExemplar(id, pacote.dados, pacote.quem);
+      .acrescentarExemplar(EU.sessao, id, pacote.dados);
   });
 
   $('#btn-forcar').addEventListener('click', function () {
@@ -379,18 +484,16 @@
       dados[campo.name] = campo.type === 'checkbox' ? campo.checked : campo.value.trim();
     });
 
-    var quem = dados.quem_registrou;
     delete dados.quem_registrou;
     delete dados.psicografada;   // controle de tela, não coluna
 
-    return { dados: dados, quem: quem };
+    return { dados: dados };
   }
 
   function salvar(permitirDuplicata) {
     var pacote = dadosDoFormulario();
     var botao = $('#btn-salvar');
     var dados = pacote.dados;
-    var quem = pacote.quem;
 
     botao.disabled = true;
     dizer(estadoCadastro, 'Salvando…');
@@ -403,13 +506,13 @@
           recado += ' Etiquete o livro com o tombo ' + resposta.tombo + '.';
         }
         dizer(estadoCadastro, recado, 'ok');
-        limparFormulario(quem);
+        limparFormulario();
       })
       .withFailureHandler(function (erro) {
         botao.disabled = false;
         dizer(estadoCadastro, erro.message || 'Não consegui salvar.', 'erro');
       })
-      .cadastrarTituloComExemplar(dados, quem, permitirDuplicata);
+      .cadastrarTituloComExemplar(EU.sessao, dados, permitirDuplicata);
   }
 
   /**
@@ -417,7 +520,7 @@
    * editora: cataloga-se uma pilha de livros seguidos, quase sempre da mesma
    * série, da mesma doação ou da mesma editora.
    */
-  function limparFormulario(quem) {
+  function limparFormulario() {
     $('#btn-salvar').disabled = false;
 
     var serie = formulario.elements.serie.value;
@@ -425,7 +528,6 @@
     var editora = formulario.elements.editora.value;
 
     formulario.reset();
-    formulario.elements.quem_registrou.value = quem;
     formulario.elements.serie.value = serie;
     formulario.elements.doado_por.value = doador;
     formulario.elements.editora.value = editora;
@@ -441,7 +543,6 @@
   // Empréstimo e devolução na mesma tela. Vai ser usada em pé, no celular,
   // com o livro numa mão: o caminho é digitar o tombo e confirmar.
 
-  var atendente = $('#atendente');
   var campoTombo = $('#tombo');
   var estadoTombo = $('#estado-tombo');
   var ficha = $('#ficha');
@@ -451,14 +552,6 @@
 
   // Quem atende é a mesma pessoa durante um plantão inteiro. Guardar poupa
   // redigitar a cada livro — e é dado do voluntário, não do frequentador.
-  try {
-    atendente.value = localStorage.getItem('atendente') || '';
-  } catch (erro) { /* navegador sem armazenamento: segue sem lembrar */ }
-
-  atendente.addEventListener('change', function () {
-    try { localStorage.setItem('atendente', atendente.value.trim()); } catch (erro) {}
-  });
-
   campoTombo.addEventListener('input', function () {
     clearTimeout(temporizadorTombo);
     temporizadorTombo = setTimeout(carregarTombo, 350);
@@ -484,7 +577,7 @@
         if (esta !== tomboEmVoo) return;
         dizer(estadoTombo, erro.message || 'Não consegui achar esse tombo.', 'erro');
       })
-      .verExemplar(valor);
+      .verExemplar(EU.sessao, valor);
   }
 
   function mostrarFicha(dados) {
@@ -572,7 +665,7 @@
       .withFailureHandler(function (erro) {
         $('#pessoa-escolhida').textContent = erro.message || 'Não consegui buscar.';
       })
-      .buscarPessoas(termo);
+      .buscarPessoas(EU.sessao, termo);
   }
 
   function limparEscolhaDePessoa(manterTexto) {
@@ -587,8 +680,8 @@
   $('#btn-emprestar').addEventListener('click', function () {
     if (!pessoaEscolhida || !exigirAtendente()) return;
     acaoDeBalcao(this, 'Emprestando…', function (run) {
-      return run.registrarEmprestimo(campoTombo.value.trim(),
-        pessoaEscolhida.id_pessoa, atendente.value.trim(), '');
+      return run.registrarEmprestimo(EU.sessao, campoTombo.value.trim(),
+        pessoaEscolhida.id_pessoa, '');
     }, function (r) {
       return 'Emprestado a ' + r.nome + '. Devolver até ' + r.data_prevista + '.';
     });
@@ -597,7 +690,7 @@
   $('#btn-devolver').addEventListener('click', function () {
     if (!exigirAtendente()) return;
     acaoDeBalcao(this, 'Registrando devolução…', function (run) {
-      return run.registrarDevolucao(campoTombo.value.trim(), atendente.value.trim());
+      return run.registrarDevolucao(EU.sessao, campoTombo.value.trim());
     }, function (r) {
       return r.dias_de_atraso > 0
         ? 'Devolvido com ' + r.dias_de_atraso + ' dia(s) de atraso.'
@@ -608,16 +701,17 @@
   $('#btn-renovar').addEventListener('click', function () {
     if (!exigirAtendente()) return;
     acaoDeBalcao(this, 'Renovando…', function (run) {
-      return run.renovar(campoTombo.value.trim(), atendente.value.trim());
+      return run.renovar(EU.sessao, campoTombo.value.trim());
     }, function (r) {
       return 'Renovado até ' + r.data_prevista + ' (renovação ' + r.renovacoes + ').';
     });
   });
 
+  /** A identidade agora vem da sessão, não de quem digita o próprio nome. */
   function exigirAtendente() {
-    if (atendente.value.trim()) return true;
-    dizer(estadoTombo, 'Escreva seu nome antes — toda operação fica registrada.', 'erro');
-    atendente.focus();
+    if (EU.sessao) return true;
+    dizer(estadoTombo, 'Entre no sistema para registrar movimentação.', 'erro');
+    irPara('entrada');
     return false;
   }
 
@@ -672,7 +766,7 @@
       .withFailureHandler(function (erro) {
         dizer(estadoAtrasos, erro.message || 'Não consegui carregar.', 'erro');
       })
-      .listarEmprestados(somenteAtrasados);
+      .listarEmprestados(EU.sessao, somenteAtrasados);
   }
 
   function itemEmprestado(linha) {
@@ -726,7 +820,6 @@
       if (!campo.name) return;
       dados[campo.name] = campo.type === 'checkbox' ? campo.checked : campo.value.trim();
     });
-    var quem = dados.quem_registrou;
     delete dados.quem_registrou;
 
     botao.disabled = true;
@@ -737,14 +830,13 @@
         botao.disabled = false;
         dizer(estadoPessoa, dados.nome + ' cadastrado (nº ' + id + ').', 'ok');
         formPessoa.reset();
-        formPessoa.elements.quem_registrou.value = quem;
         formPessoa.elements.nome.focus();
       })
       .withFailureHandler(function (erro) {
         botao.disabled = false;
         dizer(estadoPessoa, erro.message || 'Não consegui salvar.', 'erro');
       })
-      .criarPessoa(dados, quem);
+      .criarPessoa(EU.sessao, dados);
   });
 
   // -------------------------------------------------- cadastro: alterar pessoa
@@ -789,7 +881,7 @@
       .withFailureHandler(function (erro) {
         dizer(estadoEditar, erro.message || 'Não consegui buscar.', 'erro');
       })
-      .buscarPessoasParaEditar(termo);
+      .buscarPessoasParaEditar(EU.sessao, termo);
   }
 
   function carregarPessoa(idPessoa) {
@@ -827,7 +919,7 @@
       .withFailureHandler(function (erro) {
         dizer(estadoEditar, erro.message || 'Não consegui carregar.', 'erro');
       })
-      .verPessoa(idPessoa);
+      .verPessoa(EU.sessao, idPessoa);
   }
 
   formEditar.addEventListener('submit', function (evento) {
@@ -835,13 +927,6 @@
     if (!pessoaEmEdicao) return;
 
     var botao = $('#btn-salvar-edicao');
-    var quem = formEditar.elements.quem_registrou.value.trim();
-    if (!quem) {
-      dizer(estadoEditar, 'Escreva seu nome — toda alteração fica registrada.', 'erro');
-      formEditar.elements.quem_registrou.focus();
-      return;
-    }
-
     var mudancas = {
       nome: formEditar.elements.nome.value.trim(),
       telefone: formEditar.elements.telefone.value.trim(),
@@ -869,18 +954,13 @@
         botao.disabled = false;
         dizer(estadoEditar, erro.message || 'Não consegui salvar.', 'erro');
       })
-      .atualizarPessoa(pessoaEmEdicao.id_pessoa, mudancas, quem);
+      .atualizarPessoa(EU.sessao, pessoaEmEdicao.id_pessoa, mudancas);
   });
 
   // ----------------------------------------------------------------- agenda
   var listaReunioes = $('#lista-reunioes');
   var estadoAgenda = $('#estado-agenda');
-  var quemTema = $('#quem-tema');
   var agendaCarregada = false;
-
-  try {
-    quemTema.value = localStorage.getItem('atendente') || '';
-  } catch (erro) {}
 
   // Só carrega quando a aba é aberta: a maioria de quem entra vem buscar
   // livro, e uma chamada ao servidor a cada visita custa quota à toa.
@@ -946,10 +1026,9 @@
         var texto = campo.value.trim();
         if (!texto) { campo.focus(); return; }
 
-        var quem = quemTema.value.trim();
-        if (!quem) {
-          dizer(estadoAgenda, 'Escreva seu nome acima — fica registrado.', 'erro');
-          quemTema.focus();
+        if (!EU.sessao) {
+          dizer(estadoAgenda, 'Entre no sistema para gravar o tema.', 'erro');
+          irPara('entrada');
           return;
         }
 
@@ -964,7 +1043,7 @@
             botao.disabled = false;
             dizer(estadoAgenda, erro.message || 'Não consegui gravar.', 'erro');
           })
-          .definirTema(reuniao.id_reuniao, texto, quem);
+          .definirTema(EU.sessao, reuniao.id_reuniao, texto);
       });
 
       linha.appendChild(campo);
@@ -974,6 +1053,60 @@
 
     return item;
   }
+
+  // ------------------------------------------------------------ meus livros
+  // Sem sessão, por decisão: parte dos frequentadores não tem e-mail. O
+  // servidor devolve só livro e prazo, e responde igual para contato que não
+  // existe — a tela não pode virar forma de descobrir quem frequenta a casa.
+
+  var listaMeus = $('#lista-meus');
+  var estadoMeus = $('#estado-meus');
+
+  $('#form-meus').addEventListener('submit', function (evento) {
+    evento.preventDefault();
+    var contato = $('#contato').value.trim();
+
+    listaMeus.innerHTML = '';
+    if (!contato) { dizer(estadoMeus, ''); return; }
+    dizer(estadoMeus, 'Procurando…');
+
+    google.script.run
+      .withSuccessHandler(function (resposta) {
+        listaMeus.innerHTML = '';
+        if (!resposta.emprestimos.length) {
+          dizer(estadoMeus, resposta.recado);
+          return;
+        }
+        dizer(estadoMeus, resposta.emprestimos.length === 1
+          ? '1 livro com você'
+          : resposta.emprestimos.length + ' livros com você');
+
+        resposta.emprestimos.forEach(function (livro) {
+          var item = document.createElement('li');
+          item.className = 'resultado' + (livro.dias_de_atraso > 0 ? ' atrasado' : '');
+
+          item.appendChild(elemento('h2', livro.titulo));
+          if (livro.autoria) item.appendChild(elemento('p', livro.autoria, 'autoria'));
+
+          var prazo = elemento('p', '', 'meta');
+          if (livro.dias_de_atraso > 0) {
+            prazo.appendChild(elemento('span',
+              livro.dias_de_atraso + ' dia(s) de atraso', 'dias-atraso'));
+            prazo.appendChild(document.createTextNode(
+              ' — devolver em ' + livro.data_prevista));
+          } else {
+            prazo.textContent = 'devolver até ' + livro.data_prevista;
+          }
+          item.appendChild(prazo);
+
+          listaMeus.appendChild(item);
+        });
+      })
+      .withFailureHandler(function (erro) {
+        dizer(estadoMeus, erro.message || 'Não consegui consultar.', 'erro');
+      })
+      .meusEmprestimos(contato);
+  });
 
   // ------------------------------------------------------------- auxiliares
   /**
@@ -1018,5 +1151,9 @@
     onde.textContent = texto;
     onde.className = 'estado' + (classe ? ' ' + classe : '');
   }
+
+  // Última coisa: a sessão guardada pode ter vencido com a aba fechada, e é
+  // isto que decide quais abas aparecem.
+  conferirSessao();
 })();
 </script>

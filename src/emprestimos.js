@@ -21,7 +21,9 @@
  * Regras 1, 2, 3 e 5: exemplar ativo, sem empréstimo aberto, pessoa ativa, e
  * data prevista calculada a partir do prazo da aba `Config`.
  */
-function registrarEmprestimo(tombo, idPessoa, quemRegistrou, observacao) {
+function registrarEmprestimo(sessao, tombo, idPessoa, observacao) {
+  var quemRegistrou = exigir_(sessao, 'emprestar').nome;
+
   var alvo = Number(tombo);
   if (!isFinite(alvo)) throw new Error('Informe o número do tombo.');
 
@@ -96,7 +98,9 @@ function registrarEmprestimo(tombo, idPessoa, quemRegistrou, observacao) {
  *
  * Regra 7: devolver exemplar sem empréstimo aberto é erro, não cria linha.
  */
-function registrarDevolucao(tombo, quemRegistrou) {
+function registrarDevolucao(sessao, tombo) {
+  var quemRegistrou = exigir_(sessao, 'devolver').nome;
+
   var alvo = Number(tombo);
   if (!isFinite(alvo)) throw new Error('Informe o número do tombo.');
 
@@ -139,7 +143,9 @@ function registrarDevolucao(tombo, quemRegistrou) {
  * Regra 4: sem limite rígido por enquanto. Se houver fila para o título, quem
  * decide é o atendente, olhando a tela — não o código.
  */
-function renovar(tombo, quemRegistrou) {
+function renovar(sessao, tombo) {
+  var quemRegistrou = exigir_(sessao, 'renovar').nome;
+
   var alvo = Number(tombo);
   if (!isFinite(alvo)) throw new Error('Informe o número do tombo.');
 
@@ -181,7 +187,23 @@ function renovar(tombo, quemRegistrou) {
  * Esta É uma tela interna e PODE mostrar o nome — é a diferença entre a busca
  * pública e o balcão (seção 6). Mas segue sendo montada campo a campo.
  */
-function listarEmprestados(somenteAtrasados) {
+function listarEmprestados(sessao, somenteAtrasados) {
+  exigir_(sessao, 'ver_atrasos');
+  return emprestadosAgora_(somenteAtrasados);
+}
+
+/**
+ * A mesma lista, sem guarda. Uso interno.
+ *
+ * Existe porque o gatilho de atraso precisa dela e não tem sessão — ninguém
+ * está logado às 5h da manhã. Separar a leitura da permissão é o que evita o
+ * alternativa ruim: dar ao gatilho uma sessão eterna, que viraria uma chave
+ * mestra guardada em algum lugar.
+ *
+ * Sufixo `_`: o Apps Script não expõe função com underscore final a
+ * `google.script.run`, então isto não é alcançável do navegador.
+ */
+function emprestadosAgora_(somenteAtrasados) {
   var hoje = new Date();
   var pessoas = {};
   lerPessoas().forEach(function (pessoa) {
@@ -224,7 +246,9 @@ function listarEmprestados(somenteAtrasados) {
  * Ficha de um tombo para a tela de empréstimo, depois de digitado o número.
  * Diz o que o atendente precisa saber antes de confirmar.
  */
-function verExemplar(tombo) {
+function verExemplar(sessao, tombo) {
+  exigir_(sessao, 'ver_com_quem');
+
   var alvo = Number(tombo);
   if (!isFinite(alvo)) throw new Error('Tombo inválido.');
 
@@ -257,4 +281,66 @@ function acharExemplar_(tombo) {
     return Number(exemplar.tombo) === alvo;
   });
   return achados.length ? achados[0] : null;
+}
+
+/**
+ * Os empréstimos de um frequentador, achado por e-mail ou telefone.
+ *
+ * NÃO exige sessão, por decisão do Weldson: parte dos frequentadores não tem
+ * e-mail, e link mágico deixaria essa gente de fora. Em troca:
+ *
+ *  - devolve SÓ livro e prazo, nada de nome, telefone ou e-mail;
+ *  - não diz se o contato existe. Contato certo sem empréstimo e contato
+ *    inexistente respondem igual, para a tela não virar lista telefônica.
+ *
+ * A consequência que fica de pé, e que é decisão consciente: quem souber o
+ * telefone de alguém vê o que essa pessoa está lendo. Numa casa espírita isso
+ * não é neutro — escolha de livro revela luto, doença, dependência. Se um dia
+ * incomodar, o link mágico dos voluntários serve aqui sem mudar mais nada.
+ */
+function meusEmprestimos(contato) {
+  var vazio = { emprestimos: [], recado: 'Nenhum empréstimo em aberto para esse contato.' };
+
+  if (!normalizarContato(contato)) return vazio;
+
+  var eu = null;
+  lerPessoas().forEach(function (pessoa) {
+    if (eu) return;
+    if (mesmoContato(contato, pessoa.email) || mesmoContato(contato, pessoa.telefone)) {
+      eu = pessoa;
+    }
+  });
+  if (!eu) return vazio;
+
+  var hoje = new Date();
+  var porTombo = {};
+  lerExemplares().forEach(function (exemplar) {
+    porTombo[String(exemplar.tombo)] = exemplar;
+  });
+
+  var titulos = {};
+  lerTitulos().forEach(function (titulo) {
+    titulos[String(titulo.id_titulo)] = titulo;
+  });
+
+  var meus = lerEmprestimos()
+    .filter(function (emprestimo) {
+      return Number(emprestimo.id_pessoa) === Number(eu.id_pessoa) &&
+        ehVazio_(emprestimo.data_devolucao);
+    })
+    .map(function (emprestimo) {
+      var exemplar = porTombo[String(emprestimo.tombo)];
+      var titulo = exemplar ? titulos[String(exemplar.id_titulo)] : null;
+      return {
+        tombo: emprestimo.tombo,
+        titulo: titulo ? titulo.titulo : '(título não encontrado)',
+        autoria: titulo ? montarAutoria(titulo) : '',
+        data_prevista: formatarData_(emprestimo.data_prevista),
+        dias_de_atraso: diasDeAtraso(emprestimo, hoje)
+      };
+    })
+    .sort(function (a, b) { return b.dias_de_atraso - a.dias_de_atraso; });
+
+  if (!meus.length) return vazio;
+  return { emprestimos: meus, recado: '' };
 }

@@ -19,7 +19,9 @@ var LIMITE_DE_NOMES = 15;
  * Cadastra uma pessoa. Só o nome é obrigatório — a casa não vai negar livro a
  * quem não quis dar telefone.
  */
-function criarPessoa(dados, quemRegistrou) {
+function criarPessoa(sessao, dados) {
+  var quemRegistrou = exigir_(sessao, 'cadastrar_pessoa').nome;
+
   var nome = limparCampo_(dados && dados.nome);
   if (!nome) throw new Error('O nome é obrigatório.');
 
@@ -61,7 +63,9 @@ function criarPessoa(dados, quemRegistrou) {
  *
  * Exige dois caracteres para não devolver o cadastro inteiro a cada tecla.
  */
-function buscarPessoas(termo) {
+function buscarPessoas(sessao, termo) {
+  exigir_(sessao, 'emprestar');
+
   var alvo = normalizarTexto(termo);
   if (alvo.length < 2) return { pessoas: [], sobraram: 0 };
 
@@ -114,7 +118,9 @@ function lerPessoa_(idPessoa) {
  * Quem precisa LER um telefone abre a planilha. Pela tela dá para trocar, não
  * para consultar.
  */
-function verPessoa(idPessoa) {
+function verPessoa(sessao, idPessoa) {
+  exigir_(sessao, 'editar_pessoa');
+
   var pessoa = lerPessoa_(idPessoa);
   if (!pessoa) throw new Error('Pessoa não encontrada.');
 
@@ -140,7 +146,9 @@ function verPessoa(idPessoa) {
  * Para apagar de fato, existe `limpar_telefone` / `limpar_email` — explícito,
  * porque apagar contato tem que ser um ato deliberado.
  */
-function atualizarPessoa(idPessoa, mudancas, quemRegistrou) {
+function atualizarPessoa(sessao, idPessoa, mudancas) {
+  var quemRegistrou = exigir_(sessao, 'editar_pessoa').nome;
+
   return comTrava_(function () {
     var pessoa = lerPessoa_(idPessoa);
     if (!pessoa) throw new Error('Pessoa não encontrada.');
@@ -204,7 +212,9 @@ function atualizarPessoa(idPessoa, mudancas, quemRegistrou) {
  * inativa não pega livro (regra 5). Mas justamente quem está inativo é quem
  * alguém vai querer reativar.
  */
-function buscarPessoasParaEditar(termo) {
+function buscarPessoasParaEditar(sessao, termo) {
+  exigir_(sessao, 'editar_pessoa');
+
   var alvo = normalizarTexto(termo);
   if (alvo.length < 2) return [];
 

@@ -308,3 +308,51 @@ test('as telas não montam HTML por concatenação de texto', () => {
   assert.deepEqual(suspeitas, [],
     `innerHTML com conteúdo:\n${suspeitas.join('\n')}`);
 });
+
+test('toda função que grava exige sessão', () => {
+  // A guarda é a única proteção real: `google.script.run` é chamável do
+  // console do navegador, e esconder botão não impede nada. Uma função de
+  // escrita sem `exigir_` é um buraco aberto a quem tiver o link.
+  //
+  // As exceções abaixo são deliberadas e cada uma tem motivo escrito no
+  // próprio arquivo. Acrescentar nome a esta lista é decisão consciente.
+  const SEM_SESSAO = new Set([
+    'pedirAcesso',        // é a porta de entrada; responde igual ache ou não
+    'abrirSessao',        // troca o código de uso único pela sessão
+    'encerrarSessao',     // sair não precisa de permissão
+    'verSessao',          // valida a própria sessão
+    'meusEmprestimos',    // decisão do Weldson: contato basta, sem token
+    'criarEstruturaPlanilha', 'popularConfigPadrao',   // menu da planilha,
+    'sincronizarReunioes', 'sincronizarAgora',         // que já exige ser
+    'instalarGatilhos', 'verGatilhos',                 // editor dela
+    'diagnosticarGoogleBooks', 'diagnosticarAgenda',
+    'gatilhoDiario', 'gatilhoSemanal', 'gatilhoMensal',
+    'avisarAtrasos', 'cobrarTema', 'fazerBackup',
+    'testarAvisoDeAtrasos', 'testarCobrancaDeTema', 'testarBackup',
+    'limparSessoesVencidas'
+  ]);
+
+  // Uma função "grava" quando chama algo que escreve na planilha.
+  const ESCRITAS = /escreverLinha_|atualizarCelulas_|appendRow|setValue/;
+
+  const problemas = [];
+
+  for (const arquivo of listarJs(SRC)) {
+    const texto = fs.readFileSync(arquivo, 'utf8');
+    // Corpo de cada função de topo, até a próxima declaração de topo.
+    const partes = texto.split(/^function\s+/m).slice(1);
+
+    for (const parte of partes) {
+      const nome = /^(\w+)/.exec(parte)[1];
+      if (nome.endsWith('_')) continue;          // interna, não é endpoint
+      if (SEM_SESSAO.has(nome)) continue;
+      if (!ESCRITAS.test(parte)) continue;       // não grava
+
+      if (!/exigir_\(/.test(parte)) {
+        problemas.push(`${path.basename(arquivo)}: ${nome}() grava sem exigir_()`);
+      }
+    }
+  }
+
+  assert.deepEqual(problemas, [], problemas.join('\n'));
+});

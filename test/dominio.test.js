@@ -15,6 +15,7 @@ const {
   calcularSituacao, acharEmprestimoAberto, calcularDataPrevista,
   estaAtrasado, diasDeAtraso, planejarSincronizacao,
   montarAvisoDeAtrasos, escolherReuniaoSemTema,
+  podeFazer, normalizarContato, mesmoContato,
   SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO
 } = require('../src/dominio.js');
 
@@ -877,4 +878,92 @@ test('lista vazia devolve null, não quebra', () => {
   assert.equal(escolherReuniaoSemTema([], SEGUNDA, 7), null);
   assert.equal(escolherReuniaoSemTema(null, SEGUNDA, 7), null);
   assert.equal(escolherReuniaoSemTema([paraCobrar()], null, 7), null);
+});
+
+// --- perfis e permissões -----------------------------------------------------
+
+test('a hierarquia é cumulativa: admin herda tudo', () => {
+  // O admin cadastra palestrante e frequentador sem isso precisar ser escrito
+  // em lugar nenhum — é consequência de ele estar acima do bibliotecário.
+  for (const acao of Object.keys(require('../src/dominio.js').EXIGENCIA)) {
+    assert.equal(podeFazer('admin', acao), true, `admin devia poder ${acao}`);
+  }
+});
+
+test('atendente empresta mas não cataloga — seção 1', () => {
+  // "A responsável pelo acervo é uma pessoa específica. Os demais voluntários
+  // apenas registram empréstimo e devolução."
+  assert.equal(podeFazer('atendente', 'emprestar'), true);
+  assert.equal(podeFazer('atendente', 'devolver'), true);
+  assert.equal(podeFazer('atendente', 'ver_atrasos'), true);
+
+  assert.equal(podeFazer('atendente', 'cadastrar_obra'), false);
+  assert.equal(podeFazer('atendente', 'dar_baixa'), false);
+  assert.equal(podeFazer('atendente', 'editar_pessoa'), false);
+});
+
+test('bibliotecário cataloga e cuida de pessoas, mas não configura', () => {
+  assert.equal(podeFazer('bibliotecario', 'cadastrar_obra'), true);
+  assert.equal(podeFazer('bibliotecario', 'cadastrar_pessoa'), true);
+  assert.equal(podeFazer('bibliotecario', 'emprestar'), true, 'herda do atendente');
+
+  assert.equal(podeFazer('bibliotecario', 'sincronizar'), false);
+  assert.equal(podeFazer('bibliotecario', 'mudar_perfil'), false);
+  assert.equal(podeFazer('bibliotecario', 'ver_log'), false);
+});
+
+test('consulta não faz nada que grave', () => {
+  for (const acao of ['emprestar', 'devolver', 'cadastrar_obra', 'editar_pessoa',
+                      'dar_baixa', 'ver_atrasos', 'ver_com_quem']) {
+    assert.equal(podeFazer('consulta', acao), false, `consulta não podia ${acao}`);
+  }
+});
+
+test('perfil desconhecido ou vazio não pode nada', () => {
+  for (const perfil of ['', null, undefined, 'diretor', 'ADMIN ']) {
+    assert.equal(podeFazer(perfil, 'emprestar'), false,
+      `perfil ${JSON.stringify(perfil)} não podia emprestar`);
+  }
+});
+
+test('ação desconhecida FECHA a porta, não abre', () => {
+  // Erro de digitação no nome da ação tem que negar. Se devolvesse true, um
+  // `podeFazer(perfil, 'emprestarr')` viraria buraco aberto a todos.
+  assert.equal(podeFazer('admin', 'apagar_tudo'), false);
+  assert.equal(podeFazer('admin', ''), false);
+  assert.equal(podeFazer('admin', undefined), false);
+});
+
+// --- contato: e-mail ou telefone ---------------------------------------------
+
+test('telefone casa apesar do jeito de digitar', () => {
+  // O mesmo número aparece de sete formas no cadastro de uma casa.
+  const formas = ['(11) 98765-4321', '11987654321', '987654321',
+                  '11 9 8765 4321', '+55 11 98765-4321'];
+  for (const forma of formas) {
+    assert.ok(mesmoContato(forma, '(11) 98765-4321'),
+      `"${forma}" devia casar`);
+  }
+});
+
+test('telefones diferentes não casam', () => {
+  assert.equal(mesmoContato('(11) 98765-4321', '(11) 98765-4322'), false);
+});
+
+test('e-mail casa sem depender de maiúsculas nem de espaço', () => {
+  assert.ok(mesmoContato('Maria@Exemplo.COM ', 'maria@exemplo.com'));
+  assert.equal(mesmoContato('maria@exemplo.com', 'joao@exemplo.com'), false);
+});
+
+test('contato vazio ou curto demais nunca casa', () => {
+  // Sem isso, um campo em branco casaria com todo cadastro sem telefone e a
+  // tela mostraria os empréstimos de outra pessoa.
+  for (const vazio of ['', '   ', null, undefined, '123']) {
+    assert.equal(mesmoContato(vazio, '(11) 98765-4321'), false);
+    assert.equal(mesmoContato(vazio, ''), false);
+  }
+});
+
+test('e-mail não casa com telefone', () => {
+  assert.equal(mesmoContato('maria@exemplo.com', '11987654321'), false);
 });

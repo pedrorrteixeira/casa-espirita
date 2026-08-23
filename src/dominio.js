@@ -292,6 +292,85 @@ function escolherReuniaoSemTema(reunioes, hoje, diasDeAntecedencia) {
 }
 
 /**
+ * Perfis de acesso, do menor para o maior (seção 6).
+ *
+ * A ordem É a hierarquia: quem tem um perfil pode tudo o que os anteriores
+ * podem. Listar assim, e não escrever a permissão de cada tela em cada perfil,
+ * evita a tabela que ninguém mantém e que acaba com um buraco no meio.
+ */
+var PERFIS = ['consulta', 'atendente', 'bibliotecario', 'admin'];
+
+/**
+ * O que cada ação exige, no mínimo.
+ *
+ * A separação atendente/bibliotecario não é desconfiança: é a seção 1 da
+ * especificação. Quem cataloga responde pelo acervo, e catalogação errada é
+ * difícil de desfazer; quem está de plantão só precisa entregar e receber
+ * livro.
+ */
+var EXIGENCIA = {
+  emprestar: 'atendente',
+  devolver: 'atendente',
+  renovar: 'atendente',
+  ver_atrasos: 'atendente',
+  ver_com_quem: 'atendente',
+
+  cadastrar_obra: 'bibliotecario',
+  editar_obra: 'bibliotecario',
+  dar_baixa: 'bibliotecario',
+  cadastrar_pessoa: 'bibliotecario',
+  editar_pessoa: 'bibliotecario',
+
+  definir_tema: 'atendente',
+  sincronizar: 'admin',
+  ver_log: 'admin',
+  mudar_perfil: 'admin'
+};
+
+/**
+ * Diz se um perfil alcança uma ação.
+ *
+ * Ação desconhecida devolve `false`, nunca `true`. Um erro de digitação no
+ * nome da ação tem que fechar a porta, não abrir — é a diferença entre uma
+ * tela quebrada e um vazamento.
+ */
+function podeFazer(perfil, acao) {
+  var exigido = EXIGENCIA[acao];
+  if (!exigido) return false;
+
+  var tem = PERFIS.indexOf(limpar_(perfil));
+  var precisa = PERFIS.indexOf(exigido);
+  if (tem === -1 || precisa === -1) return false;
+
+  return tem >= precisa;
+}
+
+/**
+ * Reduz e-mail ou telefone à forma comparável.
+ *
+ * Telefone é digitado de sete jeitos — com DDD, sem, com parênteses, com
+ * traço, com o 9 na frente. Guarda só os dígitos, e compara pelos últimos
+ * oito: é o que sobrevive a ter ou não DDD e o nono dígito.
+ */
+function normalizarContato(texto) {
+  var bruto = limpar_(texto);
+  if (!bruto) return '';
+
+  if (bruto.indexOf('@') !== -1) return normalizarTexto(bruto);
+
+  var digitos = bruto.replace(/\D/g, '');
+  if (digitos.length < 8) return '';
+  return digitos.slice(-8);
+}
+
+/** Os dois contatos são a mesma pessoa? */
+function mesmoContato(a, b) {
+  var na = normalizarContato(a);
+  var nb = normalizarContato(b);
+  return na !== '' && na === nb;
+}
+
+/**
  * Status possíveis de uma reunião.
  * `vaga_aberta` existe para data criada à mão na planilha, sem reserva ainda.
  */
@@ -665,6 +744,11 @@ if (typeof module !== 'undefined') {
     estaAtrasado: estaAtrasado,
     diasDeAtraso: diasDeAtraso,
     planejarSincronizacao: planejarSincronizacao,
+    PERFIS: PERFIS,
+    EXIGENCIA: EXIGENCIA,
+    podeFazer: podeFazer,
+    normalizarContato: normalizarContato,
+    mesmoContato: mesmoContato,
     montarAvisoDeAtrasos: montarAvisoDeAtrasos,
     escolherReuniaoSemTema: escolherReuniaoSemTema,
     SITUACAO_DISPONIVEL: SITUACAO_DISPONIVEL,

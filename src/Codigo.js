@@ -35,11 +35,23 @@ function onOpen() {
     .addToUi();
 }
 
-function doGet() {
+function doGet(evento) {
   var pagina = HtmlService.createTemplateFromFile('ui/index');
 
   // Nada de nome de casa hardcoded: vem do Config, como toda configuração.
   pagina.nomeCasa = lerConfig('nome_casa', 'Biblioteca');
+
+  // O link mágico chega como ?codigo=. Trocar aqui, no carregamento, é o que
+  // permite ao código ser de uso único: ele morre antes de a página existir.
+  //
+  // A sessão vai para o HTML e o cliente a guarda. Ela nunca volta a aparecer
+  // numa URL — URL vai parar em histórico, print e grupo de WhatsApp.
+  pagina.entrada = 'null';
+  var codigo = evento && evento.parameter ? evento.parameter.codigo : '';
+  if (codigo) {
+    var aberta = abrirSessao(codigo);
+    if (aberta) pagina.entrada = JSON.stringify(aberta);
+  }
 
   return pagina.evaluate()
     .setTitle(pagina.nomeCasa)

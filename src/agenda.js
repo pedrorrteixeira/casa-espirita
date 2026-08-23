@@ -175,7 +175,9 @@ function listarProximasReunioes(quantas) {
  * O tema é a única coisa que a planilha manda e o Agenda não sabe — por isso
  * `planejarSincronizacao` nunca o toca.
  */
-function definirTema(idReuniao, tema, quemRegistrou) {
+function definirTema(sessao, idReuniao, tema) {
+  var quemRegistrou = exigir_(sessao, 'definir_tema').nome;
+
   var texto = limparCampo_(tema);
   if (!texto) throw new Error('Escreva o tema.');
 

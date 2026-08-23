@@ -28,7 +28,10 @@ var PAIS_API_LIVROS = 'BR';
  * que não possui, para consulta e para a lista de doação desejada (D5), e
  * muita edição antiga da FEB não tem nem ISBN nem ano legíveis.
  */
-function criarTitulo(dados, quemRegistrou, permitirDuplicata) {
+function criarTitulo(sessao, dados, permitirDuplicata) {
+  var quem = exigir_(sessao, 'cadastrar_obra');
+  var quemRegistrou = quem.nome;
+
   var nome = limparCampo_(dados && dados.titulo);
   if (!nome) throw new Error('O título é obrigatório.');
 
@@ -74,7 +77,9 @@ function criarTitulo(dados, quemRegistrou, permitirDuplicata) {
  * Atualiza campos de um título. Só mexe no que veio em `mudancas`; o resto
  * fica como está. `id_titulo` não é alterável — é o que liga os exemplares.
  */
-function atualizarTitulo(idTitulo, mudancas, quemRegistrou) {
+function atualizarTitulo(sessao, idTitulo, mudancas) {
+  var quemRegistrou = exigir_(sessao, 'editar_obra').nome;
+
   return comTrava_(function () {
     var titulo = lerTitulo(idTitulo);
     if (!titulo) throw new Error('Título ' + idTitulo + ' não existe.');
@@ -115,7 +120,9 @@ function atualizarTitulo(idTitulo, mudancas, quemRegistrou) {
  * gentileza que o backend faça sozinho, senão erro de digitação no id vira
  * título fantasma.
  */
-function criarExemplar(dados, quemRegistrou) {
+function criarExemplar(sessao, dados) {
+  var quemRegistrou = exigir_(sessao, 'cadastrar_obra').nome;
+
   var idTitulo = Number(dados && dados.id_titulo);
   if (!isFinite(idTitulo) || idTitulo <= 0) {
     throw new Error('Informe o título ao qual este exemplar pertence.');
@@ -165,7 +172,9 @@ function criarExemplar(dados, quemRegistrou) {
  * `ativo` = NÃO, nunca `deleteRow`. A linha fica, e com ela o histórico de
  * circulação do livro — inclusive os empréstimos que já aconteceram.
  */
-function darBaixaExemplar(tombo, motivo, quemRegistrou) {
+function darBaixaExemplar(sessao, tombo, motivo) {
+  var quemRegistrou = exigir_(sessao, 'dar_baixa').nome;
+
   var alvo = Number(tombo);
   if (!isFinite(alvo)) throw new Error('Tombo inválido.');
 
@@ -302,7 +311,8 @@ function verTitulo(idTitulo) {
  * Devolve null quando não há conflito. Quando há, devolve o suficiente para a
  * tela mostrar de qual obra se trata — sem , como toda saída daqui.
  */
-function verificarTituloExistente(dados) {
+function verificarTituloExistente(sessao, dados) {
+  exigir_(sessao, 'cadastrar_obra');
   var achado = acharTituloEquivalente(lerTitulos(), dados);
   if (!achado) return null;
 
@@ -325,15 +335,15 @@ function verificarTituloExistente(dados) {
  * Acrescenta um exemplar a um título que já existe. É o que a tela oferece
  * quando detecta duplicata.
  */
-function acrescentarExemplar(idTitulo, dados, quemRegistrou) {
-  return criarExemplar({
+function acrescentarExemplar(sessao, idTitulo, dados) {
+  return criarExemplar(sessao, {
     id_titulo: idTitulo,
     edicao: dados && dados.edicao,
     editora: dados && dados.editora,
     ano: dados && dados.ano,
     estado: dados && dados.estado_exemplar,
     doado_por: dados && dados.doado_por
-  }, quemRegistrou);
+  });
 }
 
 /** Categorias e estados que a tela de cadastro oferece, da mesma fonte que a
@@ -348,19 +358,19 @@ function lerListasDeCadastro() {
  * A bibliotecária tem o livro na mão: separar em duas telas obrigaria a
  * decorar o id do título recém-criado para digitar na tela seguinte.
  */
-function cadastrarTituloComExemplar(dados, quemRegistrou, permitirDuplicata) {
-  var idTitulo = criarTitulo(dados, quemRegistrou, permitirDuplicata);
+function cadastrarTituloComExemplar(sessao, dados, permitirDuplicata) {
+  var idTitulo = criarTitulo(sessao, dados, permitirDuplicata);
   var resposta = { id_titulo: idTitulo, tombo: null };
 
   if (dados && dados.criar_exemplar) {
-    resposta.tombo = criarExemplar({
+    resposta.tombo = criarExemplar(sessao, {
       id_titulo: idTitulo,
       edicao: dados.edicao,
       editora: dados.editora,
       ano: dados.ano,
       estado: dados.estado_exemplar,
       doado_por: dados.doado_por
-    }, quemRegistrou);
+    });
   }
   return resposta;
 }
@@ -376,7 +386,9 @@ function cadastrarTituloComExemplar(dados, quemRegistrou, permitirDuplicata) {
  * campo de autor, e adivinhar qual dos dois é qual erraria a catalogação de
  * toda psicografia. Quem separa é a bibliotecária (D9).
  */
-function buscarPorIsbn(isbn) {
+function buscarPorIsbn(sessao, isbn) {
+  exigir_(sessao, 'cadastrar_obra');
+
   var limpo = limparCampo_(isbn).replace(/[^0-9Xx]/g, '');
   if (limpo.length !== 10 && limpo.length !== 13) {
     throw new Error('ISBN deve ter 10 ou 13 dígitos.');
@@ -402,7 +414,9 @@ function buscarPorIsbn(isbn) {
  * volta edição de outra editora, de outro ano, e às vezes outro livro. Quem
  * escolhe é a bibliotecária, olhando editora e ano.
  */
-function buscarLivrosPorTitulo(titulo, autor) {
+function buscarLivrosPorTitulo(sessao, titulo, autor) {
+  exigir_(sessao, 'cadastrar_obra');
+
   var nome = limparCampo_(titulo);
   if (nome.length < 3) {
     throw new Error('Escreva ao menos três letras do título.');

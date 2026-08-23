@@ -98,7 +98,8 @@ function verGatilhos() {
 function gatilhoDiario() {
   executarTarefas_('gatilho_diario', [
     { nome: 'sincronizar reuniões', fazer: sincronizarReunioes },
-    { nome: 'avisar atrasos', fazer: avisarAtrasos }
+    { nome: 'avisar atrasos', fazer: avisarAtrasos },
+    { nome: 'limpar sessões vencidas', fazer: limparSessoesVencidas }
   ]);
 }
 
@@ -155,7 +156,7 @@ function avisarAtrasos() {
     throw new Error('Falta `email_admin` na aba Config. Sem ele não há para quem avisar.');
   }
 
-  var aviso = montarAvisoDeAtrasos(listarEmprestados(true));
+  var aviso = montarAvisoDeAtrasos(emprestadosAgora_(true));
 
   var propriedades = PropertiesService.getScriptProperties();
   var anterior = propriedades.getProperty(CHAVE_ULTIMO_AVISO);
