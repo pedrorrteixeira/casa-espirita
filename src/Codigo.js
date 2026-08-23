@@ -27,8 +27,7 @@ function onOpen() {
     .addItem('Ver gatilhos instalados', 'verGatilhos')
     .addSeparator()
     .addItem('Diagnóstico: busca de livros do Google', 'diagnosticarGoogleBooks')
-    .addItem('Migrar para o modelo de edições (uma vez só)',
-      'migrarParaModeloDeEdicoes')
+    .addItem('Diagnóstico: calendários visíveis', 'diagnosticarAgenda')
     .addToUi();
 }
 

@@ -238,3 +238,58 @@ function sincronizarAgora() {
     ui.alert('Não consegui sincronizar', erro.message, ui.ButtonSet.OK);
   }
 }
+
+/**
+ * Lista os calendários que este script enxerga.
+ *
+ * `getCalendarById` devolve nulo tanto para ID errado quanto para calendário
+ * de outra conta, e a mensagem de erro não distingue os dois. Isto mostra o
+ * que existe, com o ID exato para copiar.
+ */
+function diagnosticarAgenda() {
+  var configurado = limparCampo_(lerConfig('id_calendario', ''));
+  var linhas = ['Calendários visíveis para este script:', ''];
+
+  var calendarios;
+  try {
+    calendarios = CalendarApp.getAllCalendars();
+  } catch (erro) {
+    mostrarRelatorio_('Diagnóstico — agenda',
+      'Não consegui listar os calendários: ' + erro.message +
+      '\n\nSe fala de permissão, reautorize pelo menu.');
+    return;
+  }
+
+  if (!calendarios.length) {
+    linhas.push('  (nenhum — esta conta não tem calendário algum)');
+  }
+
+  var achou = false;
+  calendarios.forEach(function (calendario) {
+    var id = calendario.getId();
+    var marca = (id === configurado) ? '  <<< é o configurado' : '';
+    if (id === configurado) achou = true;
+    linhas.push('• ' + calendario.getName());
+    linhas.push('  ' + id + marca);
+    linhas.push('  ' + (calendario.isOwnedByMe() ? 'próprio' : 'assinado de outra conta'));
+    linhas.push('');
+  });
+
+  linhas.push('---');
+  linhas.push('Config → id_calendario: ' +
+    (configurado ? '"' + configurado + '"' : '(vazio)'));
+  linhas.push('');
+
+  if (!configurado) {
+    linhas.push('Copie acima o ID do calendário das reuniões e cole na aba Config.');
+  } else if (achou) {
+    linhas.push('O ID confere. Se a sincronização ainda falhar, o problema é outro.');
+  } else {
+    linhas.push('O ID configurado NÃO está na lista. Duas causas possíveis:');
+    linhas.push('  1. O calendário foi criado em outra conta Google. Crie-o');
+    linhas.push('     nesta conta, ou compartilhe-o com ela.');
+    linhas.push('  2. O ID foi copiado com erro. Compare com a lista acima.');
+  }
+
+  mostrarRelatorio_('Diagnóstico — agenda', linhas.join('\n'));
+}
