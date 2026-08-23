@@ -292,10 +292,87 @@
     return item;
   }
 
+  // --- duplicata -------------------------------------------------------------
+  var painelDuplicata = $('#painel-duplicata');
+  var duplicataDetalhe = $('#duplicata-detalhe');
+
+  function esconderDuplicata() {
+    painelDuplicata.classList.add('oculta');
+  }
+
+  formulario.addEventListener('input', esconderDuplicata);
+
   formulario.addEventListener('submit', function (evento) {
     evento.preventDefault();
+    esconderDuplicata();
 
     var botao = $('#btn-salvar');
+    botao.disabled = true;
+    dizer(estadoCadastro, 'Conferindo se já existe…');
+
+    // Pergunta ANTES de salvar para poder oferecer a saída certa. O servidor
+    // recusa de novo na hora de gravar, dentro da trava — este aviso é
+    // conveniência, não a garantia.
+    google.script.run
+      .withSuccessHandler(function (existente) {
+        if (!existente) {
+          salvar(false);
+          return;
+        }
+        botao.disabled = false;
+        dizer(estadoCadastro, '');
+        mostrarDuplicata(existente);
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer(estadoCadastro, erro.message || 'Não consegui conferir.', 'erro');
+      })
+      .verificarTituloExistente(dadosDoFormulario().dados);
+  });
+
+  function mostrarDuplicata(existente) {
+    var partes = [existente.autoria];
+    if (existente.edicoes && existente.edicoes.length) {
+      partes.push(existente.edicoes.join(' / '));
+    }
+    partes.push(existente.total === 1
+      ? '1 exemplar no acervo'
+      : existente.total + ' exemplares no acervo');
+
+    duplicataDetalhe.textContent = '"' + existente.titulo + '" — ' +
+      partes.filter(function (p) { return p; }).join(' · ');
+
+    painelDuplicata.classList.remove('oculta');
+    painelDuplicata.dataset.idTitulo = existente.id_titulo;
+    painelDuplicata.scrollIntoView({ block: 'nearest' });
+  }
+
+  $('#btn-somar-exemplar').addEventListener('click', function () {
+    var pacote = dadosDoFormulario();
+    var id = Number(painelDuplicata.dataset.idTitulo);
+    esconderDuplicata();
+    dizer(estadoCadastro, 'Acrescentando exemplar…');
+
+    google.script.run
+      .withSuccessHandler(function (tombo) {
+        dizer(estadoCadastro,
+          'Exemplar acrescentado à obra ' + id + '. Etiquete o livro com o ' +
+          'tombo ' + tombo + '.', 'ok');
+        limparFormulario(pacote.quem);
+      })
+      .withFailureHandler(function (erro) {
+        dizer(estadoCadastro, erro.message || 'Não consegui acrescentar.', 'erro');
+      })
+      .acrescentarExemplar(id, pacote.dados, pacote.quem);
+  });
+
+  $('#btn-forcar').addEventListener('click', function () {
+    esconderDuplicata();
+    salvar(true);
+  });
+
+  /** Lê o formulário inteiro, separando o que é dado do que é controle. */
+  function dadosDoFormulario() {
     var dados = {};
     Array.prototype.forEach.call(formulario.elements, function (campo) {
       if (!campo.name) return;
@@ -305,6 +382,15 @@
     var quem = dados.quem_registrou;
     delete dados.quem_registrou;
     delete dados.psicografada;   // controle de tela, não coluna
+
+    return { dados: dados, quem: quem };
+  }
+
+  function salvar(permitirDuplicata) {
+    var pacote = dadosDoFormulario();
+    var botao = $('#btn-salvar');
+    var dados = pacote.dados;
+    var quem = pacote.quem;
 
     botao.disabled = true;
     dizer(estadoCadastro, 'Salvando…');
@@ -317,27 +403,39 @@
           recado += ' Etiquete o livro com o tombo ' + resposta.tombo + '.';
         }
         dizer(estadoCadastro, recado, 'ok');
-
-        // Limpa a obra mas preserva quem está cadastrando e a série: quem
-        // cataloga faz uma pilha de livros seguidos, quase sempre da mesma
-        // série ou da mesma doação.
-        var serie = formulario.elements.serie.value;
-        var doador = formulario.elements.doado_por.value;
-        var editora = formulario.elements.editora.value;
-        formulario.reset();
-        formulario.elements.quem_registrou.value = quem;
-        formulario.elements.serie.value = serie;
-        formulario.elements.doado_por.value = doador;
-        formulario.elements.editora.value = editora;
-        ajustarAutoria();
-        formulario.elements.titulo.focus();
+        limparFormulario(quem);
       })
       .withFailureHandler(function (erro) {
         botao.disabled = false;
         dizer(estadoCadastro, erro.message || 'Não consegui salvar.', 'erro');
       })
-      .cadastrarTituloComExemplar(dados, quem);
-  });
+      .cadastrarTituloComExemplar(dados, quem, permitirDuplicata);
+  }
+
+  /**
+   * Limpa a obra mas preserva quem está cadastrando, a série, o doador e a
+   * editora: cataloga-se uma pilha de livros seguidos, quase sempre da mesma
+   * série, da mesma doação ou da mesma editora.
+   */
+  function limparFormulario(quem) {
+    $('#btn-salvar').disabled = false;
+
+    var serie = formulario.elements.serie.value;
+    var doador = formulario.elements.doado_por.value;
+    var editora = formulario.elements.editora.value;
+
+    formulario.reset();
+    formulario.elements.quem_registrou.value = quem;
+    formulario.elements.serie.value = serie;
+    formulario.elements.doado_por.value = doador;
+    formulario.elements.editora.value = editora;
+
+    ajustarAutoria();
+    $('#aviso-isbn').textContent = '';
+    $('#aviso-titulo').textContent = '';
+    $('#candidatos').innerHTML = '';
+    formulario.elements.titulo.focus();
+  }
 
   // ------------------------------------------------------------- auxiliares
   /**

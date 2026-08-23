@@ -127,6 +127,49 @@ function separarAutoria(autores) {
 }
 
 /**
+ * Procura um título já cadastrado equivalente ao que se quer criar.
+ *
+ * Duplicata acontece porque a casa recebe a segunda cópia do mesmo livro meses
+ * depois, e quem cataloga não lembra que já entrou. O resultado é o acervo
+ * dizendo "1 exemplar" duas vezes em vez de "2 exemplares", e a busca
+ * devolvendo a mesma obra repetida.
+ *
+ * Equivalência compara texto normalizado — "Nosso Lar" e "nosso lar " são o
+ * mesmo livro. Mas título igual NÃO basta: obras diferentes compartilham nome.
+ * Por isso, quando as duas fichas têm autoria preenchida e ela difere, são
+ * obras distintas e ambas podem existir.
+ *
+ * Quando uma das duas está sem autoria, trata como equivalente: é o caso de
+ * ficha incompleta, e avisar de leve é melhor do que deixar duplicar calado.
+ */
+function acharTituloEquivalente(titulos, candidato) {
+  if (!candidato) return null;
+
+  var nome = normalizarTexto(candidato.titulo);
+  if (!nome) return null;
+
+  var autoriaNova = autoriaComparavel_(candidato);
+
+  var iguais = (titulos || []).filter(function (existente) {
+    if (normalizarTexto(existente.titulo) !== nome) return false;
+
+    var autoriaVelha = autoriaComparavel_(existente);
+    if (autoriaNova && autoriaVelha && autoriaNova !== autoriaVelha) return false;
+
+    return true;
+  });
+
+  return iguais.length ? iguais[0] : null;
+}
+
+/** Autoria reduzida a texto comparável, juntando os dois campos. */
+function autoriaComparavel_(titulo) {
+  return normalizarTexto(
+    limpar_(titulo.autor_ou_medium) + ' ' + limpar_(titulo.autor_espiritual)
+  );
+}
+
+/**
  * Lista as edições distintas presentes entre os exemplares ativos de um
  * título — "FEB Editora 1978", "Petit 2015".
  *
@@ -289,6 +332,7 @@ if (typeof module !== 'undefined') {
     separarAutoria: separarAutoria,
     resumirDisponibilidade: resumirDisponibilidade,
     resumirEdicoes: resumirEdicoes,
+    acharTituloEquivalente: acharTituloEquivalente,
     SITUACAO_DISPONIVEL: SITUACAO_DISPONIVEL,
     SITUACAO_EMPRESTADO: SITUACAO_EMPRESTADO,
     SITUACAO_BAIXADO: SITUACAO_BAIXADO

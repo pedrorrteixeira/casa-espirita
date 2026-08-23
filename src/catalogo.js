@@ -28,11 +28,25 @@ var PAIS_API_LIVROS = 'BR';
  * que não possui, para consulta e para a lista de doação desejada (D5), e
  * muita edição antiga da FEB não tem nem ISBN nem ano legíveis.
  */
-function criarTitulo(dados, quemRegistrou) {
+function criarTitulo(dados, quemRegistrou, permitirDuplicata) {
   var nome = limparCampo_(dados && dados.titulo);
   if (!nome) throw new Error('O título é obrigatório.');
 
   return comTrava_(function () {
+    // Dentro da trava e lendo sem cache, de propósito. A tela já avisa antes
+    // de salvar, mas dois voluntários cadastrando o mesmo livro ao mesmo
+    // tempo passariam pelo aviso e criariam a duplicata assim mesmo.
+    if (!permitirDuplicata) {
+      var jaExiste = acharTituloEquivalente(lerTitulos(true), dados);
+      if (jaExiste) {
+        throw new Error(
+          'O título "' + jaExiste.titulo + '" já está cadastrado (nº ' +
+          jaExiste.id_titulo + '). Acrescente um exemplar a ele em vez de ' +
+          'criar outro.'
+        );
+      }
+    }
+
     var registro = {
       id_titulo: proximoId_(ABA_TITULOS, 'id_titulo'),
       titulo: nome,
@@ -280,6 +294,48 @@ function verTitulo(idTitulo) {
   };
 }
 
+/**
+ * A tela pergunta isto ANTES de salvar, para poder oferecer a saída certa em
+ * vez de só recusar. Quem cadastra um livro que já existe quase sempre quer
+ * acrescentar um exemplar, não criar outra ficha.
+ *
+ * Devolve null quando não há conflito. Quando há, devolve o suficiente para a
+ * tela mostrar de qual obra se trata — sem , como toda saída daqui.
+ */
+function verificarTituloExistente(dados) {
+  var achado = acharTituloEquivalente(lerTitulos(), dados);
+  if (!achado) return null;
+
+  var exemplares = lerExemplares().filter(function (exemplar) {
+    return Number(exemplar.id_titulo) === Number(achado.id_titulo);
+  });
+  var resumo = resumirDisponibilidade(exemplares);
+
+  return {
+    id_titulo: achado.id_titulo,
+    titulo: achado.titulo,
+    autoria: montarAutoria(achado),
+    total: resumo.total,
+    disponiveis: resumo.disponiveis,
+    edicoes: resumirEdicoes(exemplares)
+  };
+}
+
+/**
+ * Acrescenta um exemplar a um título que já existe. É o que a tela oferece
+ * quando detecta duplicata.
+ */
+function acrescentarExemplar(idTitulo, dados, quemRegistrou) {
+  return criarExemplar({
+    id_titulo: idTitulo,
+    edicao: dados && dados.edicao,
+    editora: dados && dados.editora,
+    ano: dados && dados.ano,
+    estado: dados && dados.estado_exemplar,
+    doado_por: dados && dados.doado_por
+  }, quemRegistrou);
+}
+
 /** Categorias e estados que a tela de cadastro oferece, da mesma fonte que a
  *  validação da planilha usa. */
 function lerListasDeCadastro() {
@@ -292,8 +348,8 @@ function lerListasDeCadastro() {
  * A bibliotecária tem o livro na mão: separar em duas telas obrigaria a
  * decorar o id do título recém-criado para digitar na tela seguinte.
  */
-function cadastrarTituloComExemplar(dados, quemRegistrou) {
-  var idTitulo = criarTitulo(dados, quemRegistrou);
+function cadastrarTituloComExemplar(dados, quemRegistrou, permitirDuplicata) {
+  var idTitulo = criarTitulo(dados, quemRegistrou, permitirDuplicata);
   var resposta = { id_titulo: idTitulo, tombo: null };
 
   if (dados && dados.criar_exemplar) {

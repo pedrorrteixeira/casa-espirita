@@ -11,7 +11,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-  normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria, resumirEdicoes,
+  normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria, resumirEdicoes, acharTituloEquivalente,
   SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO
 } = require('../src/dominio.js');
 
@@ -403,4 +403,52 @@ test('editora sem ano, e ano sem editora, ainda informam algo', () => {
   assert.deepEqual(resumirEdicoes([exemplar({ editora: 'FEB Editora', ano: '' })]),
     ['FEB Editora']);
   assert.deepEqual(resumirEdicoes([exemplar({ editora: '', ano: 1978 })]), ['1978']);
+});
+
+// --- acharTituloEquivalente --------------------------------------------------
+
+test('acha o mesmo título mesmo com caixa e acento diferentes', () => {
+  const achado = acharTituloEquivalente(ACERVO, {
+    titulo: 'NOSSO LAR',
+    autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
+    autor_espiritual: 'André Luiz'
+  });
+  assert.equal(achado.id_titulo, 1);
+});
+
+test('espaço sobrando não engana', () => {
+  const achado = acharTituloEquivalente(ACERVO, {
+    titulo: '  Nosso   Lar  ',
+    autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
+    autor_espiritual: 'André Luiz'
+  });
+  assert.equal(achado.id_titulo, 1);
+});
+
+test('título igual com autoria diferente são obras diferentes', () => {
+  // Obras distintas compartilham nome. Bloquear por título só impediria
+  // catalogar a segunda.
+  const achado = acharTituloEquivalente(ACERVO, {
+    titulo: 'Nosso Lar',
+    autor_ou_medium: 'Outro Autor Qualquer',
+    autor_espiritual: ''
+  });
+  assert.equal(achado, null);
+});
+
+test('ficha sem autoria conta como equivalente, para avisar', () => {
+  // Melhor avisar de leve numa ficha incompleta do que duplicar calado.
+  const achado = acharTituloEquivalente(ACERVO, { titulo: 'Nosso Lar' });
+  assert.equal(achado.id_titulo, 1);
+});
+
+test('título diferente não casa', () => {
+  assert.equal(acharTituloEquivalente(ACERVO, { titulo: 'A Gênese' }), null);
+});
+
+test('acervo vazio e entrada vazia não quebram', () => {
+  assert.equal(acharTituloEquivalente([], { titulo: 'Nosso Lar' }), null);
+  assert.equal(acharTituloEquivalente(null, { titulo: 'Nosso Lar' }), null);
+  assert.equal(acharTituloEquivalente(ACERVO, { titulo: '' }), null);
+  assert.equal(acharTituloEquivalente(ACERVO, null), null);
 });

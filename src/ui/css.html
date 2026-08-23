@@ -156,6 +156,26 @@
 
   #btn-salvar { width: 100%; }
 
+  /* Duplicata é escolha, não erro: amarelo de atenção, não vermelho de falha,
+     e a opção mais provável vem primeiro e destacada. */
+  .aviso {
+    border: 1px solid #e0b400;
+    border-left: 4px solid #e0b400;
+    border-radius: 6px;
+    background: #fffbe6;
+    padding: .8rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .aviso p { margin: 0 0 .5rem; }
+  .escolhas { display: flex; flex-direction: column; gap: .5rem; }
+  .escolhas button { width: 100%; }
+  button.discreto {
+    background: var(--fundo);
+    color: var(--tinta-fraca);
+    border-color: var(--borda);
+    font-weight: 400;
+  }
+
   /* Telas estreitas: dois campos lado a lado viram ilegíveis. */
   @media (max-width: 30rem) {
     .par, .linha-isbn { flex-direction: column; gap: 0; }

@@ -187,6 +187,21 @@
         </div>
       </fieldset>
 
+      <!-- Aparece quando o título já existe. Não é erro: é uma escolha, e a
+           primeira opção costuma ser a certa. -->
+      <div id="painel-duplicata" class="aviso oculta" role="alert">
+        <p><strong>Esta obra já está no acervo.</strong></p>
+        <p id="duplicata-detalhe"></p>
+        <div class="escolhas">
+          <button type="button" id="btn-somar-exemplar">
+            Acrescentar este exemplar à obra existente
+          </button>
+          <button type="button" id="btn-forcar" class="discreto">
+            Não é a mesma obra — cadastrar separado
+          </button>
+        </div>
+      </div>
+
       <button type="submit" id="btn-salvar">Salvar</button>
       <div id="estado-cadastro" class="estado" role="status" aria-live="polite"></div>
     </form>
