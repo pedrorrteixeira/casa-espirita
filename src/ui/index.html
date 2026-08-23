@@ -62,10 +62,15 @@
         </div>
         <p id="aviso-isbn" class="dica"></p>
 
-        <label>
-          Título <span class="obrigatorio">*</span>
-          <input name="titulo" required>
-        </label>
+        <div class="linha-isbn">
+          <label class="cresce">
+            Título <span class="obrigatorio">*</span>
+            <input name="titulo" required>
+          </label>
+          <button type="button" id="btn-titulo">Procurar no Google</button>
+        </div>
+        <p id="aviso-titulo" class="dica"></p>
+        <ul id="candidatos" class="candidatos"></ul>
 
         <label>
           Subtítulo

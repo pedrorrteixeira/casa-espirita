@@ -188,6 +188,73 @@
       .buscarPorIsbn(campo.value);
   });
 
+  // Busca por título: saída para quando o ISBN não acha, o que é comum em
+  // editora brasileira. Não preenche sozinho — mostra candidatos e a
+  // bibliotecária escolhe, olhando editora e ano.
+  $('#btn-titulo').addEventListener('click', function () {
+    var aviso = $('#aviso-titulo');
+    var lista = $('#candidatos');
+    var botao = this;
+    var titulo = formulario.elements.titulo.value.trim();
+
+    lista.innerHTML = '';
+    if (titulo.length < 3) {
+      aviso.textContent = 'Escreva ao menos três letras do título.';
+      return;
+    }
+
+    botao.disabled = true;
+    aviso.textContent = 'Procurando…';
+
+    google.script.run
+      .withSuccessHandler(function (livros) {
+        botao.disabled = false;
+        if (!livros.length) {
+          aviso.textContent = 'Nada encontrado com esse título. Preencha à mão.';
+          return;
+        }
+        aviso.textContent = livros.length + ' resultado(s). Escolha a edição ' +
+          'certa pela editora e pelo ano:';
+        livros.forEach(function (livro) {
+          lista.appendChild(itemCandidato(livro, aviso, lista));
+        });
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        aviso.textContent = erro.message || 'Não consegui consultar agora.';
+      })
+      .buscarLivrosPorTitulo(titulo, formulario.elements.autor.value);
+  });
+
+  function itemCandidato(livro, aviso, lista) {
+    var item = document.createElement('li');
+    var botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'candidato';
+
+    botao.appendChild(elemento('strong',
+      livro.titulo + (livro.subtitulo ? ' — ' + livro.subtitulo : '')));
+
+    var detalhes = [livro.autor, livro.editora, livro.ano, livro.isbn]
+      .filter(function (parte) { return parte; })
+      .join(' · ');
+    botao.appendChild(elemento('small', detalhes || 'sem outros dados'));
+
+    botao.addEventListener('click', function () {
+      ['titulo', 'subtitulo', 'autor', 'editora', 'ano', 'sinopse', 'isbn']
+        .forEach(function (campo) {
+          formulario.elements[campo].value = livro[campo] || '';
+        });
+      lista.innerHTML = '';
+      aviso.textContent = 'Preenchido. Confira — e se for psicografia, mova o ' +
+        'nome do campo Autor para Médium.';
+      formulario.elements.autor_espiritual.focus();
+    });
+
+    item.appendChild(botao);
+    return item;
+  }
+
   formulario.addEventListener('submit', function (evento) {
     evento.preventDefault();
 

@@ -310,12 +310,57 @@ function buscarPorIsbn(isbn) {
     throw new Error('ISBN deve ter 10 ou 13 dígitos.');
   }
 
-  var url = 'https://www.googleapis.com/books/v1/volumes?q=isbn:' + encodeURIComponent(limpo);
+  var achados = consultarGoogleBooks_('isbn:' + limpo, 1);
+  if (!achados.length) return null;
+
+  var livro = achados[0];
+  livro.isbn = limpo;   // o ISBN digitado vale mais que o que a API devolveu
+  return livro;
+}
+
+/**
+ * Procura por título, e opcionalmente autor, quando a consulta por ISBN não
+ * acha nada.
+ *
+ * O índice de ISBN do Google é fraco para editora brasileira — muita obra do
+ * acervo tem código de barras impresso e mesmo assim não aparece. Por título,
+ * costuma aparecer.
+ *
+ * Diferente do ISBN, aqui NÃO preenche sozinho: busca por título é ambígua,
+ * volta edição de outra editora, de outro ano, e às vezes outro livro. Quem
+ * escolhe é a bibliotecária, olhando editora e ano.
+ */
+function buscarLivrosPorTitulo(titulo, autor) {
+  var nome = limparCampo_(titulo);
+  if (nome.length < 3) {
+    throw new Error('Escreva ao menos três letras do título.');
+  }
+
+  var consulta = 'intitle:"' + nome + '"';
+  var quem = limparCampo_(autor);
+  if (quem) consulta += ' inauthor:"' + quem + '"';
+
+  return consultarGoogleBooks_(consulta, 8);
+}
+
+/**
+ * A chamada à API, com o tratamento de erro que as duas buscas compartilham.
+ * Devolve lista de livros já no nosso formato — possivelmente vazia.
+ *
+ * Nunca preenche `autor_espiritual` nem `medium`: o Google devolve o médium
+ * no campo de autor, e adivinhar qual dos dois é qual erraria a catalogação
+ * de toda psicografia. Quem separa é a bibliotecária (D9).
+ */
+function consultarGoogleBooks_(consulta, quantos) {
+  var url = 'https://www.googleapis.com/books/v1/volumes'
+    + '?q=' + encodeURIComponent(consulta)
+    + '&maxResults=' + quantos;
+
   var resposta;
   try {
     resposta = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
   } catch (erro) {
-    return null;  // sem internet ou fora do ar: o manual continua valendo
+    return [];  // sem internet ou fora do ar: o manual continua valendo
   }
 
   var codigo = resposta.getResponseCode();
@@ -332,26 +377,40 @@ function buscarPorIsbn(isbn) {
     throw new Error('A busca de livros do Google está fora do ar agora. ' +
       'Tente daqui a pouco, ou preencha à mão.');
   }
-  if (codigo !== 200) return null;
+  if (codigo !== 200) return [];
 
   var dados;
   try {
     dados = JSON.parse(resposta.getContentText());
   } catch (erro) {
-    return null;
+    return [];
   }
-  if (!dados.items || !dados.items.length) return null;
+  if (!dados.items || !dados.items.length) return [];
 
-  var livro = dados.items[0].volumeInfo || {};
-  return {
-    titulo: livro.title || '',
-    subtitulo: livro.subtitle || '',
-    autor: (livro.authors || []).join('; '),
-    editora: livro.publisher || '',
-    ano: (livro.publishedDate || '').substring(0, 4),
-    sinopse: livro.description || '',
-    isbn: limpo
-  };
+  return dados.items.map(function (item) {
+    var livro = item.volumeInfo || {};
+    return {
+      titulo: livro.title || '',
+      subtitulo: livro.subtitle || '',
+      autor: (livro.authors || []).join('; '),
+      editora: livro.publisher || '',
+      ano: String(livro.publishedDate || '').substring(0, 4),
+      sinopse: livro.description || '',
+      isbn: isbnDe_(livro.industryIdentifiers)
+    };
+  });
+}
+
+/** Prefere o ISBN-13; aceita o que houver. */
+function isbnDe_(identificadores) {
+  var lista = identificadores || [];
+  for (var i = 0; i < lista.length; i++) {
+    if (lista[i].type === 'ISBN_13') return lista[i].identifier;
+  }
+  for (var j = 0; j < lista.length; j++) {
+    if (String(lista[j].type).indexOf('ISBN') === 0) return lista[j].identifier;
+  }
+  return '';
 }
 
 /** Data no formato que o voluntário lê, no fuso da planilha. */

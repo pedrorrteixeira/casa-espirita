@@ -121,6 +121,25 @@
 
   .obrigatorio { color: var(--erro); }
 
+  /* Candidatos da busca por título. Precisam mostrar editora e ano: é o que
+     distingue uma edição da outra, e escolher a errada erra a ficha. */
+  .candidatos { list-style: none; padding: 0; margin: .6rem 0 0; }
+  .candidatos:empty { margin: 0; }
+  .candidatos li { margin-bottom: .4rem; }
+  .candidato {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: .55rem .7rem;
+    background: var(--fundo-suave);
+    color: var(--tinta);
+    border: 1px solid var(--borda);
+    font-weight: 400;
+    line-height: 1.35;
+  }
+  .candidato strong { display: block; font-weight: 600; }
+  .candidato small { color: var(--tinta-fraca); }
+
   button {
     padding: .6rem 1.1rem;
     min-height: 44px;
