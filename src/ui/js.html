@@ -165,9 +165,11 @@
         if (!livro) {
           // O ISBN vai no recado de propósito: sem ele, "não achei" repetido
           // é indistinguível de "a consulta nem saiu".
+          // Aponta o outro caminho em vez de mandar desistir: edição antiga
+          // sem ISBN indexado costuma ser achada pelo título.
           aviso.textContent = 'ISBN ' + campo.value.trim() + ': não achei. ' +
-            'Edição antiga da FEB costuma não estar no Google — preencha à ' +
-            'mão, é normal.';
+            'Escreva o título abaixo e use "Procurar no Google" — edição ' +
+            'antiga costuma aparecer pelo título mesmo sem ISBN.';
           return;
         }
         // Sobrescreve, inclusive com vazio. Antes só preenchia campo vazio, e
