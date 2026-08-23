@@ -157,20 +157,29 @@
       .withSuccessHandler(function (livro) {
         botao.disabled = false;
         if (!livro) {
-          aviso.textContent = 'Não achei. Edição antiga da FEB costuma não estar ' +
-            'no Google — preencha à mão, é normal.';
+          // O ISBN vai no recado de propósito: sem ele, "não achei" repetido
+          // é indistinguível de "a consulta nem saiu".
+          aviso.textContent = 'ISBN ' + campo.value.trim() + ': não achei. ' +
+            'Edição antiga da FEB costuma não estar no Google — preencha à ' +
+            'mão, é normal.';
           return;
         }
+        // Sobrescreve, inclusive com vazio. Antes só preenchia campo vazio, e
+        // o efeito era pior do que o problema que evitava: consultar um
+        // segundo ISBN não mudava nada, porque os campos já estavam cheios do
+        // primeiro. Parecia que a consulta devolvia sempre o mesmo livro.
+        //
+        // Limpar o que a nova resposta não traz é de propósito: manter o
+        // subtítulo do livro anterior montaria uma ficha Frankenstein com
+        // dados de duas obras, e ninguém perceberia.
         ['titulo', 'subtitulo', 'autor', 'editora', 'ano', 'sinopse']
           .forEach(function (campoNome) {
-            // Só preenche o que está vazio: não apaga o que a bibliotecária
-            // já digitou.
-            if (livro[campoNome] && !formulario.elements[campoNome].value.trim()) {
-              formulario.elements[campoNome].value = livro[campoNome];
-            }
+            formulario.elements[campoNome].value = livro[campoNome] || '';
           });
-        aviso.textContent = 'Preenchido. Confira — e se for psicografia, mova o ' +
-          'nome do campo Autor para Médium.';
+
+        aviso.textContent = 'Preenchido com o ISBN ' + livro.isbn + ': "' +
+          livro.titulo + '". Confira — e se for psicografia, mova o nome do ' +
+          'campo Autor para Médium.';
       })
       .withFailureHandler(function (erro) {
         botao.disabled = false;
