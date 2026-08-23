@@ -498,18 +498,29 @@ function diagnosticarGoogleBooks() {
 
       var total = '(não consegui ler)';
       var primeiro = '';
+      var separado = '';
       try {
         var dados = JSON.parse(corpo);
         total = dados.totalItems;
         if (dados.items && dados.items.length) {
           var livro = dados.items[0].volumeInfo || {};
           primeiro = livro.title + ' / ' + (livro.authors || []).join('; ') +
-            ' / ' + livro.publisher;
+            ' / ' + (livro.publisher || 'sem editora');
+
+          // Mostra também como o sistema interpreta esses autores. O bloco
+          // acima é a resposta crua; este é o que vai para a ficha. Ver os
+          // dois lado a lado é o que permite conferir a separação de
+          // psicografia sem abrir a tela de cadastro.
+          var autoria = separarAutoria(livro.authors);
+          separado = 'autor: "' + autoria.autor + '"' +
+            ' | autor_espiritual: "' + autoria.autor_espiritual + '"' +
+            ' | medium: "' + autoria.medium + '"';
         }
       } catch (erro) { /* corpo não é JSON: o próprio corpo vai no relatório */ }
 
       linhas.push('  HTTP ' + codigo + '   totalItems: ' + total);
-      if (primeiro) linhas.push('  1º: ' + primeiro);
+      if (primeiro) linhas.push('  cru      : ' + primeiro);
+      if (separado) linhas.push('  separado : ' + separado);
       if (codigo !== 200) linhas.push('  corpo: ' + corpo.substring(0, 400));
     } catch (erro) {
       linhas.push('  EXCEÇÃO: ' + erro.message);
