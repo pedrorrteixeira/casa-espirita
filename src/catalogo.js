@@ -418,10 +418,18 @@ function consultarGoogleBooks_(consulta, quantos) {
 
   return dados.items.map(function (item) {
     var livro = item.volumeInfo || {};
+
+    // O Google preserva a marca "(Espírito)" da catalogação brasileira, então
+    // dá para separar médium de autor espiritual sem chutar. Antes isto era
+    // trabalho manual da bibliotecária em toda psicografia.
+    var autoria = separarAutoria(livro.authors);
+
     return {
       titulo: livro.title || '',
       subtitulo: livro.subtitle || '',
-      autor: (livro.authors || []).join('; '),
+      autor: autoria.autor,
+      autor_espiritual: autoria.autor_espiritual,
+      medium: autoria.medium,
       editora: livro.publisher || '',
       ano: String(livro.publishedDate || '').substring(0, 4),
       sinopse: livro.description || '',

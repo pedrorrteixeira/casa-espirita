@@ -11,7 +11,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-  normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade,
+  normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria,
   SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO
 } = require('../src/dominio.js');
 
@@ -297,4 +297,75 @@ test('o vocabulário de situacao é o mesmo em dominio.js e setup.js', () => {
     assert.ok(setup.includes('"' + palavra + '"'),
       `setup.js não produz mais a situação "${palavra}"`);
   }
+});
+
+// --- separarAutoria ----------------------------------------------------------
+// A forma exata em que o Google devolve os autores, verificada em 22/08/2026
+// pelo diagnóstico rodando na planilha da casa.
+
+test('separa médium de autor espiritual pela marca (Espírito)', () => {
+  // Resposta real do Google para intitle:"Nosso Lar".
+  assert.deepEqual(
+    separarAutoria(['Francisco Cândido Xavier', 'André Luiz (Espírito)']),
+    { autor: '', autor_espiritual: 'André Luiz', medium: 'Francisco Cândido Xavier' }
+  );
+});
+
+test('a marca decide, não a ordem', () => {
+  // O médium costuma vir primeiro, mas não dá para contar com isso.
+  assert.deepEqual(
+    separarAutoria(['Emmanuel (Espírito)', 'Francisco Cândido Xavier']),
+    { autor: '', autor_espiritual: 'Emmanuel', medium: 'Francisco Cândido Xavier' }
+  );
+});
+
+test('sem marca nenhuma é obra de autor, não psicografia', () => {
+  assert.deepEqual(
+    separarAutoria(['Allan Kardec']),
+    { autor: 'Allan Kardec', autor_espiritual: '', medium: '' }
+  );
+  assert.deepEqual(
+    separarAutoria(['George Orwell', 'Heloisa Jahn', 'Alexandre Hubner']),
+    { autor: 'George Orwell; Heloisa Jahn; Alexandre Hubner',
+      autor_espiritual: '', medium: '' }
+  );
+});
+
+test('aceita as variações da marca que aparecem no catálogo', () => {
+  assert.equal(separarAutoria(['Emmanuel (Espirito)']).autor_espiritual, 'Emmanuel');
+  assert.equal(separarAutoria(['Emmanuel (espírito)']).autor_espiritual, 'Emmanuel');
+  assert.equal(separarAutoria(['Emmanuel (Espíritos)']).autor_espiritual, 'Emmanuel');
+  assert.equal(separarAutoria(['Emmanuel (Spirit)']).autor_espiritual, 'Emmanuel');
+});
+
+test('parêntese que não é marca de espírito fica no nome', () => {
+  // A convenção de catalogação da casa põe o apelido entre parênteses.
+  assert.deepEqual(
+    separarAutoria(['Francisco Cândido Xavier (Chico Xavier)', 'André Luiz (Espírito)']),
+    { autor: '',
+      autor_espiritual: 'André Luiz',
+      medium: 'Francisco Cândido Xavier (Chico Xavier)' }
+  );
+});
+
+test('aceita string com ponto e vírgula, não só lista', () => {
+  assert.deepEqual(
+    separarAutoria('Francisco Cândido Xavier; André Luiz (Espírito)'),
+    { autor: '', autor_espiritual: 'André Luiz', medium: 'Francisco Cândido Xavier' }
+  );
+});
+
+test('entrada vazia ou estranha não quebra', () => {
+  const vazio = { autor: '', autor_espiritual: '', medium: '' };
+  assert.deepEqual(separarAutoria([]), vazio);
+  assert.deepEqual(separarAutoria(null), vazio);
+  assert.deepEqual(separarAutoria(undefined), vazio);
+  assert.deepEqual(separarAutoria(['', '  ']), vazio);
+});
+
+test('psicografia sem médium identificado ainda é psicografia', () => {
+  assert.deepEqual(
+    separarAutoria(['André Luiz (Espírito)']),
+    { autor: '', autor_espiritual: 'André Luiz', medium: '' }
+  );
 });

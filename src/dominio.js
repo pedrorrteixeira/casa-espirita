@@ -86,6 +86,51 @@ function buscarTitulos(titulos, termo) {
 }
 
 /**
+ * Separa autor, autor espiritual e médium a partir da lista de autores que a
+ * API de livros do Google devolve.
+ *
+ * A catalogação brasileira marca o autor espiritual com "(Espírito)", e o
+ * Google preserva a marca:
+ *
+ *   ["Francisco Cândido Xavier", "André Luiz (Espírito)"]
+ *      -> medium: Francisco Cândido Xavier
+ *         autor_espiritual: André Luiz
+ *
+ * A ordem não decide nada — a marca decide. O médium costuma vir primeiro,
+ * mas não dá para contar com isso.
+ *
+ * Sem nenhuma marca, é obra não psicografada e tudo vai para `autor` (D9).
+ */
+function separarAutoria(autores) {
+  var lista = [];
+  if (typeof autores === 'string') lista = autores.split(';');
+  else if (Array.isArray(autores)) lista = autores;
+
+  var marca = /\s*\((esp[íi]ritos?|spirit)\)\s*$/i;
+
+  var espirituais = [];
+  var encarnados = [];
+
+  lista.forEach(function (bruto) {
+    var nome = limpar_(bruto);
+    if (!nome) return;
+    if (marca.test(nome)) espirituais.push(nome.replace(marca, ''));
+    else encarnados.push(nome);
+  });
+
+  // Sem autor espiritual não há psicografia: quem sobra é autor comum.
+  if (!espirituais.length) {
+    return { autor: encarnados.join('; '), autor_espiritual: '', medium: '' };
+  }
+
+  return {
+    autor: '',
+    autor_espiritual: espirituais.join('; '),
+    medium: encarnados.join('; ')
+  };
+}
+
+/**
  * Vocabulário da coluna derivada `situacao`.
  *
  * ATENÇÃO: estas mesmas palavras estão escritas dentro da ARRAYFORMULA em
@@ -215,6 +260,7 @@ if (typeof module !== 'undefined') {
     normalizarTexto: normalizarTexto,
     montarAutoria: montarAutoria,
     buscarTitulos: buscarTitulos,
+    separarAutoria: separarAutoria,
     resumirDisponibilidade: resumirDisponibilidade,
     SITUACAO_DISPONIVEL: SITUACAO_DISPONIVEL,
     SITUACAO_EMPRESTADO: SITUACAO_EMPRESTADO,

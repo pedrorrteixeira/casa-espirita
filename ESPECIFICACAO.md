@@ -233,9 +233,24 @@ nas telas de `atendente` para cima.
   disciplina de leitura em lote.
 - **A URL do Web App muda** a cada nova implantação com novo ID. Use "gerenciar
   implantações → editar" para manter a mesma URL ao atualizar.
-- **API do Google Books** cobre mal edições FEB e LAKE dos anos 70–80, e muitas
-  nem têm ISBN. Trate o preenchimento automático como atalho, não como caminho
-  principal.
+- **API do Google Books** — medido em 22/08/2026, e o resultado contraria o
+  que se supunha aqui antes:
+  - a cobertura de obra espírita brasileira é **boa**. `intitle:"Nosso Lar"`
+    devolve 300 resultados, o primeiro sendo a edição da FEB Editora;
+  - a busca **por título funciona melhor que por ISBN**. Edição antiga sem
+    ISBN legível continua existindo, mas acha-se pelo título;
+  - a API devolve o autor espiritual com a marca `(Espírito)`, como manda a
+    catalogação brasileira: `["Francisco Cândido Xavier", "André Luiz
+    (Espírito)"]`. `separarAutoria()` usa isso para preencher
+    `autor_espiritual` e `medium` sem chutar;
+  - **exige chave de API própria** (`chave_api_livros` no `Config`) e o
+    parâmetro `country`. Sem chave, a cota é de um projeto anônimo
+    compartilhado e vive esgotada (HTTP 429); sem `country`, a chamada vinda
+    de servidor dá HTTP 403 `unknownLocation`. Ver PLANO.md.
+
+  Ainda assim, o preenchimento automático é atalho e não caminho principal: a
+  categoria, a série e o link on-line nunca vêm da API, e a conferência é da
+  bibliotecária.
 - **`link_online`**: as obras de Kardec são domínio público. Psicografias do
   Chico Xavier, obras do Divaldo Franco e traduções da FEB não são. Apontar
   apenas para fontes oficiais (FEB, federações estaduais, site da editora).

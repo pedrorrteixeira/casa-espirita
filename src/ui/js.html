@@ -10,6 +10,12 @@
 
   var $ = function (selecao) { return document.querySelector(selecao); };
 
+  // Campos que a consulta ao Google governa. Ela sobrescreve todos, inclusive
+  // com vazio: manter metade do livro anterior montaria uma ficha com dados de
+  // duas obras diferentes.
+  var CAMPOS_DA_CONSULTA = ['titulo', 'subtitulo', 'autor', 'autor_espiritual',
+    'medium', 'editora', 'ano', 'sinopse'];
+
   // ---------------------------------------------------------------- navegação
   document.querySelectorAll('.aba').forEach(function (aba) {
     aba.addEventListener('click', function () {
@@ -172,14 +178,12 @@
         // Limpar o que a nova resposta não traz é de propósito: manter o
         // subtítulo do livro anterior montaria uma ficha Frankenstein com
         // dados de duas obras, e ninguém perceberia.
-        ['titulo', 'subtitulo', 'autor', 'editora', 'ano', 'sinopse']
-          .forEach(function (campoNome) {
-            formulario.elements[campoNome].value = livro[campoNome] || '';
-          });
+        CAMPOS_DA_CONSULTA.forEach(function (campoNome) {
+          formulario.elements[campoNome].value = livro[campoNome] || '';
+        });
 
         aviso.textContent = 'Preenchido com o ISBN ' + livro.isbn + ': "' +
-          livro.titulo + '". Confira — e se for psicografia, mova o nome do ' +
-          'campo Autor para Médium.';
+          livro.titulo + '". ' + recadoDeAutoria(livro);
       })
       .withFailureHandler(function (erro) {
         botao.disabled = false;
@@ -235,20 +239,24 @@
     botao.appendChild(elemento('strong',
       livro.titulo + (livro.subtitulo ? ' — ' + livro.subtitulo : '')));
 
-    var detalhes = [livro.autor, livro.editora, livro.ano, livro.isbn]
+    // A autoria aparece já resolvida: em psicografia `autor` vem vazio, e
+    // mostrar só ele deixaria o candidato sem identificação nenhuma.
+    var quem = livro.autor_espiritual
+      ? livro.autor_espiritual + (livro.medium ? ' / méd. ' + livro.medium : '')
+      : livro.autor;
+
+    var detalhes = [quem, livro.editora, livro.ano, livro.isbn]
       .filter(function (parte) { return parte; })
       .join(' · ');
     botao.appendChild(elemento('small', detalhes || 'sem outros dados'));
 
     botao.addEventListener('click', function () {
-      ['titulo', 'subtitulo', 'autor', 'editora', 'ano', 'sinopse', 'isbn']
-        .forEach(function (campo) {
-          formulario.elements[campo].value = livro[campo] || '';
-        });
+      CAMPOS_DA_CONSULTA.concat(['isbn']).forEach(function (campo) {
+        formulario.elements[campo].value = livro[campo] || '';
+      });
       lista.innerHTML = '';
-      aviso.textContent = 'Preenchido. Confira — e se for psicografia, mova o ' +
-        'nome do campo Autor para Médium.';
-      formulario.elements.autor_espiritual.focus();
+      aviso.textContent = recadoDeAutoria(livro);
+      formulario.elements.categoria.focus();   // é o que o Google não traz
     });
 
     item.appendChild(botao);
@@ -299,6 +307,20 @@
   });
 
   // ------------------------------------------------------------- auxiliares
+  /**
+   * Diz o que conferir na autoria. O Google marca o autor espiritual com
+   * "(Espírito)" e o sistema separa sozinho — mas quando a marca não vem, o
+   * médium acaba no campo Autor, e aí alguém precisa mover.
+   */
+  function recadoDeAutoria(livro) {
+    if (livro.autor_espiritual) {
+      return 'Psicografia reconhecida: autor espiritual e médium foram ' +
+        'separados. Confira, e escolha a categoria.';
+    }
+    return 'Confira a autoria — se esta obra for psicografada, o Google não ' +
+      'marcou, e o nome no campo Autor precisa ir para Médium.';
+  }
+
   function elemento(marca, texto, classe) {
     var no = document.createElement(marca);
     no.textContent = texto;          // textContent, nunca innerHTML: o acervo
