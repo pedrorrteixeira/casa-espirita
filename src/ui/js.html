@@ -47,7 +47,10 @@
 
   function mostrarIdentidade() {
     var entrou = !!EU.perfil;
-    $('#quem-sou').textContent = entrou ? EU.nome + ' · ' + EU.perfil : '';
+    // Nome e perfil em elementos separados: em tela estreita o perfil sai e o
+    // nome fica, porque saber COM QUEM se está gravando é o que importa.
+    $('#meu-nome').textContent = entrou ? EU.nome : '';
+    $('#meu-perfil').textContent = entrou ? ' · ' + EU.perfil : '';
     $('#btn-entrar').classList.toggle('oculta', entrou);
     $('#btn-sair').classList.toggle('oculta', !entrou);
 

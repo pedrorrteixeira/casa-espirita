@@ -5,20 +5,27 @@
 <?!= include('ui/css'); ?>
 
 <header class="topo">
-  <div class="marca">
-    <!-- `logo_url` no Config ganha da embutida: é a saída para trocar a
-         marca sem depender de quem mexe no código. -->
-    <? if (logoUrl) { ?>
-      <img class="logo" src="<?= logoUrl ?>" alt="">
-    <? } else { ?>
-      <?!= include('ui/logo'); ?>
-    <? } ?>
-    <h1><?= nomeCasa ?></h1>
-  </div>
-  <div id="identidade" class="identidade">
-    <span id="quem-sou"></span>
-    <button type="button" id="btn-entrar" class="discreto">Entrar</button>
-    <button type="button" id="btn-sair" class="discreto oculta">Sair</button>
+  <!-- Marca à esquerda, identidade à direita, na MESMA linha. A barra de abas
+       já tem sete itens e não comporta um botão à direita num celular. -->
+  <div class="cabeca">
+    <div class="marca">
+      <!-- `logo_url` no Config ganha da embutida: é a saída para trocar a
+           marca sem depender de quem mexe no código. -->
+      <? if (logoUrl) { ?>
+        <img class="logo" src="<?= logoUrl ?>" alt="">
+      <? } else { ?>
+        <?!= include('ui/logo'); ?>
+      <? } ?>
+      <h1><?= nomeCasa ?></h1>
+    </div>
+
+    <div id="identidade" class="identidade">
+      <span id="quem-sou">
+        <b id="meu-nome"></b><span id="meu-perfil"></span>
+      </span>
+      <button type="button" id="btn-entrar" class="discreto">Área do voluntário</button>
+      <button type="button" id="btn-sair" class="discreto oculta">Sair</button>
+    </div>
   </div>
 
   <nav class="abas" role="tablist">
@@ -28,7 +35,7 @@
     <button class="aba" data-visao="agenda" role="tab">Agenda</button>
     <button class="aba" data-visao="meus" role="tab">Meus livros</button>
     <button class="aba oculta" data-visao="cadastro" data-exige="cadastrar_obra" role="tab">Cadastrar</button>
-    <button class="aba" data-visao="manual" role="tab">Manual</button>
+    <button class="aba oculta" data-visao="manual" data-exige="emprestar" role="tab">Manual</button>
   </nav>
 </header>
 
@@ -143,10 +150,21 @@
   <!-- --------------------------------------------------------------- entrada -->
   <section id="visao-entrada" class="visao oculta">
     <div class="cartao-entrada">
-      <h2>Entrar</h2>
+      <h2>Área do voluntário</h2>
       <p class="dica">
-        Só para voluntários da casa. Informe o e-mail do seu cadastro e você
-        recebe um link de acesso — não há senha.
+        Aqui ficam as telas de empréstimo, devolução, cadastro e o manual de
+        uso. Buscar livro, ver a agenda e consultar os próprios prazos não
+        precisam disto.
+      </p>
+      <p class="dica">
+        <strong>Não há senha.</strong> Informe o e-mail do seu cadastro e
+        chega um link de acesso. Ele vale 30 minutos e serve uma vez; depois
+        de entrar, você fica conectado por 12 horas.
+      </p>
+      <p class="dica">
+        Se o link não chegar, confira o spam. Se ainda assim não vier, seu
+        e-mail pode não estar no cadastro — fale com quem coordena a
+        biblioteca.
       </p>
 
       <form id="form-entrar">

@@ -99,7 +99,18 @@
   .topo { padding-top: 1.25rem; }
   .topo h1 { margin: 0 0 .75rem; font-size: 1.35rem; }
 
-  .abas { display: flex; gap: .25rem; border-bottom: 1px solid var(--borda); }
+  /* Sete abas não cabem em 360px. Rolagem lateral é o padrão que as pessoas
+     já conhecem, e é melhor que quebrar em duas linhas ou espremer o texto
+     até virar ilegível. */
+  .abas {
+    display: flex;
+    gap: .25rem;
+    border-bottom: 1px solid var(--borda);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .abas::-webkit-scrollbar { display: none; }
+  .aba { flex: none; white-space: nowrap; }
   .aba {
     appearance: none;
     background: none;
@@ -275,13 +286,21 @@
   .identidade {
     display: flex;
     align-items: center;
-    gap: .6rem;
-    margin-bottom: .6rem;
+    gap: .5rem;
+    flex: none;
     font-size: .85rem;
     color: var(--tinta-fraca);
   }
-  .identidade button { padding: .3rem .7rem; min-height: 34px; font-size: .85rem; }
-  #quem-sou { flex: 1; }
+  .identidade button { padding: .35rem .8rem; min-height: 38px; font-size: .85rem; }
+
+  /* O nome corta com reticências antes de empurrar o botão para fora. */
+  #quem-sou {
+    max-width: 11rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #meu-nome { color: var(--tinta); }
 
   .cartao-entrada {
     max-width: 24rem;
@@ -304,7 +323,14 @@
      tratamento. O nome vem do Config e fica ao lado, e não dentro da imagem:
      assim ele é texto de verdade — selecionável, lido por leitor de tela e
      legível em qualquer tamanho de fonte. */
-  .marca { display: flex; align-items: center; gap: .75rem; margin-bottom: .8rem; }
+  .cabeca {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .8rem;
+  }
+  .marca { display: flex; align-items: center; gap: .75rem; min-width: 0; }
   .marca h1 {
     margin: 0;
     font-size: 1.3rem;
@@ -313,9 +339,12 @@
   }
   .logo { width: 48px; height: 48px; object-fit: contain; flex: none; }
 
-  @media (max-width: 26rem) {
-    .marca h1 { font-size: 1.12rem; }
+  @media (max-width: 30rem) {
+    .marca h1 { font-size: 1.05rem; }
     .logo { width: 40px; height: 40px; }
+    /* O perfil sai; o nome fica. Saber COM QUEM se grava é o que importa. */
+    #meu-perfil { display: none; }
+    #quem-sou { max-width: 6.5rem; }
   }
 
   /* --- manual ---
