@@ -1,0 +1,503 @@
+<!-- ui/manual.html — o manual do voluntário, dentro do próprio sistema.
+
+     Mora aqui, e não num documento à parte, por dois motivos. O link é o mesmo
+     que todo mundo já tem, então não há nada novo para distribuir nem permissão
+     para gerenciar. E o manual fica ao lado do código que descreve: quando uma
+     tela muda, o texto muda no mesmo commit. Documento separado envelhece em
+     silêncio, e um manual errado é pior que nenhum. -->
+
+<section id="visao-manual" class="visao oculta">
+
+  <p class="dica manual-abertura">
+    Como emprestar, devolver e catalogar — escrito por situação, do jeito que a
+    coisa chega no balcão.
+  </p>
+
+  <nav class="manual-indice" aria-label="Seções do manual">
+    <a href="#m-entrar"><span>Antes de tudo</span> Entrar no sistema</a>
+    <a href="#m-emprestar"><span>No balcão</span> Alguém quer levar um livro</a>
+    <a href="#m-devolver"><span>No balcão</span> Trouxeram um livro de volta</a>
+    <a href="#m-renovar"><span>No balcão</span> Querem ficar mais tempo</a>
+    <a href="#m-atrasos"><span>No balcão</span> Ver quem está atrasado</a>
+    <a href="#m-doacao"><span>Cadastrar</span> Chegaram livros novos</a>
+    <a href="#m-sumiu"><span>Cadastrar</span> Um livro sumiu ou estragou</a>
+    <a href="#m-pessoas"><span>Cadastrar</span> Gente nova, e gente que mudou</a>
+    <a href="#m-tema"><span>Agenda</span> Informar o tema da reunião</a>
+    <a href="#m-meus"><span>Meus livros</span> Até quando é o meu livro</a>
+    <a href="#m-planilha"><span>Cuidado</span> O que não mexer na planilha</a>
+    <a href="#m-travou"><span>Socorro</span> Quando alguma coisa trava</a>
+    <a href="#m-palavras"><span>Referência</span> As palavras do sistema</a>
+  </nav>
+
+  <!-- ------------------------------------------------------------- entrar -->
+  <article class="verbete" id="m-entrar">
+    <p class="onde-fica">Antes de tudo</p>
+    <h2>Entrar no sistema</h2>
+
+    <p>
+      Buscar livro, ver a agenda e consultar os próprios empréstimos funcionam
+      sem entrar. Para <strong>emprestar, devolver ou cadastrar</strong>, você
+      precisa se identificar.
+    </p>
+
+    <ol class="passos">
+      <li>No alto da tela, toque em <kbd>Entrar</kbd>.</li>
+      <li>Escreva o e-mail do seu cadastro e toque em <kbd>Receber link</kbd>.</li>
+      <li>Abra o e-mail e toque no link. Vale <strong>30 minutos</strong> e serve uma vez.</li>
+      <li>Pronto: você fica conectado por <strong>12 horas</strong>, um plantão inteiro.</li>
+    </ol>
+
+    <p>
+      Não há senha, e isso não é esquecimento — senha guardada em planilha seria
+      risco sem ganho nenhum.
+    </p>
+
+    <dl class="e-se">
+      <dt>O e-mail não chegou</dt>
+      <dd>
+        Espere um minuto e olhe o spam. Se não vier, seu e-mail pode não estar
+        no cadastro, ou seu acesso ainda ser só de consulta.
+      </dd>
+
+      <dt>Diz que a sessão expirou</dt>
+      <dd>Passaram-se as 12 horas. Toque em <kbd>Entrar</kbd> e peça outro link.</dd>
+
+      <dt>As abas Balcão e Cadastrar não aparecem</dt>
+      <dd>
+        Ou você não entrou, ou seu acesso não alcança essas telas. Cada
+        voluntário vê o que o seu papel na casa exige.
+      </dd>
+    </dl>
+  </article>
+
+  <!-- ---------------------------------------------------------- emprestar -->
+  <article class="verbete" id="m-emprestar">
+    <p class="onde-fica">No balcão</p>
+    <h2>Alguém quer levar um livro</h2>
+
+    <ol class="passos">
+      <li>Abra a aba <kbd>Balcão</kbd>.</li>
+      <li>
+        Digite o <strong>tombo</strong> — o número da etiqueta colada no livro.
+        A ficha aparece sozinha.
+      </li>
+      <li>
+        Se disser <strong>disponível</strong>, escreva as primeiras letras do
+        nome da pessoa em <kbd>Para quem</kbd>.
+      </li>
+      <li>Toque no nome dela na lista.</li>
+      <li>Toque em <kbd>Emprestar</kbd>. A tela diz até quando é a devolução.</li>
+    </ol>
+
+    <p>São 21 dias, contados de hoje.</p>
+
+    <dl class="e-se">
+      <dt>O nome da pessoa não aparece</dt>
+      <dd>
+        Ela não está cadastrada, ou está inativa. Cadastre em
+        <kbd>Cadastrar → Pessoa nova</kbd>: leva dez segundos, só o nome é
+        obrigatório.
+      </dd>
+
+      <dt>Diz que há mais gente com esse nome</dt>
+      <dd>Escreva mais letras. A lista mostra 15 e avisa quantas ficaram de fora.</dd>
+
+      <dt>A ficha diz “emprestado”</dt>
+      <dd>Está com outra pessoa. A tela mostra com quem e até quando.</dd>
+
+      <dt>A ficha diz “baixado”</dt>
+      <dd>Esse exemplar saiu do acervo — perdido, danificado ou doado.</dd>
+
+      <dt>Diz que o tombo não existe</dt>
+      <dd>
+        Confira o número. Se estiver certo, o livro nunca foi catalogado: fale
+        com a bibliotecária antes de emprestar.
+      </dd>
+
+      <dt>Diz que o cadastro da pessoa está inativo</dt>
+      <dd>
+        Não insista pela tela. Há um motivo registrado, e quem resolve é a
+        bibliotecária.
+      </dd>
+    </dl>
+  </article>
+
+  <!-- ----------------------------------------------------------- devolver -->
+  <article class="verbete" id="m-devolver">
+    <p class="onde-fica">No balcão</p>
+    <h2>Trouxeram um livro de volta</h2>
+
+    <ol class="passos">
+      <li>Aba <kbd>Balcão</kbd>, digite o tombo.</li>
+      <li>Toque em <kbd>Registrar devolução</kbd>.</li>
+    </ol>
+
+    <p>
+      Só isso. Se estava atrasado, a tela diz quantos dias — é informação, não
+      cobrança: a casa não tem multa.
+    </p>
+
+    <dl class="e-se">
+      <dt>Diz que o livro não está emprestado</dt>
+      <dd>
+        Ou alguém já registrou a devolução, ou o empréstimo nunca foi
+        registrado. Guarde o livro e avise a bibliotecária — não tente
+        consertar pela planilha.
+      </dd>
+    </dl>
+  </article>
+
+  <!-- ------------------------------------------------------------ renovar -->
+  <article class="verbete" id="m-renovar">
+    <p class="onde-fica">No balcão</p>
+    <h2>Querem ficar mais tempo com o livro</h2>
+
+    <p>
+      Aba <kbd>Balcão</kbd>, digite o tombo, toque em
+      <kbd>Renovar o prazo</kbd>. Ganham mais 21 dias contados de hoje, mesmo
+      que o livro já estivesse atrasado.
+    </p>
+
+    <p>
+      Não há limite de renovações. Se houver fila para aquele título, quem
+      decide é você, olhando quem está esperando.
+    </p>
+  </article>
+
+  <!-- ------------------------------------------------------------ atrasos -->
+  <article class="verbete" id="m-atrasos">
+    <p class="onde-fica">No balcão</p>
+    <h2>Ver quem está com livro atrasado</h2>
+
+    <p>
+      Aba <kbd>Atrasos</kbd>, dois botões: <kbd>Só os atrasados</kbd> e
+      <kbd>Tudo emprestado</kbd>. O mais atrasado vem primeiro, com uma marca
+      alaranjada ao lado.
+    </p>
+
+    <p>
+      Quem administra também recebe essa lista por e-mail, sozinha, quando ela
+      muda.
+    </p>
+  </article>
+
+  <!-- ------------------------------------------------------------- doação -->
+  <article class="verbete" id="m-doacao">
+    <p class="onde-fica">Cadastrar</p>
+    <h2>Chegaram livros novos</h2>
+
+    <ol class="passos">
+      <li>Aba <kbd>Cadastrar</kbd>, bloco <kbd>Obra</kbd>.</li>
+      <li>
+        Escreva o título e toque em <kbd>Procurar no Google</kbd>. Funciona
+        melhor que o ISBN, inclusive para edições antigas da FEB.
+      </li>
+      <li>
+        Escolha a edição certa <strong>comparando editora e ano com o livro na
+        sua mão</strong>. Edições diferentes da mesma obra aparecem juntas.
+      </li>
+      <li>Escolha a <strong>categoria</strong> — o Google nunca traz esse campo.</li>
+      <li>
+        Deixe marcado <kbd>Criar exemplar</kbd> e preencha editora, ano, edição
+        e estado de conservação <em>deste</em> livro.
+      </li>
+      <li>
+        <kbd>Salvar</kbd>. A tela devolve o número do tombo: escreva na etiqueta
+        e cole no livro antes de guardar.
+      </li>
+    </ol>
+
+    <div class="cuidado">
+      <p>
+        <strong>Se aparecer “Esta obra já está no acervo”</strong>, quase sempre
+        você quer <kbd>Acrescentar este exemplar à obra existente</kbd> — é o
+        caso de a casa ter ganhado a segunda cópia do mesmo livro.
+      </p>
+      <p>
+        Só use <kbd>cadastrar separado</kbd> se for mesmo outra obra com o mesmo
+        nome.
+      </p>
+    </div>
+
+    <dl class="e-se">
+      <dt>O livro é psicografado</dt>
+      <dd>
+        O sistema costuma reconhecer sozinho e separar. Confira: em
+        <kbd>Médium</kbd> vai quem escreveu; em <kbd>Autor espiritual</kbd>, o
+        espírito.
+      </dd>
+
+      <dt>O autor tem apelido</dt>
+      <dd>
+        Escreva os dois: <em>Francisco Cândido Xavier (Chico Xavier)</em>. É o
+        que faz alguém buscar “chico” e encontrar.
+      </dd>
+
+      <dt>A busca não achou nada</dt>
+      <dd>Preencha à mão. É normal, e o cadastro manual funciona igual.</dd>
+
+      <dt>Diz que a cota do Google acabou</dt>
+      <dd>Volte amanhã ou preencha à mão. É limite diário do Google, não defeito.</dd>
+
+      <dt>A casa não tem o livro, mas quero registrar</dt>
+      <dd>
+        Pode: desmarque <kbd>Criar exemplar</kbd>. A obra fica no catálogo como
+        não disponível, e vira lista de doação desejada.
+      </dd>
+    </dl>
+  </article>
+
+  <!-- -------------------------------------------------------------- sumiu -->
+  <article class="verbete" id="m-sumiu">
+    <p class="onde-fica">Cadastrar</p>
+    <h2>Um livro sumiu ou estragou</h2>
+
+    <p>
+      Isso se chama <strong>dar baixa</strong>. O exemplar sai do acervo, mas a
+      ficha continua, com todo o histórico de quem já o leu.
+    </p>
+
+    <div class="proibido">
+      <p>
+        <strong>Nunca apague uma linha da planilha para tirar um livro do
+        acervo.</strong> Apagar leva junto o histórico e quebra as contas do
+        sistema. Dar baixa é a forma certa, e ela guarda o motivo.
+      </p>
+    </div>
+
+    <p>
+      Se o livro estiver emprestado, o sistema recusa a baixa: registre a
+      devolução primeiro, ou anote a perda no empréstimo.
+    </p>
+  </article>
+
+  <!-- ------------------------------------------------------------ pessoas -->
+  <article class="verbete" id="m-pessoas">
+    <p class="onde-fica">Cadastrar</p>
+    <h2>Gente nova, e gente que mudou</h2>
+
+    <p>
+      Em <kbd>Cadastrar → Pessoa nova</kbd>, só o nome é obrigatório. Telefone e
+      e-mail são opcionais de propósito: a casa não nega livro a quem não quis
+      dar contato.
+    </p>
+
+    <p>
+      Para corrigir, use <kbd>Alterar pessoa</kbd>. Ali o telefone e o e-mail
+      <strong>não aparecem na tela</strong> — o sistema abre por um link sem
+      senha, e mostrar contato de frequentador seria publicar a agenda da casa.
+    </p>
+
+    <div class="cuidado">
+      <p>
+        <strong>Contato em branco quer dizer “não mexer”, não “apagar”.</strong>
+        Para trocar, escreva o valor novo. Para apagar de verdade, marque a
+        caixa que diz isso.
+      </p>
+      <p>Se precisar <em>ler</em> um telefone, ele está na planilha.</p>
+    </div>
+
+    <dl class="e-se">
+      <dt>Alguém saiu da casa ou mudou de cidade</dt>
+      <dd>
+        Desmarque <kbd>Cadastro ativo</kbd>. A pessoa some da tela de empréstimo
+        na hora e o histórico fica inteiro. Não apague ninguém.
+      </dd>
+
+      <dt>Cadastrei a pessoa duas vezes</dt>
+      <dd>
+        O sistema recusa nomes iguais. Se passaram dois cadastros parecidos,
+        avise quem administra: juntar cadastros é feito na planilha, com
+        cuidado.
+      </dd>
+    </dl>
+  </article>
+
+  <!-- --------------------------------------------------------------- tema -->
+  <article class="verbete" id="m-tema">
+    <p class="onde-fica">Agenda</p>
+    <h2>Informar o tema da reunião</h2>
+
+    <p>
+      A aba <kbd>Agenda</kbd> mostra as próximas reuniões e quem palestra em
+      cada uma. Onde o tema ainda está em branco aparece um campo para
+      escrevê-lo.
+    </p>
+
+    <p>
+      As datas vêm da página de agendamento do Google e chegam sozinhas, de
+      madrugada. Quem palestra recebe um lembrete por e-mail na quinta, quando a
+      reunião de segunda ainda está sem tema.
+    </p>
+
+    <p>
+      Para se inscrever como palestrante, use o link da página de agendamento —
+      não é por aqui. Cada data aceita uma pessoa só.
+    </p>
+  </article>
+
+  <!-- --------------------------------------------------------------- meus -->
+  <article class="verbete" id="m-meus">
+    <p class="onde-fica">Meus livros</p>
+    <h2>Até quando é o meu livro</h2>
+
+    <p>
+      Qualquer frequentador vê os próprios prazos sem entrar: aba
+      <kbd>Meus livros</kbd>, digite o e-mail <em>ou</em> o telefone do
+      cadastro.
+    </p>
+
+    <p>
+      A tela mostra só os livros e as datas. É a resposta para a pergunta que
+      mais se ouve no balcão, sem ninguém precisar consultar por outro.
+    </p>
+  </article>
+
+  <!-- ----------------------------------------------------------- planilha -->
+  <article class="verbete" id="m-planilha">
+    <p class="onde-fica">Cuidado</p>
+    <h2>O que não mexer na planilha</h2>
+
+    <p>
+      Quase tudo se faz pelo sistema. Se você tem acesso à planilha, três coisas
+      ali quebram o acervo <strong>sem avisar</strong>.
+    </p>
+
+    <div class="proibido">
+      <p><strong>1. As colunas que se calculam sozinhas.</strong></p>
+      <p>
+        Em <kbd>Titulos</kbd>: <kbd>qtd_exemplares</kbd> e
+        <kbd>qtd_disponiveis</kbd>. Em <kbd>Exemplares</kbd>:
+        <kbd>situacao</kbd>, <kbd>com_quem</kbd> e
+        <kbd>previsao_devolucao</kbd>.
+      </p>
+      <p>
+        Digitar em qualquer uma apaga a fórmula, e a contagem para de funcionar
+        para o acervo <em>inteiro</em> — não só para aquela linha. A planilha
+        avisa antes de deixar; leia o aviso.
+      </p>
+    </div>
+
+    <div class="proibido">
+      <p><strong>2. Os títulos das colunas, na primeira linha.</strong></p>
+      <p>
+        O sistema procura as colunas pelo nome. Renomear uma faz o cadastro
+        parar de gravar naquele campo, em silêncio.
+      </p>
+    </div>
+
+    <div class="proibido">
+      <p><strong>3. Apagar linha, em qualquer aba.</strong></p>
+      <p>
+        Nada no sistema apaga linha — nem devolução, nem baixa, nem cadastro
+        inativado. É assim de propósito: o histórico é o que permite saber o que
+        aconteceu com um livro. Quando algo precisa sair, o jeito certo é sempre
+        marcar, nunca apagar.
+      </p>
+    </div>
+
+    <p>
+      <strong>Linha vermelha na aba Reunioes</strong> quer dizer duas reuniões
+      marcadas para a mesma data. Não aconteceu sozinho — alguém digitou à mão.
+      Avise quem administra.
+    </p>
+  </article>
+
+  <!-- ------------------------------------------------------------- travou -->
+  <article class="verbete" id="m-travou">
+    <p class="onde-fica">Socorro</p>
+    <h2>Quando alguma coisa trava</h2>
+
+    <dl class="e-se">
+      <dt>O sistema não abre</dt>
+      <dd>
+        Se o seu navegador tem várias contas Google, ele às vezes tenta abrir
+        pela conta errada. Tente numa janela anônima.
+      </dd>
+
+      <dt>A busca não acha um livro que existe</dt>
+      <dd>
+        Tente parte do título, ou o nome do autor. A busca não liga para
+        acentos: “andre luiz” acha “André Luiz”. Se ainda assim não achar, o
+        livro pode não ter sido catalogado.
+      </dd>
+
+      <dt>Salvei e não apareceu</dt>
+      <dd>
+        A busca guarda o resultado por cinco minutos para ficar rápida. Espere
+        um pouco e procure de novo.
+      </dd>
+
+      <dt>Deu um erro que eu não entendo</dt>
+      <dd>
+        Anote a mensagem inteira — ela costuma dizer o que fazer — e avise quem
+        administra. Não tente corrigir pela planilha.
+      </dd>
+    </dl>
+
+    <p>
+      Quem administra tem, no menu <kbd>Biblioteca</kbd> da planilha,
+      diagnósticos que dizem exatamente o que está falhando na busca de livros e
+      na agenda.
+    </p>
+  </article>
+
+  <!-- ------------------------------------------------------------ palavras -->
+  <article class="verbete" id="m-palavras">
+    <p class="onde-fica">Referência</p>
+    <h2>As palavras que o sistema usa</h2>
+
+    <dl class="palavras">
+      <dt>Título</dt>
+      <dd>
+        A obra. <em>Nosso Lar</em> é um título, mesmo que a casa tenha três
+        cópias — ou nenhuma.
+      </dd>
+
+      <dt>Exemplar</dt>
+      <dd>
+        O livro de papel, o objeto. Três cópias de <em>Nosso Lar</em> são três
+        exemplares de um título só.
+      </dd>
+
+      <dt>Tombo</dt>
+      <dd>
+        O número da etiqueta colada no exemplar. É por ele que se empresta e se
+        devolve, nunca pelo título.
+      </dd>
+
+      <dt>Frequentador</dt>
+      <dd>
+        Quem pega livro emprestado. Palestrante é um frequentador com uma marca
+        a mais.
+      </dd>
+
+      <dt>Baixa</dt>
+      <dd>Tirar um exemplar do acervo: perdido, danificado ou doado.</dd>
+
+      <dt>Autor espiritual e médium</dt>
+      <dd>
+        Em obra psicografada são duas pessoas. <em>Nosso Lar</em> é de André
+        Luiz, psicografado por Chico Xavier — e alguém pode procurar por
+        qualquer um dos dois.
+      </dd>
+
+      <dt>Categoria</dt>
+      <dd>
+        doutrinário, romance, infantil, estudo, mediunidade, biografia,
+        mensagens, poesia, outros.
+      </dd>
+
+      <dt>Estado</dt>
+      <dd>novo, bom, regular, ruim — a conservação daquele exemplar.</dd>
+    </dl>
+  </article>
+
+  <p class="manual-fim">
+    Este manual descreve o sistema como ele está hoje. Se a tela não
+    corresponder ao que está escrito aqui, o manual é que está velho — avise
+    quem administra. E lembre: nada no sistema apaga informação, então errar e
+    corrigir é sempre possível. Na dúvida, registre.
+  </p>
+
+</section>

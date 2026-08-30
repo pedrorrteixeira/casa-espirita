@@ -4,28 +4,93 @@
      corredor, e a de busca por quem está com o livro na mão. Alvo de toque de
      44px e fonte de 16px nos campos — abaixo disso o iOS dá zoom sozinho ao
      focar, e a pessoa perde o contexto da tela. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bitter:wght@600;700&display=swap">
+
 <style>
+  /* Identidade da Casa Espírita Francisco de Assis — Pitangui/MG.
+     O azul e o marrom vêm da logomarca: o arco e a figura de Francisco.
+
+     As cores de ESTADO (disponível, emprestado, atrasado) são outra coisa e
+     não seguem a marca: elas significam, e trocá-las por tons da logo faria
+     um livro atrasado parecer decoração. */
   :root {
-    --tinta: #202124;
-    --tinta-fraca: #5f6368;
+    --tinta: #1f2328;
+    --tinta-fraca: #5b6570;
     --fundo: #ffffff;
-    --fundo-suave: #f6f7f9;
-    --borda: #dadce0;
-    --acento: #1a5c3a;      /* verde sóbrio, não institucional demais */
+    --fundo-suave: #f4f7fa;
+    --borda: #d3dde6;
+
+    --acento: #2f6699;      /* azul da logo, escurecido para texto legível */
+    --acento-claro: #4a86c5;
+    --acento-suave: #e7f0f8;
+    --marrom: #8a5a34;      /* o hábito de Francisco */
+    --marrom-suave: #f5ede4;
+
     --disponivel: #1a7f4b;
     --emprestado: #a35200;
-    --ausente: #7a7a7a;
+    --ausente: #6b7580;
     --erro: #b3261e;
+
+    --aviso-borda: #a8860a;
+    --aviso-fundo: #fdf6e0;
+    --sobre-acento: #ffffff;   /* texto sobre o azul cheio */
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --tinta: #e6ebf0;
+      --tinta-fraca: #9aa7b4;
+      --fundo: #14181c;
+      --fundo-suave: #1c2229;
+      --borda: #2c353e;
+
+      --acento: #7fb3e0;
+      --acento-claro: #4a86c5;
+      --acento-suave: #1b2a38;
+      --marrom: #c99a70;
+      --marrom-suave: #2a2019;
+
+      --aviso-borda: #a8860a;
+      --aviso-fundo: #2b2510;
+
+      --disponivel: #6ec99a;
+      --emprestado: #e0a765;
+      --ausente: #99a3ad;
+      --erro: #f0938c;
+      --sobre-acento: #10171d;
+    }
   }
 
   * { box-sizing: border-box; }
 
+  /* 17px e entrelinha larga: o acervo é operado por gente de todas as idades,
+     em pé, no corredor. Atkinson Hyperlegible foi desenhada para baixa visão e
+     distingue 0 de O e 1 de l — num sistema em que tudo é número de tombo,
+     isso deixa de ser detalhe. */
   body {
     margin: 0;
     padding: 0 1rem 3rem;
     background: var(--fundo);
     color: var(--tinta);
-    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 17px/1.6 "Atkinson Hyperlegible", system-ui, -apple-system,
+          "Segoe UI", Roboto, sans-serif;
+  }
+
+  h1, h2, legend {
+    font-family: Bitter, Georgia, "Times New Roman", serif;
+    text-wrap: balance;
+  }
+
+  /* Número de tombo, prazo, contagem: alinhados em coluna. */
+  .meta, .selo, kbd { font-variant-numeric: tabular-nums; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      transition-duration: .01ms !important;
+    }
   }
 
   main, .topo { max-width: 46rem; margin: 0 auto; }
@@ -46,6 +111,7 @@
     color: var(--tinta-fraca);
     cursor: pointer;
   }
+  .aba:hover { color: var(--tinta); }
   .aba.ativa { color: var(--acento); border-bottom-color: var(--acento); font-weight: 600; }
 
   .visao { padding-top: 1.25rem; }
@@ -110,9 +176,10 @@
   }
   input[type="checkbox"] { width: auto; min-height: 0; margin: 0; }
   textarea { min-height: 0; resize: vertical; }
-  input:focus, select:focus, textarea:focus, button:focus-visible {
-    outline: 2px solid var(--acento);
-    outline-offset: 1px;
+  input:focus, select:focus, textarea:focus, button:focus-visible,
+  a:focus-visible, .aba:focus-visible {
+    outline: 3px solid var(--acento);
+    outline-offset: 2px;
   }
 
   .par { display: flex; gap: .75rem; }
@@ -146,7 +213,7 @@
     border: 1px solid var(--acento);
     border-radius: 6px;
     background: var(--acento);
-    color: #fff;
+    color: var(--sobre-acento);
     font: inherit;
     font-weight: 600;
     cursor: pointer;
@@ -159,10 +226,11 @@
   /* Duplicata é escolha, não erro: amarelo de atenção, não vermelho de falha,
      e a opção mais provável vem primeiro e destacada. */
   .aviso {
-    border: 1px solid #e0b400;
-    border-left: 4px solid #e0b400;
+    border: 1px solid var(--aviso-borda);
+    border-left: 4px solid var(--aviso-borda);
     border-radius: 6px;
-    background: #fffbe6;
+    background: var(--aviso-fundo);
+    color: var(--tinta);
     padding: .8rem 1rem;
     margin-bottom: 1rem;
   }
@@ -181,7 +249,7 @@
   }
   .aba-interna.ativa {
     background: var(--acento);
-    color: #fff;
+    color: var(--sobre-acento);
     border-color: var(--acento);
     font-weight: 600;
   }
@@ -229,6 +297,119 @@
     color: var(--tinta-fraca);
     border-color: var(--borda);
     font-weight: 400;
+  }
+
+  /* --- marca da casa --- */
+  .marca { display: flex; align-items: center; gap: .7rem; margin-bottom: .75rem; }
+  .marca h1 { margin: 0; }
+  .logo { width: 44px; height: 44px; object-fit: contain; flex: none; }
+
+  /* --- manual ---
+     Coluna mais estreita que o resto do sistema: as outras telas são listas e
+     formulários, esta é texto corrido, e linha longa demais cansa a leitura. */
+  #visao-manual { max-width: 36rem; }
+  .manual-abertura { font-size: 1rem; margin-bottom: 1.5rem; }
+
+  .manual-indice { display: flex; flex-direction: column; }
+  .manual-indice a {
+    padding: .7rem .2rem;
+    border-bottom: 1px solid var(--borda);
+    color: var(--tinta);
+    text-decoration: none;
+  }
+  .manual-indice a:hover { color: var(--acento); }
+  .manual-indice span {
+    display: block;
+    color: var(--marrom);
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+
+  .verbete { padding-top: 2.75rem; scroll-margin-top: 1rem; }
+  .verbete h2 { margin: .25rem 0 .75rem; font-size: 1.3rem; }
+
+  /* Diz ONDE se faz a coisa. É informação: metade da dúvida do voluntário é
+     "isso é no sistema ou na planilha?". */
+  .onde-fica {
+    display: inline-block;
+    margin: 0;
+    padding: .18rem .5rem;
+    border: 1px solid var(--borda);
+    border-radius: 3px;
+    background: var(--marrom-suave);
+    color: var(--marrom);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+
+  ol.passos { margin: 1rem 0 0; padding-left: 0; list-style: none; counter-reset: passo; }
+  ol.passos > li {
+    counter-increment: passo;
+    position: relative;
+    padding-left: 2.4rem;
+    margin-bottom: .8rem;
+  }
+  ol.passos > li::before {
+    content: counter(passo);
+    position: absolute;
+    left: 0;
+    top: .05rem;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 50%;
+    background: var(--acento);
+    color: var(--sobre-acento);
+    font-size: .9rem;
+    font-weight: 700;
+    line-height: 1.7rem;
+    text-align: center;
+  }
+
+  kbd {
+    padding: .1rem .38rem;
+    border: 1px solid var(--borda);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    background: var(--fundo-suave);
+    color: var(--tinta);
+    font-family: inherit;
+    font-size: .92em;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* O que o voluntário encontra quando não corre bem. */
+  .e-se { margin-top: 1.3rem; }
+  .e-se dt { margin-top: .9rem; font-weight: 700; }
+  .e-se dt::before { content: "→ "; color: var(--acento); }
+  .e-se dd { margin: .15rem 0 0; color: var(--tinta-fraca); }
+
+  .cuidado, .proibido {
+    margin-top: 1.4rem;
+    padding: .9rem 1.05rem;
+    border-radius: 6px;
+    color: var(--tinta);
+  }
+  .cuidado { background: var(--aviso-fundo); border-top: 3px solid var(--aviso-borda); }
+  .proibido { background: var(--fundo-suave); border-top: 3px solid var(--erro); }
+  .cuidado p, .proibido p { margin: 0; }
+  .cuidado p + p, .proibido p + p { margin-top: .55rem; }
+  .proibido strong { color: var(--erro); }
+
+  .palavras { margin-top: 1.2rem; }
+  .palavras dt { margin-top: 1rem; font-family: Bitter, Georgia, serif; font-weight: 700; }
+  .palavras dd { margin: .1rem 0 0; color: var(--tinta-fraca); }
+
+  .manual-fim {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--borda);
+    color: var(--tinta-fraca);
+    font-size: .92rem;
   }
 
   /* Telas estreitas: dois campos lado a lado viram ilegíveis. */

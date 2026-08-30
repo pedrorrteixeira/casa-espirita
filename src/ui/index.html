@@ -5,7 +5,12 @@
 <?!= include('ui/css'); ?>
 
 <header class="topo">
-  <h1><?= nomeCasa ?></h1>
+  <div class="marca">
+    <? if (logoUrl) { ?>
+      <img class="logo" src="<?= logoUrl ?>" alt="">
+    <? } ?>
+    <h1><?= nomeCasa ?></h1>
+  </div>
   <div id="identidade" class="identidade">
     <span id="quem-sou"></span>
     <button type="button" id="btn-entrar" class="discreto">Entrar</button>
@@ -19,6 +24,7 @@
     <button class="aba" data-visao="agenda" role="tab">Agenda</button>
     <button class="aba" data-visao="meus" role="tab">Meus livros</button>
     <button class="aba oculta" data-visao="cadastro" data-exige="cadastrar_obra" role="tab">Cadastrar</button>
+    <button class="aba" data-visao="manual" role="tab">Manual</button>
   </nav>
 </header>
 
@@ -438,6 +444,8 @@
     </form>
   </section>
 </main>
+
+<?!= include('ui/manual'); ?>
 
 <script>
   // Injetado pelo doGet. include() nao avalia scriptlet, entao a sessao

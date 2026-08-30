@@ -40,6 +40,9 @@ function doGet(evento) {
 
   // Nada de nome de casa hardcoded: vem do Config, como toda configuração.
   pagina.nomeCasa = lerConfig('nome_casa', 'Biblioteca');
+  // Logo opcional: a casa põe a imagem no Drive, deixa pública para leitura
+  // e cola o endereço no Config. Sem chave, o cabeçalho fica só com o nome.
+  pagina.logoUrl = limparCampo_(lerConfig('logo_url', ''));
 
   // O link mágico chega como ?codigo=. Trocar aqui, no carregamento, é o que
   // permite ao código ser de uso único: ele morre antes de a página existir.
