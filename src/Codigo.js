@@ -19,8 +19,11 @@
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Biblioteca')
+    // "Repor chaves padrão em Config" saiu daqui: `criarEstruturaPlanilha`
+    // termina chamando `popularConfigPadrao`, então o item era subconjunto
+    // estrito do de cima — dois botões, um resultado. A função continua, só
+    // não tem mais entrada própria no menu.
     .addItem('Criar / atualizar estrutura da planilha', 'criarEstruturaPlanilha')
-    .addItem('Repor chaves padrão em Config', 'popularConfigPadrao')
     .addItem('Pré-cadastrar obras espíritas conhecidas', 'preCadastrarAcervo')
     .addSeparator()
     .addItem('Sincronizar reuniões com o Google Agenda', 'sincronizarAgora')
