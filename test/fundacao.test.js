@@ -338,7 +338,7 @@ test('toda função que grava exige sessão', () => {
   //
   // O `s?` não é zelo: `escreverLinhas_` nasceu depois e o padrão antigo
   // (`escreverLinha_`) não casava com ele. A função que importa o acervo base
-  // grava 331 linhas e passou pela guarda sem ser vista. Gravador novo com
+  // grava centenas de linhas e passou pela guarda sem ser vista. Gravador novo com
   // nome parecido é justamente o que escapa de uma lista de nomes.
   const ESCRITAS = /escreverLinhas?_|atualizarCelulas_|appendRow|setValue/;
 

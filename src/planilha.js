@@ -256,7 +256,7 @@ function gravarTrecho_(aba, linha, inicio, valores) {
  * Grava várias linhas de uma vez, no fim da aba.
  *
  * Existe porque `escreverLinha_` faz um `setValues` por trecho e por linha:
- * importar 331 títulos daria 662 chamadas e estouraria o tempo de execução.
+ * importar 479 títulos daria 958 chamadas e estouraria o tempo de execução.
  * Aqui são dois `setValues` no total, um por trecho contíguo.
  *
  * Mesma recusa de coluna derivada, e pela mesma razão — só que aqui o estrago

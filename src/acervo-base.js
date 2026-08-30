@@ -3,25 +3,35 @@
  *
  * Não é o acervo da casa: é uma lista de obras espíritas conhecidas, para que
  * catalogar um livro vire "achar o título e acrescentar o exemplar" em vez de
- * digitar autoria toda vez. Título sem exemplar aparece na busca marcado como
- * "a casa não tem" e alimenta a lista de doações desejadas — é o D5, e é de
+ * digitar autoria toda vez. Título sem exemplar aparece na busca no grupo "a
+ * casa não tem" e alimenta a lista de doações desejadas — é o D5, e é de
  * propósito.
  *
- * PROCEDÊNCIA. As obras de Chico Xavier vêm da lista pública do Centro
- * Espírita Chico Xavier (Bauru-SP). Só fato bibliográfico foi copiado — nome
- * da obra, autor espiritual e ano. Nenhuma sinopse: sinopse é texto de alguém.
+ * TRÊS FONTES, e só fato bibliográfico de cada uma — nome da obra, autoria e
+ * ano. Nenhuma sinopse: sinopse é texto de alguém.
  *
- * O ANO É INDICATIVO. Na fonte ele às vezes é o da primeira edição e às vezes
- * o de uma reimpressão (`Nos Domínios da Mediunidade` aparece como 1985, e a
- * primeira é de 1955). Por isso ele vai para `observacao` e não para lugar
- * nenhum que o sistema use — o ano que vale é o do exemplar na mão, digitado
- * no cadastro do exemplar.
+ *   1. Lista pública do Centro Espírita Chico Xavier (Bauru-SP). Traz título,
+ *      autor espiritual e ano. É a maior e a mais direta de ler.
+ *   2. Codificação de Kardec, escrita à mão. São onze obras, e o dado de uma
+ *      lista de terceiro seria pior que o sabido.
+ *   3. Índice de "O Caminho" (bibliadocaminho.com), que cobre a obra de Chico
+ *      Xavier em quatro páginas e traz o ano da PRIMEIRA edição declarado
+ *      como tal. Acrescentou as obras que faltavam na lista de Bauru.
  *
- * A codificação de Kardec foi escrita à mão. São onze obras, e o dado de uma
- * lista de terceiro seria pior que o sabido.
+ * O ANO É INDICATIVO NA FONTE 1. Ali ele às vezes é o da primeira edição e às
+ * vezes o de uma reimpressão (`Nos Domínios da Mediunidade` aparece como 1985,
+ * e a primeira é de 1955). Na fonte 3 o próprio site diz "1ª edição". Nos dois
+ * casos o ano vai para `observacao` e não para campo que o sistema use: o ano
+ * que vale é o do exemplar na mão, e ele mora no cadastro do exemplar.
  *
- * PARA ACRESCENTAR MAIS: é só acrescentar linha aqui e rodar a importação de
- * novo. Ela pula o que já existe, então rodar duas vezes não duplica nada.
+ * AUTORIA QUE NÃO DÁ PARA AFIRMAR fica VAZIA, com o texto da fonte na
+ * observação. São 26 obras — biografias, entrevistas e homenagens, que são
+ * livros SOBRE Chico Xavier e não DELE. Marcá-las como psicografadas por ele
+ * seria erro difícil de achar depois, e catalogar em branco custa um minuto da
+ * bibliotecária quando o exemplar chegar.
+ *
+ * PARA ACRESCENTAR MAIS: é só acrescentar linha e rodar a importação de novo.
+ * Ela pula o que já existe pelo título, então rodar duas vezes não duplica.
  */
 
 // Nome de catalogação: formal e popular juntos, como manda a especificação —
@@ -31,7 +41,11 @@ var MEDIUM_CHICO = 'Francisco Cândido Xavier (Chico Xavier)';
 var SERIE_ANDRE_LUIZ = 'A Vida no Mundo Espiritual';
 var SERIE_KARDEC = 'Obras Básicas da Codificação';
 
-// [titulo, autor_espiritual, ano, ordem na série (opcional)]
+var FONTE_BAURU = 'lista do CE Chico Xavier, Bauru';
+var FONTE_CAMINHO = 'índice de O Caminho';
+var FONTE_KARDEC = 'codificação de Kardec';
+
+// --- Fonte 1: [titulo, autor_espiritual, ano, ordem na série] ---------------
 var OBRAS_CHICO_XAVIER = [
   ["A Caminho da Luz", "Emmanuel", 1939],
   ["A Terra e o Semeador", "Emmanuel", 1975],
@@ -355,7 +369,7 @@ var OBRAS_CHICO_XAVIER = [
   ["Vozes do Grande Além", "Espíritos Diversos", 1957],
 ];
 
-// [titulo, ano, ordem entre as obras básicas (opcional)]
+// --- Fonte 2: [titulo, ano, ordem entre as obras básicas] -------------------
 var OBRAS_KARDEC = [
   ["O Livro dos Espíritos", 1857, 1],
   ["O Livro dos Médiuns", 1861, 2],
@@ -368,6 +382,161 @@ var OBRAS_KARDEC = [
   ["Viagem Espírita em 1862", 1862],
   ["Obras Póstumas", 1890],
   ["Revista Espírita", 1858],
+];
+
+// --- Fonte 3: [titulo, autor_espiritual, ano da 1ª ed., autoria a conferir] -
+//
+// Autor espiritual vazio + quarto campo preenchido = obra sobre Chico Xavier,
+// não dele. O quarto campo é o que o site diz, sem interpretação nossa.
+var OBRAS_CHICO_COMPLEMENTO = [
+  ["… E o amor continua", "Espíritos Diversos", 1983],
+  ["A semente de mostarda", "Emmanuel", 1990],
+  ["Abençoa sempre", "Espíritos Diversos", 1993],
+  ["Abençoando nosso Brasil, com Jesus e por Jesus", "Espíritos Diversos", 2007],
+  ["Adeus solidão", "Espíritos Diversos", 1982],
+  ["Agência de Notícias", "Jair Presente", 1986],
+  ["Almas em desfile", "Hilário Silva", 1961],
+  ["Amanhece", "Espíritos Diversos", 1976],
+  ["Assembleia de Luz", "Espíritos Diversos", 1988],
+  ["Assuntos da vida e da morte", "Espíritos Diversos", 1991],
+  ["Augusto vive", "Augusto Cezar Netto", 1981],
+  ["Baú de casos", "Cornélio Pires", 1977],
+  ["Bazar da Vida", "Jair Presente", 1985],
+  ["Bênção de paz", "Emmanuel", 1971],
+  ["Bezerra, Chico e você", "Bezerra de Menezes", 1973],
+  ["Brasil, coração do mundo, pátria do Evangelho", "Humberto de Campos", 1938],
+  ["Brilhantes no caminho", "Espíritos Diversos", 2023],
+  ["Busca e acharás", "", 1976, "(não informada)"],
+  ["Caderno de mensagens", "Espíritos Diversos", ''],
+  ["Calma", "Emmanuel", 1979],
+  ["Carmelo, ele mesmo", "Carmelo Grisi", 1991],
+  ["Cartas do Alto", "Espíritos Diversos", 2017],
+  ["Cartas do Evangelho e outros poemas", "Casimiro Cunha", 1940],
+  ["Chão de flores", "Espíritos Diversos", 1975],
+  ["Chico no Monte Carmelo", "", 2004, "Autores diversos"],
+  ["Chico Xavier — Mandato de amor", "", 1992, "Autores diversos"],
+  ["Chico Xavier e suas mensagens no Anuário Espírita", "", 2017, "(não informada)"],
+  ["Chico Xavier em Goiânia", "", 1978, "Entrevistando Emmanuel"],
+  ["Chico Xavier inédito", "", 2004, "Autores diversos"],
+  ["Chico Xavier pede licença", "", 1972, "Autores diversos"],
+  ["Chico Xavier, 100 anos de amor", "", 2010, "Autores diversos"],
+  ["Chico Xavier, a aurora de uma vida entre o Céu e a Terra", "", 2012, "Autores diversos subscritos por F. Xavier"],
+  ["Chico Xavier, coração missionário", "", 2009, "Autores diversos"],
+  ["Chico Xavier, dos hippies aos problemas do mundo", "", 1972, "Entrevistando Emmanuel"],
+  ["Chico Xavier, exemplo de amor", "", 2010, "Autores diversos"],
+  ["Chico Xavier, o referencial", "", 2010, "(não informada)"],
+  ["Chico Xavier: O Primeiro Livro", "", 2010, "Autores diversos"],
+  ["Coletânea do Além", "Espíritos Diversos", 1945],
+  ["Colheita do bem", "Neio Lúcio", 2010],
+  ["Companheiro", "Emmanuel", 1977],
+  ["Confia e segue", "Emmanuel", 1984],
+  ["Conversa firme", "Cornélio Pires", 1975],
+  ["Crianças no Além", "Marcos Hideo Hayashi", 1977],
+  ["Cura", "Espíritos Diversos", 1988],
+  ["Depois da travessia", "Espíritos Diversos", 2013],
+  ["Deus aguarda", "Meimei", 1980],
+  ["Deus conosco", "Emmanuel", 2007],
+  ["Diálogo dos vivos", "Espíritos Diversos", 1974],
+  ["Doutrina de Luz", "Emmanuel", 1990],
+  ["Doutrina-escola", "Espíritos Diversos", 1996],
+  ["Emmanuel responde", "", 2010, "F. C. Xavier / Henrique Rodrigues / Entrevista"],
+  ["Endereços da paz", "André Luiz", 1982],
+  ["Entes queridos", "Espíritos Diversos", 1982],
+  ["Escultores de almas", "Espíritos Diversos", 1988],
+  ["Espera servindo", "Emmanuel", 1985],
+  ["Estrelas no chão", "Espíritos Diversos", 1987],
+  ["Falou e disse", "Augusto Cezar Netto", 1978],
+  ["Família", "Espíritos Diversos", 1981],
+  ["Fé e vida", "Espíritos Diversos", 2014],
+  ["Fé, paz e amor", "Emmanuel", 1989],
+  ["Festa de paz", "Espíritos Diversos", 1986],
+  ["Filhos voltando", "Espíritos Diversos", 1982],
+  ["Fotos da vida", "Augusto Cezar Netto", 1989],
+  ["Harmonização", "Emmanuel", 1990],
+  ["Hora certa", "Emmanuel", 1987],
+  ["Indicações do caminho", "Carlos Augusto", 1994],
+  ["Inspiração", "Emmanuel", 1978],
+  ["Intercâmbio do bem", "Espíritos Diversos", 1987],
+  ["Irmãos unidos", "Espíritos Diversos", 1988],
+  ["Jesus em nós", "", 1987, "Entrevistas"],
+  ["Lar-oficina, esperança e trabalho", "Espíritos Diversos", 1988],
+  ["Levantar e seguir", "Emmanuel", 1992],
+  ["Loja de alegria", "Jair Presente", 1985],
+  ["Luz e vida", "Emmanuel", 1986],
+  ["Luz na Escola", "Espíritos Diversos", 2010],
+  ["Mais luz", "Batuíra", 1970],
+  ["Mais perto", "Emmanuel", 1983],
+  ["Mensagens de Inês de Castro", "", 2006, "(não informada)"],
+  ["Mensagens que confortam", "Ricardo Tadeu", 1983],
+  ["Militares no Além", "Espíritos Diversos", 2008],
+  ["Missão cumprida", "Espíritos Diversos", 2004],
+  ["Momentos de ouro", "Espíritos Diversos", 1977],
+  ["Monte acima", "Emmanuel", 1985],
+  ["Na era do Espírito", "Espíritos Diversos", 1973],
+  ["Na hora do testemunho", "Espíritos Diversos", 1978],
+  ["Nascer e renascer", "Emmanuel", 1985],
+  ["Natal de Sabina", "Francisca Clotilde", 1973],
+  ["Neste instante", "Emmanuel", 2000],
+  ["No mundo de Chico Xavier", "", 1968, "Entrevistas"],
+  ["Notáveis reportagens com Chico Xavier", "", 2002, "(não informada)"],
+  ["Novamente em casa", "Espíritos Diversos", 1984],
+  ["Novos horizontes", "Espíritos Diversos", 1996],
+  ["O Evangelho de Chico Xavier", "", 2000, "Chico Xavier (Encarnado)"],
+  ["O Evangelho por Emmanuel", "", 2014, "Volume 1"],
+  ["Orvalho de Luz", "Espíritos Diversos", 1969],
+  ["Os dois maiores amores", "Espíritos Diversos", 1983],
+  ["Páginas de gratidão", "", 2020, "Títulos de Cidadania concedidos a Francisco Cândido Xavier"],
+  ["Palavras sublimes", "Espíritos Diversos", 2014],
+  ["Palco iluminado", "Jair Presente", 1988],
+  ["Palpitante entrevista com o outro mundo", "", '', "(Entrevistando Emmanuel) — Isaltino da Silveira Filho"],
+  ["Parnaso de Além-Túmulo", "Espíritos Diversos", 1932],
+  ["Pássaros humanos", "Espíritos Diversos", 1993],
+  ["Paz e alegria", "Espíritos Diversos", 1981],
+  ["Pétalas da primavera", "Espíritos Diversos", 1990],
+  ["Pinga-fogo", "", '', "Entrevistas/Emmanuel"],
+  ["Pingo de luz", "Carlos Augusto", 1994],
+  ["Plantão da paz", "Emmanuel", 1988],
+  ["Plantão de respostas", "", 1995, "Entrevistas"],
+  ["Ponto de encontro", "Jair Presente", 1986],
+  ["Preito de amor", "Espíritos Diversos", 1993],
+  ["Presença de Chico Xavier", "", 1970, "Depoimentos diversos e Mensagens familiares"],
+  ["Presença de luz", "Augusto Cezar Netto", 1984],
+  ["Quando se pretende falar da Vida", "Roberto Muszkat", 1984],
+  ["Queda e ascensão da casa dos benefícios", "Bezerra de Menezes", 1991],
+  ["Rapidinho", "Jair Presente", 1989],
+  ["Realmente", "Espíritos Diversos", 2005],
+  ["Recados da vida", "Espíritos Diversos", 1983],
+  ["Reconforto", "Emmanuel", 1986],
+  ["Registros imortais", "Espíritos Diversos", 2013],
+  ["Relicário de luz", "Espíritos Diversos", 1962],
+  ["Reportagens de Além-túmulo", "Humberto de Campos", 1943],
+  ["Resgate e amor", "Tiaminho", 1986],
+  ["Respostas da vida", "André Luiz", 1975],
+  ["Revelação", "Jair Presente", 1992],
+  ["Rolando, uma vida de renúncia e trabalho", "Rolando Ramacciotti", 2013],
+  ["Roseiral de luz", "Espíritos Diversos", 1988],
+  ["Seguindo juntos", "Espíritos Diversos", 1982],
+  ["Semeador em tempos novos", "Emmanuel", 1989],
+  ["Sementeira de luz", "Neio Lúcio", 2006],
+  ["Sementeira de paz", "Neio Lúcio", 2010],
+  ["Sinais de rumo", "Espíritos Diversos", 1979],
+  ["Somos seis", "Espíritos Diversos", 1976],
+  ["Tintino… O espetáculo continua", "Francisca Clotilde", ''],
+  ["Trevo de ideias", "Emmanuel", 1987],
+  ["Trovas do Mais-Além", "Espíritos Diversos", 1971],
+  ["Tudo virá a seu tempo", "Elcio Tumenas", 2003],
+  ["Uma vida de amor e caridade", "Espíritos Diversos", 1992],
+  ["Urgência", "Emmanuel", 1980],
+  ["Venceram", "Espíritos Diversos", 1983],
+  ["Verdade e amor", "Espíritos Diversos", 2015],
+  ["Vereda de luz", "Espíritos Diversos", 1990],
+  ["Viagem sem adeus", "Cláudio R. A. Nascimento", 1999],
+  ["Viajaram mais cedo", "Espíritos Diversos", 1985],
+  ["Viajores da Luz", "Espíritos Diversos", 1981],
+  ["Vida além da vida", "Lineu de Paula Leão Júnior", 1988],
+  ["Vida e caminho", "Espíritos Diversos", 1994],
+  ["Vida no Além", "Espíritos Diversos", 1980],
+  ["Vida nossa vida", "Espíritos Diversos", 1983],
 ];
 
 /**
@@ -386,7 +555,7 @@ function montarAcervoBase_() {
       autor_espiritual: obra[1],
       serie: obra[3] ? SERIE_ANDRE_LUIZ : '',
       ordem_na_serie: obra[3] || '',
-      observacao: notaDeOrigem_('lista do CE Chico Xavier, Bauru', obra[2])
+      observacao: notaDeOrigem_(FONTE_BAURU, obra[2], 'ano na fonte')
     });
   });
 
@@ -397,7 +566,24 @@ function montarAcervoBase_() {
       autor_espiritual: '',
       serie: obra[2] ? SERIE_KARDEC : '',
       ordem_na_serie: obra[2] || '',
-      observacao: notaDeOrigem_('codificação de Kardec', obra[1])
+      observacao: notaDeOrigem_(FONTE_KARDEC, obra[1], 'ano na fonte')
+    });
+  });
+
+  OBRAS_CHICO_COMPLEMENTO.forEach(function (obra) {
+    var espiritual = obra[1];
+    var nota = notaDeOrigem_(FONTE_CAMINHO, obra[2], '1ª ed.');
+    if (!espiritual) nota += ' · autoria a conferir: ' + obra[3];
+
+    registros.push({
+      titulo: obra[0],
+      // Sem autor espiritual não há médium a declarar: o livro é sobre ele,
+      // não dele. Deixar o nome do Chico aqui afirmaria psicografia.
+      autor_ou_medium: espiritual ? MEDIUM_CHICO : '',
+      autor_espiritual: espiritual,
+      serie: '',
+      ordem_na_serie: '',
+      observacao: nota
     });
   });
 
@@ -406,12 +592,12 @@ function montarAcervoBase_() {
 
 /**
  * A nota que fica em `observacao`. Existe para a bibliotecária saber que
- * aquela linha não foi digitada por ninguém da casa e que o ano é palpite de
- * terceiro — se o exemplar na mão discordar, quem manda é o exemplar.
+ * aquela linha não foi digitada por ninguém da casa e que o ano é de terceiro
+ * — se o exemplar na mão discordar, quem manda é o exemplar.
  */
-function notaDeOrigem_(fonte, ano) {
+function notaDeOrigem_(fonte, ano, rotuloDoAno) {
   var nota = 'Pré-cadastro (' + fonte + ')';
-  if (ano) nota += ' · ano na fonte: ' + ano;
+  if (ano) nota += ' · ' + rotuloDoAno + ': ' + ano;
   return nota;
 }
 
@@ -419,6 +605,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     montarAcervoBase_: montarAcervoBase_,
     OBRAS_CHICO_XAVIER: OBRAS_CHICO_XAVIER,
-    OBRAS_KARDEC: OBRAS_KARDEC
+    OBRAS_KARDEC: OBRAS_KARDEC,
+    OBRAS_CHICO_COMPLEMENTO: OBRAS_CHICO_COMPLEMENTO
   };
 }

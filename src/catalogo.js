@@ -759,7 +759,7 @@ function importarAcervoBase() {
     escreverLinhas_(ABA_TITULOS, registros);
     invalidarCacheTitulos_();
 
-    // Uma linha de log para a importação inteira, não uma por título: 331
+    // Uma linha de log para a importação inteira, não uma por título: 479
     // linhas no `Log` afogariam o histórico de empréstimo, que é o que
     // alguém vai querer ler ali.
     registrarLog_('(menu da planilha)', 'importar', 'titulo', 0,
