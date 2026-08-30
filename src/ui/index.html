@@ -24,13 +24,20 @@
 
   <nav class="abas" role="tablist">
     <button class="aba ativa" data-visao="busca" role="tab">Buscar</button>
-    <button class="aba oculta" data-visao="balcao" data-exige="emprestar" role="tab">Balcão</button>
-    <button class="aba oculta" data-visao="atrasos" data-exige="ver_atrasos" role="tab">Atrasos</button>
+    <button class="aba oculta" data-visao="balcao" data-exige="emprestar" data-restrito role="tab">Balcão</button>
+    <button class="aba oculta" data-visao="atrasos" data-exige="ver_atrasos" data-restrito role="tab">Atrasos</button>
     <button class="aba" data-visao="agenda" role="tab">Agenda</button>
     <button class="aba" data-visao="meus" role="tab">Meus livros</button>
-    <button class="aba oculta" data-visao="cadastro" data-exige="cadastrar_obra" role="tab">Cadastrar</button>
-    <button class="aba oculta" data-visao="manual" data-exige="emprestar" role="tab">Manual</button>
+    <button class="aba oculta" data-visao="cadastro" data-exige="cadastrar_obra" data-restrito role="tab">Cadastrar</button>
+    <button class="aba oculta" data-visao="manual" data-exige="emprestar" data-restrito role="tab">Manual</button>
   </nav>
+
+  <!-- A cor sozinha não informa: quem não distingue as duas, ou quem chega
+       hoje, precisa da frase. -->
+  <p id="legenda-abas" class="legenda-abas oculta">
+    As abas em <strong>marrom</strong> são só suas. O frequentador vê apenas
+    Buscar, Agenda e Meus livros.
+  </p>
 </header>
 
 <main>
@@ -238,7 +245,7 @@
           <button type="submit" id="btn-salvar-exemplar">Salvar exemplar</button>
         </div>
       </fieldset>
-      <div id="estado-exemplar" class="estado" role="status" aria-live="polite"></div>
+      <div id="estado-exemplar-novo" class="estado" role="status" aria-live="polite"></div>
     </form>
 
     <!-- Cadastro de frequentador. Sem ele não há a quem emprestar. -->

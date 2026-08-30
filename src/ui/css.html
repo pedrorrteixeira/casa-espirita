@@ -125,6 +125,25 @@
   .aba:hover { color: var(--tinta); }
   .aba.ativa { color: var(--acento); border-bottom-color: var(--acento); font-weight: 600; }
 
+  /* Azul é o que todos veem; marrom é o que só o voluntário vê. As duas cores
+     vêm da logomarca, então a distinção pertence à casa e não é decoração.
+     Serve a duas coisas ao mesmo tempo: o voluntário sabe onde está pisando, e
+     lembra do que NÃO é público — o que importa numa tela que mostra com quem
+     está cada livro. */
+  .aba[data-restrito] { color: var(--marrom); }
+  .aba[data-restrito]:hover { color: var(--marrom); opacity: .8; }
+  .aba[data-restrito].ativa {
+    color: var(--marrom);
+    border-bottom-color: var(--marrom);
+  }
+
+  .legenda-abas {
+    margin: .6rem 0 0;
+    color: var(--tinta-fraca);
+    font-size: .8rem;
+  }
+  .legenda-abas strong { color: var(--marrom); }
+
   .visao { padding-top: 1.25rem; }
   .oculta { display: none; }
 

@@ -436,3 +436,52 @@ test('todo assunto do manual está no índice, e todo link do índice existe', (
   assert.deepEqual(semDestino, [],
     `links do índice que não levam a lugar nenhum: ${semDestino.join(', ')}`);
 });
+
+test('nenhum id de HTML se repete nas telas', () => {
+  // `document.querySelector('#x')` devolve o PRIMEIRO. Com o id repetido, metade
+  // do código passa a falar com o elemento errado — e sem erro nenhum.
+  //
+  // Aconteceu com `estado-exemplar`: era o <select> do cadastro de obra e virou
+  // também a linha de status da tela de exemplar. O preenchimento das opções
+  // foi parar na div, que passou a mostrar "novo bom regular ruim" solto na
+  // tela, e o <select> de verdade ficou vazio — ninguém conseguiria escolher o
+  // estado de conservação.
+  const arquivos = ['index.html', 'manual.html', 'logo.html'];
+  const vistos = new Map();
+  const repetidos = [];
+
+  for (const nome of arquivos) {
+    const caminho = path.join(SRC, 'ui', nome);
+    if (!fs.existsSync(caminho)) continue;
+
+    for (const [, id] of fs.readFileSync(caminho, 'utf8').matchAll(/\sid="([^"]+)"/g)) {
+      if (vistos.has(id)) repetidos.push(`${id} — em ${vistos.get(id)} e ${nome}`);
+      else vistos.set(id, nome);
+    }
+  }
+
+  assert.deepEqual(repetidos, [], `ids repetidos:\n${repetidos.join('\n')}`);
+});
+
+test('toda aba que exige perfil está marcada como restrita, e vice-versa', () => {
+  // A cor marrom promete "isto o frequentador não vê". Se uma aba ganhar
+  // `data-exige` sem `data-restrito`, ela aparece azul e o voluntário a trata
+  // como pública — numa tela que mostra com quem está cada livro, essa
+  // confusão custa privacidade de frequentador.
+  //
+  // O contrário é só ruído: marrom numa aba que todos veem.
+  const html = fs.readFileSync(path.join(SRC, 'ui', 'index.html'), 'utf8');
+  const abas = [...html.matchAll(/<button class="aba[^"]*"([^>]*)>/g)].map(([, atributos]) => ({
+    visao: (/data-visao="([\w-]+)"/.exec(atributos) || [])[1],
+    exige: /data-exige=/.test(atributos),
+    restrito: /data-restrito/.test(atributos)
+  }));
+
+  const divergem = abas
+    .filter((aba) => aba.exige !== aba.restrito)
+    .map((aba) => aba.exige
+      ? `${aba.visao}: exige perfil mas não está marcada como restrita`
+      : `${aba.visao}: marcada como restrita mas é pública`);
+
+  assert.deepEqual(divergem, [], divergem.join('\n'));
+});

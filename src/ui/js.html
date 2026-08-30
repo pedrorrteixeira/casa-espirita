@@ -57,6 +57,9 @@
     document.querySelectorAll('.aba[data-exige]').forEach(function (aba) {
       aba.classList.toggle('oculta', !podeVer(aba.dataset.exige));
     });
+
+    // A legenda só faz sentido para quem enxerga as duas cores.
+    $('#legenda-abas').classList.toggle('oculta', !entrou);
   }
 
   /** Sessão guardada pode ter vencido enquanto a aba estava fechada. */
@@ -1202,7 +1205,7 @@
   var buscaObra = $('#busca-obra');
   var obrasAchadas = $('#obras-achadas');
   var camposExemplarNovo = $('#campos-exemplar-novo');
-  var estadoExemplar = $('#estado-exemplar');
+  var estadoExemplar = $('#estado-exemplar-novo');
   var estadoBuscaObra = $('#estado-busca-obra');
   var obraEscolhida = null;
   var temporizadorObra = null;
