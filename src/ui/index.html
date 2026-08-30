@@ -23,11 +23,15 @@
   </div>
 
   <nav class="abas" role="tablist">
+    <!-- Públicas primeiro, restritas depois. A ordem reforça a cor: as três
+         que qualquer um vê ficam juntas à esquerda, e o bloco marrom começa
+         onde o acesso passa a ser de voluntário. -->
     <button class="aba ativa" data-visao="busca" role="tab">Buscar</button>
-    <button class="aba oculta" data-visao="balcao" data-exige="emprestar" data-restrito role="tab">Balcão</button>
-    <button class="aba oculta" data-visao="atrasos" data-exige="ver_atrasos" data-restrito role="tab">Atrasos</button>
     <button class="aba" data-visao="agenda" role="tab">Agenda</button>
     <button class="aba" data-visao="meus" role="tab">Meus livros</button>
+
+    <button class="aba oculta" data-visao="balcao" data-exige="emprestar" data-restrito role="tab">Balcão</button>
+    <button class="aba oculta" data-visao="atrasos" data-exige="ver_atrasos" data-restrito role="tab">Atrasos</button>
     <button class="aba oculta" data-visao="cadastro" data-exige="cadastrar_obra" data-restrito role="tab">Cadastrar</button>
     <button class="aba oculta" data-visao="manual" data-exige="emprestar" data-restrito role="tab">Manual</button>
   </nav>

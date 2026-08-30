@@ -485,3 +485,25 @@ test('toda aba que exige perfil está marcada como restrita, e vice-versa', () =
 
   assert.deepEqual(divergem, [], divergem.join('\n'));
 });
+
+test('as abas públicas vêm antes das restritas', () => {
+  // A ordem reforça a cor: o bloco azul à esquerda é o que qualquer um vê, e o
+  // marrom começa onde o acesso passa a ser de voluntário. Uma aba pública
+  // inserida no meio das restritas desfaz a leitura que a cor promete.
+  const html = fs.readFileSync(path.join(SRC, 'ui', 'index.html'), 'utf8');
+  const abas = [...html.matchAll(/<button class="aba[^"]*"([^>]*)>/g)].map(([, atributos]) => ({
+    visao: (/data-visao="([\w-]+)"/.exec(atributos) || [])[1],
+    restrito: /data-restrito/.test(atributos)
+  }));
+
+  const primeiraRestrita = abas.findIndex((aba) => aba.restrito);
+  if (primeiraRestrita === -1) return;   // nenhuma restrita: nada a ordenar
+
+  const publicasDepois = abas
+    .slice(primeiraRestrita)
+    .filter((aba) => !aba.restrito)
+    .map((aba) => aba.visao);
+
+  assert.deepEqual(publicasDepois, [],
+    `abas públicas depois das restritas: ${publicasDepois.join(', ')}`);
+});
