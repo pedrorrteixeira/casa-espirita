@@ -363,16 +363,46 @@
      Agora a etiqueta virou título de grupo, e a linha virou uma escolha. */
   .manual-indice { display: block; margin-top: .5rem; }
 
-  .manual-indice h3 {
-    margin: 1.6rem 0 .3rem;
-    color: var(--marrom);
-    font-family: inherit;
-    font-size: .76rem;
+  /* Grupos fechados: o índice são cinco linhas e continua cabendo numa tela
+     por mais que o manual cresça. Antes a lista aberta crescia junto com o
+     número de assuntos, e achar um exigia rolar. */
+  .grupo { border-bottom: 1px solid var(--borda); }
+
+  .grupo summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+    min-height: 56px;
+    padding: .6rem .2rem .6rem .8rem;
     font-weight: 700;
-    letter-spacing: .1em;
-    text-transform: uppercase;
+    color: var(--tinta);
+    cursor: pointer;
+    list-style: none;                 /* tira o triângulo do Firefox */
   }
-  .manual-indice h3:first-child { margin-top: 0; }
+  .grupo summary::-webkit-details-marker { display: none; }
+  .grupo summary:hover { color: var(--acento); }
+  .grupo summary:focus-visible { outline: 3px solid var(--acento); outline-offset: -3px; }
+
+  .grupo summary small {
+    color: var(--tinta-fraca);
+    font-weight: 400;
+    font-size: .8rem;
+    white-space: nowrap;
+  }
+  /* A seta gira ao abrir: é o sinal de que há algo dentro. */
+  .grupo summary::after {
+    content: "›";
+    color: var(--tinta-fraca);
+    font-size: 1.4rem;
+    line-height: 1;
+    transition: transform .15s;
+  }
+  .grupo[open] summary::after { transform: rotate(90deg); }
+  .grupo[open] summary { color: var(--acento); }
+
+  .grupo > a { padding-left: 1.8rem; background: var(--fundo-suave); }
+  .grupo > a:last-child { border-bottom: none; }
 
   .manual-indice a {
     display: flex;

@@ -417,3 +417,22 @@ test('toda visão fica dentro do <main>', () => {
   assert.deepEqual(foraDoMain, [],
     `estas visões estão fora do <main> e não vão herdar o layout: ${foraDoMain.join(', ')}`);
 });
+
+test('todo assunto do manual está no índice, e todo link do índice existe', () => {
+  // O índice já foi reagrupado três vezes. Reagrupar é exatamente onde se
+  // perde um item: ele continua no arquivo, some da lista, e ninguém percebe
+  // — o assunto vira inalcançável sem erro nenhum.
+  const manual = fs.readFileSync(path.join(SRC, 'ui', 'manual.html'), 'utf8');
+
+  const verbetes = [...manual.matchAll(/<article class="verbete" id="(m-[\w-]+)"/g)]
+    .map(([, id]) => id);
+  const links = [...manual.matchAll(/href="#(m-[\w-]+)"/g)].map(([, id]) => id);
+
+  const semLink = verbetes.filter((id) => !links.includes(id));
+  assert.deepEqual(semLink, [],
+    `assuntos que existem mas ninguém alcança pelo índice: ${semLink.join(', ')}`);
+
+  const semDestino = links.filter((id) => !verbetes.includes(id));
+  assert.deepEqual(semDestino, [],
+    `links do índice que não levam a lugar nenhum: ${semDestino.join(', ')}`);
+});

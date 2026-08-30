@@ -1128,6 +1128,9 @@
 
   function mostrarIndiceDoManual() {
     verbetes.forEach(function (verbete) { verbete.classList.add('oculta'); });
+    document.querySelectorAll('.grupo[open]').forEach(function (grupo) {
+      grupo.open = false;
+    });
     indiceManual.classList.remove('oculta');
     soNoIndice.forEach(function (parte) { parte.classList.remove('oculta'); });
     voltarManual.classList.add('oculta');
@@ -1163,6 +1166,19 @@
   });
 
   voltarManual.addEventListener('click', mostrarIndiceDoManual);
+
+  // Um grupo aberto por vez. Sem isto, abrir os cinco devolve a lista longa que
+  // fechá-los veio resolver. `<details>` já abre e fecha sozinho — o JS só
+  // acrescenta a exclusividade, e sem ele o índice continua utilizável.
+  var grupos = Array.prototype.slice.call(document.querySelectorAll('.grupo'));
+  grupos.forEach(function (grupo) {
+    grupo.addEventListener('toggle', function () {
+      if (!grupo.open) return;
+      grupos.forEach(function (outro) {
+        if (outro !== grupo) outro.open = false;
+      });
+    });
+  });
 
   // Sair da aba Manual e voltar depois reabre no índice, não no assunto que
   // alguém leu semana passada.
