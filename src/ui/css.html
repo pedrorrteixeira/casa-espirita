@@ -350,7 +350,11 @@
   /* --- manual ---
      Coluna mais estreita que o resto do sistema: as outras telas são listas e
      formulários, esta é texto corrido, e linha longa demais cansa a leitura. */
-  #visao-manual { max-width: 36rem; }
+  /* Coluna mais estreita que o resto do sistema: as outras telas são listas e
+     formulários; esta é texto corrido, e linha longa demais cansa a leitura.
+     Centralizada, para não destoar do cabeçalho — o resto do sistema tem 46rem
+     centrados, e um bloco de 36rem encostado à esquerda pareceria defeito. */
+  #visao-manual { max-width: 36rem; margin-inline: auto; }
   .manual-abertura { font-size: 1rem; margin-bottom: 1.5rem; }
 
   .manual-indice { display: flex; flex-direction: column; }

@@ -384,3 +384,36 @@ test('o manual acompanha as telas que existem', () => {
   assert.deepEqual(faltando, [],
     `estas abas existem mas o manual não as menciona: ${faltando.join(', ')}`);
 });
+
+test('toda visão fica dentro do <main>', () => {
+  // O manual chegou a ficar FORA do <main>, e por isso não herdava a
+  // centralização — aparecia colado na borda esquerda enquanto o resto do
+  // sistema ficava no meio da tela. Passou despercebido porque o conteúdo
+  // estava certo; só a posição estava errada.
+  const html = fs.readFileSync(path.join(SRC, 'ui', 'index.html'), 'utf8');
+
+  const abre = html.indexOf('<main>');
+  const fecha = html.indexOf('</main>');
+  assert.ok(abre !== -1 && fecha > abre, 'index.html perdeu o <main>');
+
+  const foraDoMain = [];
+
+  // As que estão escritas no próprio index.html.
+  for (const achado of html.matchAll(/<section id="(visao-[\w-]+)"/g)) {
+    if (achado.index < abre || achado.index > fecha) foraDoMain.push(achado[1]);
+  }
+
+  // E as que chegam por include — o caso que escapou da primeira versão deste
+  // teste, e justamente o que tinha quebrado. A seção mora no arquivo incluído,
+  // então procurá-la no index.html não encontra nada; o que importa é onde a
+  // CHAMADA do include está.
+  for (const achado of html.matchAll(/include\('ui\/([\w-]+)'\)/g)) {
+    const incluido = path.join(SRC, 'ui', `${achado[1]}.html`);
+    if (!fs.existsSync(incluido)) continue;
+    if (!/class="visao/.test(fs.readFileSync(incluido, 'utf8'))) continue;
+    if (achado.index < abre || achado.index > fecha) foraDoMain.push(`ui/${achado[1]}`);
+  }
+
+  assert.deepEqual(foraDoMain, [],
+    `estas visões estão fora do <main> e não vão herdar o layout: ${foraDoMain.join(', ')}`);
+});
