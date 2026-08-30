@@ -549,6 +549,19 @@
     font-size: .92rem;
   }
 
+  /* Qual obra está sendo ampliada. Fica em destaque porque é o contexto de
+     tudo o que vem abaixo: preencher os campos achando que é outro livro é o
+     erro caro desta tela. */
+  .escolhida {
+    margin: 1rem 0 0;
+    padding: .6rem .8rem;
+    background: var(--acento-suave);
+    border-left: 3px solid var(--acento);
+    border-radius: 4px;
+    color: var(--tinta);
+    font-weight: 600;
+  }
+
   /* Telas estreitas: dois campos lado a lado viram ilegíveis. */
   @media (max-width: 30rem) {
     .par, .linha-isbn { flex-direction: column; gap: 0; }

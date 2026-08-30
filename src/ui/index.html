@@ -176,10 +176,70 @@
   <!-- ------------------------------------------------------------- cadastro -->
   <section id="visao-cadastro" class="visao oculta">
     <div class="abas-internas">
-      <button type="button" class="aba-interna ativa" data-bloco="obra">Obra</button>
+      <button type="button" class="aba-interna ativa" data-bloco="obra">Obra nova</button>
+      <button type="button" class="aba-interna" data-bloco="exemplar">Mais um exemplar</button>
       <button type="button" class="aba-interna" data-bloco="pessoa">Pessoa nova</button>
       <button type="button" class="aba-interna" data-bloco="editar">Alterar pessoa</button>
     </div>
+
+    <!-- Segunda cópia de um livro que a casa já tem.
+
+         Existia só o caminho inverso: cadastrar a obra de novo e deixar o
+         sistema avisar que ela já existia. Serve como rede para quem NÃO sabe
+         que o livro está lá, mas obriga quem sabe a digitar a ficha inteira
+         para ser interrompido. Numa doação de três cópias, isso é o dia todo. -->
+    <form id="form-exemplar" class="bloco-cadastro oculta" autocomplete="off">
+      <fieldset>
+        <legend>Mais um exemplar</legend>
+
+        <p class="dica">
+          Para uma cópia a mais de um livro que a casa já tem. Procure a obra e
+          preencha só o que descreve <em>este</em> volume.
+        </p>
+
+        <label>
+          Procurar a obra
+          <input id="busca-obra" placeholder="título, autor ou médium"
+                 enterkeyhint="search">
+        </label>
+        <ul id="obras-achadas" class="candidatos"></ul>
+        <div id="estado-busca-obra" class="estado" role="status" aria-live="polite"></div>
+
+        <div id="campos-exemplar-novo" class="oculta">
+          <p id="obra-escolhida" class="escolhida"></p>
+
+          <div class="par">
+            <label>
+              Editora
+              <input name="editora" placeholder="FEB Editora">
+            </label>
+            <label>
+              Ano
+              <input name="ano" inputmode="numeric">
+            </label>
+          </div>
+
+          <div class="par">
+            <label>
+              Edição
+              <input name="edicao" placeholder="3ª ed., reimpressão…">
+            </label>
+            <label>
+              Estado
+              <select name="estado_exemplar" id="estado-exemplar-avulso"></select>
+            </label>
+          </div>
+
+          <label>
+            Doado por
+            <input name="doado_por">
+          </label>
+
+          <button type="submit" id="btn-salvar-exemplar">Salvar exemplar</button>
+        </div>
+      </fieldset>
+      <div id="estado-exemplar" class="estado" role="status" aria-live="polite"></div>
+    </form>
 
     <!-- Cadastro de frequentador. Sem ele não há a quem emprestar. -->
     <form id="form-pessoa" class="bloco-cadastro oculta" autocomplete="off">

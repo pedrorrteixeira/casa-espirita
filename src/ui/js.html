@@ -243,6 +243,7 @@
     .withSuccessHandler(function (listas) {
       preencherSelect($('#categoria'), listas.categorias, 'doutrinário');
       preencherSelect($('#estado-exemplar'), listas.estados, 'bom');
+      preencherSelect($('#estado-exemplar-avulso'), listas.estados, 'bom');
     })
     .withFailureHandler(function () {
       dizer(estadoCadastro, 'Não consegui carregar as listas de categoria.', 'erro');
@@ -805,6 +806,7 @@
         outra.classList.toggle('ativa', outra === aba);
       });
       $('#form-cadastro').classList.toggle('oculta', aba.dataset.bloco !== 'obra');
+      $('#form-exemplar').classList.toggle('oculta', aba.dataset.bloco !== 'exemplar');
       $('#form-pessoa').classList.toggle('oculta', aba.dataset.bloco !== 'pessoa');
       $('#form-editar-pessoa').classList.toggle('oculta', aba.dataset.bloco !== 'editar');
     });
@@ -1189,6 +1191,129 @@
   });
 
   mostrarIndiceDoManual();
+
+
+  // ------------------------------------------------- cadastro: mais um exemplar
+  // O caminho direto para a segunda cópia de um livro que a casa já tem. O
+  // outro caminho — cadastrar a obra e ser avisado de que já existe — continua,
+  // como rede para quem não sabe que o livro está lá.
+
+  var formExemplar = $('#form-exemplar');
+  var buscaObra = $('#busca-obra');
+  var obrasAchadas = $('#obras-achadas');
+  var camposExemplarNovo = $('#campos-exemplar-novo');
+  var estadoExemplar = $('#estado-exemplar');
+  var estadoBuscaObra = $('#estado-busca-obra');
+  var obraEscolhida = null;
+  var temporizadorObra = null;
+
+  buscaObra.addEventListener('input', function () {
+    esquecerObra();
+    clearTimeout(temporizadorObra);
+    temporizadorObra = setTimeout(procurarObra, 300);
+  });
+
+  function esquecerObra() {
+    obraEscolhida = null;
+    camposExemplarNovo.classList.add('oculta');
+  }
+
+  function procurarObra() {
+    var termo = buscaObra.value.trim();
+    obrasAchadas.innerHTML = '';
+    if (!termo) { dizer(estadoBuscaObra, ''); return; }
+
+    dizer(estadoBuscaObra, 'Procurando…');
+
+    google.script.run
+      .withSuccessHandler(function (achados) {
+        obrasAchadas.innerHTML = '';
+        if (!achados.length) {
+          dizer(estadoBuscaObra,
+            'Nada encontrado. Se a obra ainda não existe, cadastre em ' +
+            '"Obra nova".');
+          return;
+        }
+        dizer(estadoBuscaObra, '');
+        achados.forEach(function (obra) {
+          obrasAchadas.appendChild(itemObra(obra));
+        });
+      })
+      .withFailureHandler(function (erro) {
+        dizer(estadoBuscaObra, erro.message || 'Não consegui buscar.', 'erro');
+      })
+      .buscarNoAcervo(termo);
+  }
+
+  function itemObra(obra) {
+    var item = document.createElement('li');
+    var botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'candidato';
+
+    botao.appendChild(elemento('strong', obra.titulo));
+
+    // Mostra o que a casa JÁ tem daquela obra: quantos exemplares e quais
+    // edições. É o que evita cadastrar a mesma edição duas vezes achando que
+    // era outra, e é a informação que a pessoa tem na mão para comparar.
+    var detalhes = [];
+    if (obra.autoria) detalhes.push(obra.autoria);
+    detalhes.push(obra.total === 1 ? '1 exemplar' : obra.total + ' exemplares');
+    if (obra.edicoes && obra.edicoes.length) detalhes.push(obra.edicoes.join(' / '));
+    botao.appendChild(elemento('small', detalhes.join(' · ')));
+
+    botao.addEventListener('click', function () { escolherObra(obra); });
+    item.appendChild(botao);
+    return item;
+  }
+
+  function escolherObra(obra) {
+    obraEscolhida = obra;
+    obrasAchadas.innerHTML = '';
+    buscaObra.value = obra.titulo;
+    dizer(estadoBuscaObra, '');
+
+    $('#obra-escolhida').textContent = 'Exemplar de: ' + obra.titulo +
+      (obra.autoria ? ' — ' + obra.autoria : '');
+
+    camposExemplarNovo.classList.remove('oculta');
+    formExemplar.elements.editora.focus();
+  }
+
+  formExemplar.addEventListener('submit', function (evento) {
+    evento.preventDefault();
+    if (!obraEscolhida) return;
+
+    var botao = $('#btn-salvar-exemplar');
+    var dados = {
+      editora: formExemplar.elements.editora.value.trim(),
+      ano: formExemplar.elements.ano.value.trim(),
+      edicao: formExemplar.elements.edicao.value.trim(),
+      estado_exemplar: formExemplar.elements.estado_exemplar.value,
+      doado_por: formExemplar.elements.doado_por.value.trim()
+    };
+
+    botao.disabled = true;
+    dizer(estadoExemplar, 'Salvando…');
+
+    google.script.run
+      .withSuccessHandler(function (tombo) {
+        botao.disabled = false;
+        dizer(estadoExemplar,
+          'Exemplar criado. Etiquete o livro com o tombo ' + tombo + '.', 'ok');
+
+        // A obra continua escolhida: numa doação de três cópias, salva-se as
+        // três seguidas sem procurar de novo. Editora e doador também ficam,
+        // porque a pilha costuma ser da mesma edição e da mesma pessoa.
+        formExemplar.elements.edicao.value = '';
+        formExemplar.elements.editora.focus();
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer(estadoExemplar, erro.message || 'Não consegui salvar.', 'erro');
+      })
+      .acrescentarExemplar(EU.sessao, obraEscolhida.id_titulo, dados);
+  });
 
   // ------------------------------------------------------------- auxiliares
   /**
