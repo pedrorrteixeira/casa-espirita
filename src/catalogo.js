@@ -759,7 +759,7 @@ function importarAcervoBase() {
     escreverLinhas_(ABA_TITULOS, registros);
     invalidarCacheTitulos_();
 
-    // Uma linha de log para a importação inteira, não uma por título: 479
+    // Uma linha de log para a importação inteira, não uma por título: 666
     // linhas no `Log` afogariam o histórico de empréstimo, que é o que
     // alguém vai querer ler ali.
     registrarLog_('(menu da planilha)', 'importar', 'titulo', 0,
@@ -784,7 +784,7 @@ function preCadastrarAcervo() {
   var resposta = ui.alert(
     'Pré-cadastrar o acervo base',
     'Vou acrescentar até ' + quantas + ' obras espíritas conhecidas à aba ' +
-    'Titulos (Kardec e as psicografias de Chico Xavier).\n\n' +
+    'Titulos: Kardec, as psicografias de Chico Xavier e as de Divaldo Franco.\n\n' +
     'Elas entram SEM exemplar: aparecem na busca como "a casa não tem", e ' +
     'servem para catalogar mais rápido e para montar a lista de doações.\n\n' +
     'O que já estiver cadastrado é pulado. Pode rodar de novo sem duplicar.\n\n' +
