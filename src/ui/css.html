@@ -299,10 +299,24 @@
     font-weight: 400;
   }
 
-  /* --- marca da casa --- */
-  .marca { display: flex; align-items: center; gap: .7rem; margin-bottom: .75rem; }
-  .marca h1 { margin: 0; }
-  .logo { width: 44px; height: 44px; object-fit: contain; flex: none; }
+  /* --- marca da casa ---
+     O símbolo tem fundo transparente, então funciona nos dois temas sem
+     tratamento. O nome vem do Config e fica ao lado, e não dentro da imagem:
+     assim ele é texto de verdade — selecionável, lido por leitor de tela e
+     legível em qualquer tamanho de fonte. */
+  .marca { display: flex; align-items: center; gap: .75rem; margin-bottom: .8rem; }
+  .marca h1 {
+    margin: 0;
+    font-size: 1.3rem;
+    line-height: 1.2;
+    color: var(--acento);
+  }
+  .logo { width: 48px; height: 48px; object-fit: contain; flex: none; }
+
+  @media (max-width: 26rem) {
+    .marca h1 { font-size: 1.12rem; }
+    .logo { width: 40px; height: 40px; }
+  }
 
   /* --- manual ---
      Coluna mais estreita que o resto do sistema: as outras telas são listas e

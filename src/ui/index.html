@@ -6,8 +6,12 @@
 
 <header class="topo">
   <div class="marca">
+    <!-- `logo_url` no Config ganha da embutida: é a saída para trocar a
+         marca sem depender de quem mexe no código. -->
     <? if (logoUrl) { ?>
       <img class="logo" src="<?= logoUrl ?>" alt="">
+    <? } else { ?>
+      <?!= include('ui/logo'); ?>
     <? } ?>
     <h1><?= nomeCasa ?></h1>
   </div>

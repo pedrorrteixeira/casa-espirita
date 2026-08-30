@@ -10,3 +10,8 @@ node_modules/
 npm-debug.log*
 .DS_Store
 Thumbs.db
+
+# Material de origem da logo. O que o sistema usa é src/ui/logo.html,
+# com a imagem embutida — ver o comentário lá.
+logo.png
+logo-96.png
