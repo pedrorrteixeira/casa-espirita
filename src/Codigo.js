@@ -44,10 +44,17 @@ function doGet(evento) {
 
   // Nada de nome de casa hardcoded: vem do Config, como toda configuração.
   pagina.nomeCasa = lerConfig('nome_casa', 'Biblioteca');
-  // Onde o palestrante escolhe a data. O código nunca cria evento — a garantia
-  // de uma reunião por data é do Google (D4), e o escopo é calendar.readonly.
-  // O que o sistema faz é levar a pessoa até lá.
-  pagina.urlAgendamento = limparCampo_(lerConfig('url_agendamento', ''));
+
+  // `url_agendamento` NÃO entra aqui, e a ausência é a correção de um bug.
+  //
+  // Ela chegou a entrar, e o convite "Vai palestrar?" aparecia para qualquer
+  // visitante. Isso contraria a seção 5 da especificação — o link da página de
+  // agendamento se distribui só no grupo de palestrantes, porque quem o tem
+  // reserva uma segunda-feira. E esconder o bloco na tela não resolveria:
+  // valor que passa pelo template vai para o código-fonte da página, que
+  // qualquer um lê.
+  //
+  // Quem tem direito ao link pede por `verLinkDeAgendamento`, com a sessão.
 
   // O link mágico chega como ?codigo=. Trocar aqui, no carregamento, é o que
   // permite ao código ser de uso único: ele morre antes de a página existir.

@@ -371,3 +371,29 @@ function diagnosticarAgenda() {
 
   mostrarRelatorio_('Diagnóstico — agenda', linhas.join('\n'));
 }
+
+/**
+ * O link da página de agendamento, para quem tem o que fazer com ele.
+ *
+ * Devolve vazio — e não erro — para todo o resto. Quem não é palestrante nem
+ * coordena a agenda simplesmente não vê o bloco; não há o que explicar a
+ * alguém que não estava procurando isso.
+ *
+ * DUAS PORTAS, as mesmas de `definirTema`: o palestrante entra porque a data é
+ * dele, e o atendente para cima porque é quem organiza a agenda e passa o link
+ * a quem não consegue entrar no sistema.
+ *
+ * A seção 5 da especificação diz que este link se distribui só no grupo de
+ * palestrantes. O motivo é concreto: quem o tem reserva uma segunda-feira, e o
+ * Google aceita a primeira reserva sem perguntar quem é.
+ */
+function verLinkDeAgendamento(sessao) {
+  var eu = donoDaSessao_(sessao);
+  if (!eu) return '';
+
+  // `donoDaSessao_` já traduziu o "SIM" da planilha para booleano. Comparar
+  // com a string de novo daria falso sempre, e ninguém veria o link.
+  if (!eu.palestrante && !podeFazer(eu.perfil, 'definir_tema')) return '';
+
+  return limparCampo_(lerConfig('url_agendamento', ''));
+}

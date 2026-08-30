@@ -521,3 +521,33 @@ test('as abas públicas vêm antes das restritas', () => {
   assert.deepEqual(publicasDepois, [],
     `abas públicas depois das restritas: ${publicasDepois.join(', ')}`);
 });
+
+test('o doGet não põe no template nenhuma chave restrita do Config', () => {
+  // Bug real: `url_agendamento` foi para o template e o convite "Vai
+  // palestrar?" passou a aparecer para qualquer visitante. A seção 5 da
+  // especificação diz que esse link se distribui só no grupo de palestrantes,
+  // porque quem o tem reserva uma segunda-feira.
+  //
+  // O que faz disto um teste, e não um comentário, é a parte contraintuitiva:
+  // NÃO ADIANTA esconder o bloco na tela. Tudo que passa pelo template vai
+  // parar no código-fonte da página, que qualquer um abre com Ctrl+U. A
+  // proteção tem que ser não mandar — e é exatamente isso que um `pagina.x =
+  // lerConfig(...)` escrito de novo desfaria, em silêncio.
+  const RESTRITAS = ['url_agendamento', 'chave_api_livros', 'email_admin'];
+
+  const codigo = fs.readFileSync(path.join(SRC, 'Codigo.js'), 'utf8');
+  const doGet = codigo.split(/^function\s+/m)
+    .find((parte) => parte.startsWith('doGet'));
+  assert.ok(doGet, 'Codigo.js perdeu o doGet');
+
+  // Só o código, sem os comentários — que citam as chaves de propósito.
+  const semComentarios = doGet
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/^\s*\/\/.*$/gm, ' ');
+
+  const vazadas = RESTRITAS.filter((chave) => semComentarios.includes(chave));
+
+  assert.deepEqual(vazadas, [],
+    `doGet manda ao template chave(s) restrita(s): ${vazadas.join(', ')}. ` +
+    'Sirva por função que identifique quem chamou, como verLinkDeAgendamento.');
+});

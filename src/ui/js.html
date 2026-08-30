@@ -80,6 +80,13 @@
   function esquecerSessao() {
     EU = { sessao: '', nome: '', perfil: '' };
     try { localStorage.removeItem('sessao'); } catch (erro) {}
+
+    // Sair não recarrega a página — o botão troca de aba e pronto. Sem apagar
+    // isto aqui, o convite com o link de agendamento ficava no DOM depois da
+    // saída, e a agenda não seria remontada porque já constava carregada.
+    agendaCarregada = false;
+    var convite = $('#convite-agendamento');
+    if (convite) convite.innerHTML = '';
   }
 
   $('#btn-entrar').addEventListener('click', function () {
@@ -1055,10 +1062,51 @@
     });
   });
 
+  /**
+   * Monta o convite "Vai palestrar?" — se esta pessoa tiver o que fazer com
+   * ele. O servidor decide e devolve vazio para todo o resto; aqui não há
+   * regra de permissão nenhuma, só a redação.
+   *
+   * Sem sessão nem pergunta: visitante anônimo nunca vê o link, e essa é a
+   * razão de ele não vir mais no template da página.
+   */
+  function montarConviteDeAgendamento() {
+    var caixa = $('#convite-agendamento');
+    caixa.innerHTML = '';
+    if (!EU.sessao) return;
+
+    google.script.run
+      .withSuccessHandler(function (url) {
+        if (!url) return;
+
+        var bloco = document.createElement('div');
+        bloco.className = 'convite';
+        bloco.appendChild(elemento('p', 'Vai palestrar?', 'convite-titulo'));
+        bloco.appendChild(elemento('p',
+          'As datas livres estão na página de agendamento da casa. Escolha a ' +
+          'sua por lá; ela aparece aqui no dia seguinte, e então você escreve ' +
+          'o tema.'));
+
+        var link = document.createElement('a');
+        link.className = 'botao-link';
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'Escolher uma data';
+        bloco.appendChild(link);
+
+        caixa.appendChild(bloco);
+      })
+      // Falhar aqui não atrapalha a agenda: sem convite, ela funciona igual.
+      .withFailureHandler(function () {})
+      .verLinkDeAgendamento(EU.sessao);
+  }
+
   function carregarAgenda() {
     agendaCarregada = true;
     listaReunioes.innerHTML = '';
     dizer(estadoAgenda, 'Carregando…');
+    montarConviteDeAgendamento();
 
     google.script.run
       .withSuccessHandler(function (reunioes) {

@@ -130,20 +130,15 @@
 
     <!-- Marcar data é no Google, não aqui: a garantia de uma reunião por data
          é dele (D4), e o sistema tem permissão só de LEITURA do calendário.
-         O que dá para fazer é levar o palestrante até a página — que até agora
-         ninguém sabia onde ficava. -->
-    <? if (urlAgendamento) { ?>
-      <div class="convite">
-        <p><strong>Vai palestrar?</strong></p>
-        <p>
-          As datas livres estão na página de agendamento da casa. Escolha a sua
-          por lá; ela aparece aqui no dia seguinte, e então você escreve o tema.
-        </p>
-        <a class="botao-link" href="<?= urlAgendamento ?>" target="_blank" rel="noopener">
-          Escolher uma data
-        </a>
-      </div>
-    <? } ?>
+         O que dá para fazer é levar o palestrante até a página.
+
+         O convite é montado pelo JS, e não pelo template, porque o link NÃO É
+         PÚBLICO: a seção 5 da especificação diz que ele se distribui só no
+         grupo de palestrantes, e quem o tiver reserva uma segunda-feira. Se
+         viesse do template ele estaria no código-fonte da página para
+         qualquer visitante — esconder com CSS não esconderia nada. Quem tem
+         direito a ele pergunta ao servidor, com a sessão na mão. -->
+    <div id="convite-agendamento"></div>
 
     <div id="estado-agenda" class="estado" role="status" aria-live="polite"></div>
     <ul id="lista-reunioes" class="resultados"></ul>
