@@ -1041,3 +1041,73 @@ test('a máscara não atrapalha a comparação de contato', () => {
   assert.ok(mesmoContato(formatarTelefone('11987654321'), '11987654321'));
   assert.ok(mesmoContato(formatarTelefone('+5511987654321'), '(11) 98765-4321'));
 });
+
+// --- a busca põe na frente o que a casa tem -----------------------------------
+//
+// O catálogo passou a ter centenas de obras pré-cadastradas sem exemplar, que
+// existem para consulta e para a lista de doações (D5). Sem esta ordenação,
+// buscar "emmanuel" devolvia oitenta obras em ordem alfabética e as quatro que
+// estão na estante ficavam no meio. A busca existe para responder "vocês têm?".
+
+const NA_CASA = {
+  id_titulo: 90,
+  titulo: 'Vinha de Luz',
+  autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
+  autor_espiritual: 'Emmanuel',
+  qtd_exemplares: 2,
+  qtd_disponiveis: 0        // as duas emprestadas: continua sendo da casa
+};
+
+const SO_NO_CATALOGO = {
+  id_titulo: 91,
+  titulo: 'Emmanuel',       // casa no título, e ainda assim vem depois
+  autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
+  autor_espiritual: 'Emmanuel',
+  qtd_exemplares: 0,
+  qtd_disponiveis: 0
+};
+
+test('obra na casa vem antes de obra que a casa não tem', () => {
+  const achados = buscarTitulos([SO_NO_CATALOGO, NA_CASA], 'emmanuel');
+  assert.deepEqual(idsDe(achados), [90, 91]);
+});
+
+test('estar na casa pesa mais que casar no título', () => {
+  // "Emmanuel" casa no próprio título e "Vinha de Luz" só no autor espiritual.
+  // Pelo critério antigo o de título viria primeiro; agora não vem, porque o
+  // frequentador não pode levar para casa o que a casa não tem.
+  const achados = buscarTitulos([SO_NO_CATALOGO, NA_CASA], 'emmanuel');
+  assert.equal(achados[0].titulo, 'Vinha de Luz');
+});
+
+test('livro emprestado continua contando como "na casa"', () => {
+  // `qtd_disponiveis` zero, `qtd_exemplares` dois. Quem quer saber se leva
+  // hoje lê o selo de disponibilidade; o agrupamento é outra pergunta.
+  const achados = buscarTitulos([SO_NO_CATALOGO, NA_CASA], 'vinha');
+  assert.equal(achados.length, 1);
+  assert.equal(achados[0].id_titulo, 90);
+});
+
+test('entre obras na casa, a ordem por série continua valendo', () => {
+  // A ordenação nova é um critério a mais, no topo — não substitui os que já
+  // existiam. Com todas na casa, "andré luiz" tem que devolver a série em
+  // sequência, que é o critério de aceite da Fase 1.
+  const naEstante = ACERVO.map((obra) => ({ ...obra, qtd_exemplares: 1 }));
+  const achados = buscarTitulos(naEstante, 'andre luiz');
+  const daSerie = achados.filter((t) => t.serie === 'A Vida no Mundo Espiritual');
+  assert.deepEqual(
+    daSerie.map((t) => t.ordem_na_serie),
+    [...daSerie.map((t) => t.ordem_na_serie)].sort((a, b) => a - b)
+  );
+});
+
+test('sem qtd_exemplares nenhum, a ordem antiga é preservada', () => {
+  // Título vindo de tela que não traz a coluna derivada não pode reordenar
+  // sozinho: se ninguém está "na casa", o critério não desempata nada.
+  const semColuna = [
+    { id_titulo: 1, titulo: 'Bezerra de Menezes' },
+    { id_titulo: 2, titulo: 'Ave Cristo' }
+  ];
+  const achados = buscarTitulos(semColuna, 'e');
+  assert.deepEqual(idsDe(achados), [2, 1]);   // alfabética, como antes
+});

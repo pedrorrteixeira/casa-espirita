@@ -325,6 +325,8 @@ test('toda função que grava exige sessão', () => {
     'criarEstruturaPlanilha', 'popularConfigPadrao',   // menu da planilha,
     'sincronizarReunioes', 'sincronizarAgora',         // que já exige ser
     'instalarGatilhos', 'verGatilhos',                 // editor dela
+    'importarAcervoBase', 'preCadastrarAcervo',        // idem: catalogação
+                                                       // em massa, uma vez
     'diagnosticarGoogleBooks', 'diagnosticarAgenda',
     'gatilhoDiario', 'gatilhoSemanal', 'gatilhoMensal',
     'avisarAtrasos', 'cobrarTema', 'fazerBackup',
@@ -333,11 +335,16 @@ test('toda função que grava exige sessão', () => {
   ]);
 
   // Uma função "grava" quando chama algo que escreve na planilha.
-  const ESCRITAS = /escreverLinha_|atualizarCelulas_|appendRow|setValue/;
+  //
+  // O `s?` não é zelo: `escreverLinhas_` nasceu depois e o padrão antigo
+  // (`escreverLinha_`) não casava com ele. A função que importa o acervo base
+  // grava 331 linhas e passou pela guarda sem ser vista. Gravador novo com
+  // nome parecido é justamente o que escapa de uma lista de nomes.
+  const ESCRITAS = /escreverLinhas?_|atualizarCelulas_|appendRow|setValue/;
 
   // Duas formas legítimas de saber QUEM está chamando, e o teste aceita as
-  // duas.  é permissão por PERFIL — a escada consulta → admin.
-  //  é permissão por DONO: o palestrante escreve o tema da
+  // duas. "exigir_" é permissão por PERFIL — a escada consulta → admin.
+  // "donoDaSessao_" é permissão por DONO: o palestrante escreve o tema da
   // própria palestra sem estar em degrau nenhum da escada. O que a regra
   // exige não é um mecanismo específico; é que ninguém anônimo grave.
   const IDENTIFICA = /exigir_\(|donoDaSessao_\(/;

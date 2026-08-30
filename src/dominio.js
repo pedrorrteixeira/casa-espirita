@@ -750,6 +750,20 @@ function camposDeBusca_(titulo) {
  * 3. Alfabético, para o resultado não mudar de ordem entre uma busca e outra.
  */
 function compararAchados_(a, b, palavras) {
+  // O que a casa tem vem primeiro, antes de qualquer outro critério.
+  //
+  // Não era assim, e não precisava ser enquanto o catálogo só tinha o que
+  // está na estante. Com o pré-cadastro do acervo base, buscar "emmanuel"
+  // passou a devolver oitenta obras em ordem alfabética, e as quatro que o
+  // frequentador pode levar para casa hoje ficavam perdidas no meio.
+  //
+  // A pergunta que a busca existe para responder é "vocês têm?". Título sem
+  // exemplar continua aparecendo — é o D5, alimenta a lista de doações — mas
+  // depois, e separado.
+  var naCasaA = temNaCasa_(a) ? 0 : 1;
+  var naCasaB = temNaCasa_(b) ? 0 : 1;
+  if (naCasaA !== naCasaB) return naCasaA - naCasaB;
+
   var pesoA = casaNoTitulo_(a, palavras) ? 0 : 1;
   var pesoB = casaNoTitulo_(b, palavras) ? 0 : 1;
   if (pesoA !== pesoB) return pesoA - pesoB;
@@ -765,6 +779,17 @@ function compararAchados_(a, b, palavras) {
   }
 
   return normalizarTexto(a.titulo).localeCompare(normalizarTexto(b.titulo));
+}
+
+/**
+ * A casa tem algum exemplar desta obra?
+ *
+ * `qtd_exemplares`, e não `qtd_disponiveis`: livro emprestado continua sendo
+ * da casa. Quem quer saber se pode levar hoje lê a linha de disponibilidade,
+ * que é outra coisa.
+ */
+function temNaCasa_(titulo) {
+  return Number(titulo && titulo.qtd_exemplares) > 0;
 }
 
 function casaNoTitulo_(titulo, palavras) {

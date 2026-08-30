@@ -184,6 +184,20 @@
       .buscarNoAcervo(texto);
   }
 
+  /**
+   * Desenha o resultado em dois grupos: o que está na estante e o que o
+   * catálogo conhece mas a casa não tem.
+   *
+   * O catálogo tem centenas de obras pré-cadastradas sem exemplar (D5). Numa
+   * lista só, buscar "emmanuel" enterrava os quatro livros que dá para levar
+   * hoje debaixo de setenta que a casa não tem. A pergunta do balcão é "vocês
+   * têm?", e a resposta tem que caber na primeira tela.
+   *
+   * O segundo grupo não some — ele é a lista de doações desejadas, e é o
+   * motivo de o título sem exemplar existir. Só fica recolhido. Quando não há
+   * nada na casa, abre sozinho: senão a tela ficaria vazia com a resposta
+   * escondida atrás de um clique.
+   */
   function mostrarResultados(achados) {
     resultados.innerHTML = '';
 
@@ -192,31 +206,93 @@
       return;
     }
 
-    dizer(estadoBusca, achados.length === 1 ? '1 obra' : achados.length + ' obras');
-
-    achados.forEach(function (obra) {
-      var item = document.createElement('li');
-      item.className = 'resultado';
-
-      item.appendChild(elemento('h2', obra.titulo +
-        (obra.subtitulo ? ' — ' + obra.subtitulo : '')));
-
-      if (obra.autoria) item.appendChild(elemento('p', obra.autoria, 'autoria'));
-
-      var meta = [];
-      if (obra.categoria) meta.push(obra.categoria);
-      if (obra.serie) {
-        meta.push(obra.serie + (obra.ordem_na_serie ? ' nº ' + obra.ordem_na_serie : ''));
-      }
-      // Editora e ano vêm dos exemplares e podem ser vários.
-      if (obra.edicoes && obra.edicoes.length) meta.push(obra.edicoes.join(' / '));
-      if (meta.length) item.appendChild(elemento('p', meta.join(' · '), 'meta'));
-
-      var selo = elemento('span', textoDeDisponibilidade(obra), 'selo ' + obra.estado);
-      item.appendChild(selo);
-
-      resultados.appendChild(item);
+    var naCasa = achados.filter(function (obra) {
+      return obra.estado !== 'sem_exemplar';
     });
+    var faltando = achados.filter(function (obra) {
+      return obra.estado === 'sem_exemplar';
+    });
+
+    dizer(estadoBusca, resumoDaBusca(naCasa.length, faltando.length));
+
+    if (naCasa.length) {
+      if (faltando.length) {
+        resultados.appendChild(
+          tituloDeGrupo('Na casa', naCasa.length, 'divisor-na-casa'));
+      }
+      naCasa.forEach(function (obra) {
+        resultados.appendChild(itemDeObra(obra));
+      });
+    }
+
+    if (faltando.length) resultados.appendChild(grupoRecolhido(faltando, !naCasa.length));
+  }
+
+  function resumoDaBusca(quantasNaCasa, quantasFaltando) {
+    if (!quantasFaltando) {
+      return quantasNaCasa === 1 ? '1 obra' : quantasNaCasa + ' obras';
+    }
+    if (!quantasNaCasa) {
+      return 'nenhuma na casa · ' + quantasFaltando + ' no catálogo';
+    }
+    return quantasNaCasa + (quantasNaCasa === 1 ? ' na casa' : ' na casa') +
+      ' · ' + quantasFaltando + ' só no catálogo';
+  }
+
+  function tituloDeGrupo(texto, quantas, classe) {
+    var item = document.createElement('li');
+    item.className = 'divisor ' + classe;
+    item.appendChild(elemento('h2', texto + ' (' + quantas + ')'));
+    return item;
+  }
+
+  /** O grupo do que a casa não tem, dentro de um <details>. */
+  function grupoRecolhido(obras, aberto) {
+    var item = document.createElement('li');
+    item.className = 'divisor divisor-ausente';
+
+    var caixa = document.createElement('details');
+    if (aberto) caixa.open = true;
+
+    var resumo = document.createElement('summary');
+    resumo.textContent = 'A casa não tem (' + obras.length + ')';
+    caixa.appendChild(resumo);
+
+    caixa.appendChild(elemento('p',
+      'Estas obras estão no catálogo para consulta e para a lista de doações. ' +
+      'Se quiser alguma, fale com quem estiver no balcão.', 'dica'));
+
+    var lista = document.createElement('ul');
+    lista.className = 'resultados';
+    obras.forEach(function (obra) { lista.appendChild(itemDeObra(obra)); });
+    caixa.appendChild(lista);
+
+    item.appendChild(caixa);
+    return item;
+  }
+
+  function itemDeObra(obra) {
+    var item = document.createElement('li');
+    item.className = 'resultado';
+
+    item.appendChild(elemento('h2', obra.titulo +
+      (obra.subtitulo ? ' — ' + obra.subtitulo : '')));
+
+    if (obra.autoria) item.appendChild(elemento('p', obra.autoria, 'autoria'));
+
+    var meta = [];
+    if (obra.categoria) meta.push(obra.categoria);
+    if (obra.serie) {
+      meta.push(obra.serie + (obra.ordem_na_serie ? ' nº ' + obra.ordem_na_serie : ''));
+    }
+    // Editora e ano vêm dos exemplares e podem ser vários.
+    if (obra.edicoes && obra.edicoes.length) meta.push(obra.edicoes.join(' / '));
+    if (meta.length) item.appendChild(elemento('p', meta.join(' · '), 'meta'));
+
+    item.appendChild(
+      elemento('span', textoDeDisponibilidade(obra), 'selo ' + obra.estado));
+
+    return item;
   }
 
   /**
@@ -1163,7 +1239,7 @@
     // Leva o foco ao título — quem usa teclado ou leitor de tela precisa saber
     // que a tela TROCOU, e não só que algo sumiu.
     //
-     //  não é detalhe: sem ele, focar rola a página até o
+    // O "preventScroll" não é detalhe: sem ele, focar rola a página até o
     // elemento e desfaz o scrollTo abaixo. O assunto abria com o cabeçalho já
     // fora da tela, parecendo ter aparecido no fim.
     var titulo = document.querySelector('#' + id + ' h2');
@@ -1174,7 +1250,15 @@
     window.scrollTo(0, 0);
   }
 
-  indiceManual.querySelectorAll('a').forEach(function (link) {
+  // Links do índice E referências cruzadas de dentro dos assuntos.
+  //
+  // Só o índice era ligado, e enquanto nenhum assunto citava outro isso
+  // bastava. Não basta mais: um link para "#m-maisum" escrito dentro de um
+  // verbete cai no salto de âncora do navegador, que rola até um elemento com
+  // `oculta` — ou seja, o clique não faz absolutamente nada, sem erro nenhum
+  // na tela. Ligar por assunto, e não por lugar na página, elimina a classe.
+  var manual = indiceManual.parentNode;
+  manual.querySelectorAll('a[href^="#m-"]').forEach(function (link) {
     link.addEventListener('click', function (evento) {
       evento.preventDefault();
       abrirVerbete(link.getAttribute('href').slice(1));

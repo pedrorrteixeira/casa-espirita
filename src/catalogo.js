@@ -673,3 +673,139 @@ function mostrarRelatorio_(titulo, texto) {
     .setHeight(480);
   SpreadsheetApp.getUi().showModalDialog(html, titulo);
 }
+
+/**
+ * Pré-cadastra as obras de `acervo-base.js` na aba `Titulos`.
+ *
+ * Roda pelo menu da planilha, não pelo Web App: é operação de catalogação em
+ * massa, feita uma vez, por quem já tem a planilha aberta — e ter a planilha
+ * aberta já é a permissão (é o mesmo raciocínio de `criarEstruturaPlanilha`).
+ *
+ * IDEMPOTENTE. Pula toda obra que já exista, comparando pelo mesmo
+ * `acharTituloEquivalente` que a tela de cadastro usa. Rodar duas vezes não
+ * duplica, e acrescentar obras ao arquivo e rodar de novo importa só as novas.
+ *
+ * NUNCA CRIA EXEMPLAR. O título entra com zero exemplares — que é o D5: a casa
+ * não passa a ter o livro, passa a saber que ele existe. Quem tem exemplar de
+ * verdade é a estante, e isso se cadastra um a um, com tombo.
+ */
+function importarAcervoBase() {
+  var candidatos = montarAcervoBase_();
+
+  return comTrava_(function () {
+    // Sem cache de propósito: uma importação anterior na mesma sessão teria
+    // deixado a lista velha, e a checagem de duplicata passaria batido.
+    var existentes = lerTitulos(true);
+
+    // Compara SÓ pelo título, e não pelo par título+autoria que a tela de
+    // cadastro usa.
+    //
+    // A tela compara os dois porque está julgando o que uma pessoa acabou de
+    // digitar, com o livro na mão: ali, dois "Reencontro" de autores
+    // diferentes são obras diferentes e ambas devem entrar. Aqui é o
+    // contrário. As obras já cadastradas vieram do Google Books, que grava
+    // "Francisco Cândido Xavier"; este arquivo grava "Francisco Cândido
+    // Xavier (Chico Xavier)", que é a convenção de catalogação da casa. Pela
+    // regra da tela as duas autorias divergem, e "Nosso Lar" ganharia uma
+    // segunda ficha — com os exemplares na primeira e o pré-cadastro na
+    // segunda, que é o pior resultado possível.
+    //
+    // Errar para o lado de pular é barato: no máximo uma obra homônima deixa
+    // de ser pré-cadastrada, e ela se cadastra à mão em meio minuto. Errar
+    // para o lado de duplicar racha o acervo em duas fichas.
+    var jaCadastrado = {};
+    existentes.forEach(function (titulo) {
+      jaCadastrado[normalizarTexto(titulo.titulo)] = true;
+    });
+
+    var novos = [];
+    var pulados = [];
+
+    candidatos.forEach(function (obra) {
+      var chave = normalizarTexto(obra.titulo);
+      if (jaCadastrado[chave]) {
+        pulados.push(obra.titulo);
+        return;
+      }
+      // Marca já: se o próprio arquivo tiver a mesma obra duas vezes, a
+      // segunda tem que ser pulada igual.
+      jaCadastrado[chave] = true;
+      novos.push(obra);
+    });
+
+    if (!novos.length) {
+      return { criados: 0, pulados: pulados.length, primeiroId: 0 };
+    }
+
+    var proximo = proximoId_(ABA_TITULOS, 'id_titulo');
+    var registros = novos.map(function (obra, i) {
+      return {
+        id_titulo: proximo + i,
+        titulo: obra.titulo,
+        subtitulo: '',
+        autor_ou_medium: obra.autor_ou_medium,
+        autor_espiritual: obra.autor_espiritual,
+        tradutor: '',
+        isbn: '',
+        categoria: '',
+        serie: obra.serie,
+        ordem_na_serie: obra.ordem_na_serie,
+        sinopse: '',
+        link_online: '',
+        observacao: obra.observacao
+      };
+    });
+
+    escreverLinhas_(ABA_TITULOS, registros);
+    invalidarCacheTitulos_();
+
+    // Uma linha de log para a importação inteira, não uma por título: 331
+    // linhas no `Log` afogariam o histórico de empréstimo, que é o que
+    // alguém vai querer ler ali.
+    registrarLog_('(menu da planilha)', 'importar', 'titulo', 0,
+      novos.length + ' obra(s) pré-cadastrada(s), ' + pulados.length + ' já existia(m)');
+
+    return {
+      criados: novos.length,
+      pulados: pulados.length,
+      primeiroId: proximo
+    };
+  });
+}
+
+/**
+ * O item de menu. Pergunta antes: acrescentar centenas de linhas é visível e
+ * ninguém deve descobrir que fez isso depois de feito.
+ */
+function preCadastrarAcervo() {
+  var ui = SpreadsheetApp.getUi();
+  var quantas = montarAcervoBase_().length;
+
+  var resposta = ui.alert(
+    'Pré-cadastrar o acervo base',
+    'Vou acrescentar até ' + quantas + ' obras espíritas conhecidas à aba ' +
+    'Titulos (Kardec e as psicografias de Chico Xavier).\n\n' +
+    'Elas entram SEM exemplar: aparecem na busca como "a casa não tem", e ' +
+    'servem para catalogar mais rápido e para montar a lista de doações.\n\n' +
+    'O que já estiver cadastrado é pulado. Pode rodar de novo sem duplicar.\n\n' +
+    'Continuar?',
+    ui.ButtonSet.YES_NO
+  );
+  if (resposta !== ui.Button.YES) return;
+
+  try {
+    var r = importarAcervoBase();
+    ui.alert(
+      'Pré-cadastro concluído',
+      r.criados + ' obra(s) acrescentada(s).\n' +
+      r.pulados + ' já estava(m) cadastrada(s) e foi(ram) pulada(s).\n\n' +
+      (r.criados
+        ? 'Confira a aba Titulos. A coluna observacao diz de onde veio cada ' +
+          'linha; o ano ali é o da fonte e pode não bater com o exemplar.'
+        : 'Nada a fazer — o acervo base já está todo cadastrado.'),
+      ui.ButtonSet.OK
+    );
+  } catch (erro) {
+    ui.alert('Não consegui pré-cadastrar', erro.message, ui.ButtonSet.OK);
+  }
+}

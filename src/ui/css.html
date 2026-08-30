@@ -382,6 +382,64 @@
      Agora a etiqueta virou título de grupo, e a linha virou uma escolha. */
   .manual-indice { display: block; margin-top: .5rem; }
 
+
+  /* Os dois grupos da busca: o que está na estante e o que só existe no
+     catálogo. A separação é a resposta à pergunta do balcão — "vocês têm?" —
+     e por isso precisa se ler antes de qualquer título.
+
+     Classe própria e não `.grupo`, que já é dos assuntos do manual: as duas
+     coisas são <details> em <li> e as regras se atropelariam. */
+  .divisor {
+    list-style: none;
+    margin: 1.2rem 0 .2rem;
+  }
+  .divisor:first-child { margin-top: .4rem; }
+
+  .divisor-na-casa h2 {
+    margin: 0;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--disponivel);
+    padding-bottom: .3rem;
+    border-bottom: 2px solid var(--disponivel);
+  }
+
+  .divisor-ausente > details > summary {
+    cursor: pointer;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ausente);
+    padding: .45rem 0;
+    border-bottom: 2px solid var(--borda);
+    /* Alvo de toque: vai ser usado no celular, em pé. */
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .divisor-ausente > details > summary::-webkit-details-marker { display: none; }
+  .divisor-ausente > details > summary::after {
+    content: 'mostrar';
+    margin-left: auto;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+    color: var(--acento);
+  }
+  .divisor-ausente > details[open] > summary::after { content: 'esconder'; }
+  .divisor-ausente > details > summary:hover { color: var(--acento); }
+  .divisor-ausente > details > summary:focus-visible {
+    outline: 3px solid var(--acento);
+    outline-offset: 2px;
+  }
+
+  .divisor-ausente .dica { margin: .6rem 0 0; }
+  .divisor-ausente .resultados { margin-top: .4rem; }
+
   /* Grupos fechados: o índice são cinco linhas e continua cabendo numa tela
      por mais que o manual cresça. Antes a lista aberta crescia junto com o
      número de assuntos, e achar um exigia rolar. */

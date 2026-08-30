@@ -253,6 +253,62 @@ function gravarTrecho_(aba, linha, inicio, valores) {
 }
 
 /**
+ * Grava várias linhas de uma vez, no fim da aba.
+ *
+ * Existe porque `escreverLinha_` faz um `setValues` por trecho e por linha:
+ * importar 331 títulos daria 662 chamadas e estouraria o tempo de execução.
+ * Aqui são dois `setValues` no total, um por trecho contíguo.
+ *
+ * Mesma recusa de coluna derivada, e pela mesma razão — só que aqui o estrago
+ * seria maior: um `setValues` cobrindo A:O de uma vez apagaria a ARRAYFORMULA
+ * de M e N, e com ela as colunas derivadas do acervo inteiro.
+ */
+function escreverLinhas_(nome, registros) {
+  if (!registros || !registros.length) return 0;
+
+  var aba = abaOuErro_(nome);
+  var totalColunas = aba.getLastColumn();
+  var cabecalhos = aba.getRange(1, 1, 1, totalColunas).getValues()[0];
+
+  registros.forEach(function (registro) {
+    Object.keys(registro).forEach(function (campo) {
+      var posicao = cabecalhos.indexOf(campo);
+      if (posicao === -1) {
+        throw new Error('A coluna "' + campo + '" não existe na aba ' + nome + '.');
+      }
+      if (ehColunaDerivada_(nome, posicao + 1)) {
+        throw new Error(
+          'Tentativa de escrever na coluna derivada "' + campo + '" de ' + nome +
+          '. Essa coluna é ARRAYFORMULA — escrever nela quebra a fórmula com #REF!.'
+        );
+      }
+    });
+  });
+
+  var primeira = ultimaLinhaDeDados_(aba) + 1;
+
+  // Monta os trechos contíguos uma vez só, e grava cada um com todas as linhas.
+  var trechos = [];
+  var atual = null;
+  for (var c = 1; c <= totalColunas; c++) {
+    if (ehColunaDerivada_(nome, c)) { atual = null; continue; }
+    if (!atual) { atual = { inicio: c, campos: [] }; trechos.push(atual); }
+    atual.campos.push(String(cabecalhos[c - 1]));
+  }
+
+  trechos.forEach(function (trecho) {
+    var matriz = registros.map(function (registro) {
+      return trecho.campos.map(function (campo) {
+        return registro[campo] === undefined ? '' : registro[campo];
+      });
+    });
+    aba.getRange(primeira, trecho.inicio, matriz.length, trecho.campos.length)
+      .setValues(matriz);
+  });
+
+  return primeira;
+}
+/**
  * Atualiza células soltas de uma linha existente. Mesma recusa de coluna
  * derivada. Escreve célula a célula porque as colunas raramente são vizinhas;
  * o volume aqui é de unidades, não de centenas.

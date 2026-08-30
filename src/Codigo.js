@@ -21,6 +21,7 @@ function onOpen() {
     .createMenu('Biblioteca')
     .addItem('Criar / atualizar estrutura da planilha', 'criarEstruturaPlanilha')
     .addItem('Repor chaves padrão em Config', 'popularConfigPadrao')
+    .addItem('Pré-cadastrar obras espíritas conhecidas', 'preCadastrarAcervo')
     .addSeparator()
     .addItem('Sincronizar reuniões com o Google Agenda', 'sincronizarAgora')
     .addItem('Instalar gatilhos automáticos', 'instalarGatilhos')
