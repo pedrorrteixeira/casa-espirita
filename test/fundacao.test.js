@@ -356,3 +356,31 @@ test('toda função que grava exige sessão', () => {
 
   assert.deepEqual(problemas, [], problemas.join('\n'));
 });
+
+test('o manual acompanha as telas que existem', () => {
+  // O manual mora dentro do sistema justamente para não envelhecer em
+  // silêncio. Mas morar junto não basta: alguém tem que perceber quando ele
+  // ficou para trás. Isto compara as duas listas mais propensas a divergir —
+  // as abas do sistema e as que o manual descreve.
+  //
+  // Um manual que descreve uma tela que não existe mais é pior que manual
+  // nenhum: manda o voluntário procurar um botão fantasma e o convence de que
+  // ele é que está errado.
+  const html = fs.readFileSync(path.join(SRC, 'ui', 'index.html'), 'utf8');
+  const manual = fs.readFileSync(path.join(SRC, 'ui', 'manual.html'), 'utf8');
+
+  // Rótulo de cada aba, como o voluntário lê na tela.
+  const abas = [...html.matchAll(/data-visao="[a-z]+"[^>]*>([^<]+)</g)]
+    .map(([, rotulo]) => rotulo.trim());
+
+  // A própria aba Manual não se descreve, e Buscar é o estado inicial: quem
+  // abre o sistema já está nela, sem precisar de instrução.
+  const dispensadas = new Set(['Manual', 'Buscar']);
+
+  const faltando = abas
+    .filter((aba) => !dispensadas.has(aba))
+    .filter((aba) => !manual.includes(`<kbd>${aba}</kbd>`));
+
+  assert.deepEqual(faltando, [],
+    `estas abas existem mas o manual não as menciona: ${faltando.join(', ')}`);
+});

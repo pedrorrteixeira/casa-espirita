@@ -82,6 +82,33 @@ voluntários falam.
 - Antes de dizer que uma fase está pronta, rode `npm test` e confira os
   critérios de aceite da fase no @PLANO.md.
 
+## O manual anda junto com o código
+
+`src/ui/manual.html` é a aba **Manual** do sistema — o que os voluntários leem
+para operar a biblioteca. Ele mora no repositório, e não num Google Docs, por
+um motivo só: **para mudar no mesmo commit que muda a tela**.
+
+Um manual que descreve um botão que não existe mais é pior que manual nenhum.
+Ele manda o voluntário procurar algo que não está lá e o convence de que ele é
+que está errado — e aí a casa volta para o caderno.
+
+**Toda alteração que o voluntário percebe exige mexer no manual, no mesmo
+commit.** Concretamente:
+
+- rótulo de aba, de botão ou de campo;
+- passo a mais ou a menos num fluxo (emprestar, devolver, cadastrar);
+- o que uma mensagem de erro diz, quando o manual a cita;
+- o que cada perfil pode fazer;
+- prazo, limite ou regra de negócio que o texto mencione (os 21 dias, os 30
+  minutos do link, as 12 horas de sessão, os 15 nomes da busca).
+
+Não exige mexer no manual: refatoração interna, nome de função, mudança de
+`planilha.js`, ajuste de estilo que não muda o que se lê.
+
+O teste "o manual acompanha as telas que existem" pega o caso mais óbvio — aba
+nova sem documentação. Ele é uma rede, não a regra: o teste não sabe que o
+prazo virou 30 dias e o texto continua dizendo 21.
+
 ## O que você (Claude Code) não consegue fazer
 
 Estas etapas são manuais e estão listadas no @PLANO.md. Não tente contorná-las,

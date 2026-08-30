@@ -219,10 +219,13 @@ biblioteca-casa-espirita/
 │   ├── agenda.js
 │   ├── gatilhos.js
 │   ├── setup.js           # criarEstruturaPlanilha()
+│   ├── sessao.js          # link mágico e a guarda exigir_ (Fase 5)
 │   └── ui/
 │       ├── index.html
 │       ├── css.html
-│       └── js.html
+│       ├── js.html
+│       ├── logo.html      # a logomarca embutida, em base64
+│       └── manual.html    # o manual do voluntário — ver CLAUDE.md
 └── test/
     └── dominio.test.js
 ```
