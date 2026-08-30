@@ -1111,6 +1111,65 @@
       .meusEmprestimos(contato);
   });
 
+
+  // ------------------------------------------------------------ manual
+  // Um assunto por vez. Quem consulta o manual está com um problema na mão, em
+  // pé no balcão, e quer a resposta daquele problema — não a lista dos treze.
+  //
+  // O índice e o botão de voltar são governados por JS. Sem ele, tudo fica
+  // visível e o manual volta a ser a página longa com âncoras: menos
+  // confortável, mas inteiramente legível. Nada aqui é indispensável para ler.
+
+  var indiceManual = $('.manual-indice');
+  var voltarManual = $('#voltar-manual');
+  // Abertura e rodapé pertencem ao índice: somem quando um assunto abre.
+  var soNoIndice = document.querySelectorAll('.so-no-indice');
+  var verbetes = Array.prototype.slice.call(document.querySelectorAll('.verbete'));
+
+  function mostrarIndiceDoManual() {
+    verbetes.forEach(function (verbete) { verbete.classList.add('oculta'); });
+    indiceManual.classList.remove('oculta');
+    soNoIndice.forEach(function (parte) { parte.classList.remove('oculta'); });
+    voltarManual.classList.add('oculta');
+  }
+
+  function abrirVerbete(id) {
+    verbetes.forEach(function (verbete) {
+      verbete.classList.toggle('oculta', verbete.id !== id);
+    });
+    indiceManual.classList.add('oculta');
+    soNoIndice.forEach(function (parte) { parte.classList.add('oculta'); });
+    voltarManual.classList.remove('oculta');
+
+    // O assunto escolhido tem que começar onde os olhos já estão, e não onde a
+    // rolagem do índice parou.
+    window.scrollTo(0, 0);
+
+    // Leva o foco ao título: quem usa teclado ou leitor de tela precisa saber
+    // que a tela trocou, e não só que algo sumiu.
+    var titulo = document.querySelector('#' + id + ' h2');
+    if (titulo) titulo.focus();
+  }
+
+  indiceManual.querySelectorAll('a').forEach(function (link) {
+    link.addEventListener('click', function (evento) {
+      evento.preventDefault();
+      abrirVerbete(link.getAttribute('href').slice(1));
+    });
+  });
+
+  voltarManual.addEventListener('click', mostrarIndiceDoManual);
+
+  // Sair da aba Manual e voltar depois reabre no índice, não no assunto que
+  // alguém leu semana passada.
+  document.querySelectorAll('.aba').forEach(function (aba) {
+    aba.addEventListener('click', function () {
+      if (aba.dataset.visao === 'manual') mostrarIndiceDoManual();
+    });
+  });
+
+  mostrarIndiceDoManual();
+
   // ------------------------------------------------------------- auxiliares
   /**
    * Diz o que conferir na autoria. O Google marca o autor espiritual com

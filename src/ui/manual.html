@@ -8,11 +8,20 @@
 
 <section id="visao-manual" class="visao oculta">
 
-  <p class="dica manual-abertura">
+  <p class="dica manual-abertura so-no-indice">
     Como emprestar, devolver e catalogar — escrito por situação, do jeito que a
     coisa chega no balcão.
   </p>
 
+  <!-- Um assunto por vez. Quem abre o manual está com um problema na mão, em
+       pé no balcão: mostrar os treze de uma vez obriga a procurar o certo no
+       meio dos outros doze.
+
+       Sem JavaScript tudo continua visível — os links do índice são âncoras de
+       verdade e o manual vira a página longa de antes, que funciona. -->
+  <button type="button" id="voltar-manual" class="discreto oculta">
+    ← Todos os assuntos
+  </button>
   <nav class="manual-indice" aria-label="Seções do manual">
     <a href="#m-entrar"><span>Antes de tudo</span> Entrar no sistema</a>
     <a href="#m-emprestar"><span>No balcão</span> Alguém quer levar um livro</a>
@@ -32,7 +41,7 @@
   <!-- ------------------------------------------------------------- entrar -->
   <article class="verbete" id="m-entrar">
     <p class="onde-fica">Antes de tudo</p>
-    <h2>Entrar no sistema</h2>
+    <h2 tabindex="-1">Entrar no sistema</h2>
 
     <p>
       Buscar livro, ver a agenda e consultar os próprios empréstimos funcionam
@@ -73,7 +82,7 @@
   <!-- ---------------------------------------------------------- emprestar -->
   <article class="verbete" id="m-emprestar">
     <p class="onde-fica">No balcão</p>
-    <h2>Alguém quer levar um livro</h2>
+    <h2 tabindex="-1">Alguém quer levar um livro</h2>
 
     <ol class="passos">
       <li>Abra a aba <kbd>Balcão</kbd>.</li>
@@ -125,7 +134,7 @@
   <!-- ----------------------------------------------------------- devolver -->
   <article class="verbete" id="m-devolver">
     <p class="onde-fica">No balcão</p>
-    <h2>Trouxeram um livro de volta</h2>
+    <h2 tabindex="-1">Trouxeram um livro de volta</h2>
 
     <ol class="passos">
       <li>Aba <kbd>Balcão</kbd>, digite o tombo.</li>
@@ -150,7 +159,7 @@
   <!-- ------------------------------------------------------------ renovar -->
   <article class="verbete" id="m-renovar">
     <p class="onde-fica">No balcão</p>
-    <h2>Querem ficar mais tempo com o livro</h2>
+    <h2 tabindex="-1">Querem ficar mais tempo com o livro</h2>
 
     <p>
       Aba <kbd>Balcão</kbd>, digite o tombo, toque em
@@ -167,7 +176,7 @@
   <!-- ------------------------------------------------------------ atrasos -->
   <article class="verbete" id="m-atrasos">
     <p class="onde-fica">No balcão</p>
-    <h2>Ver quem está com livro atrasado</h2>
+    <h2 tabindex="-1">Ver quem está com livro atrasado</h2>
 
     <p>
       Aba <kbd>Atrasos</kbd>, dois botões: <kbd>Só os atrasados</kbd> e
@@ -184,7 +193,7 @@
   <!-- ------------------------------------------------------------- doação -->
   <article class="verbete" id="m-doacao">
     <p class="onde-fica">Cadastrar</p>
-    <h2>Chegaram livros novos</h2>
+    <h2 tabindex="-1">Chegaram livros novos</h2>
 
     <ol class="passos">
       <li>Aba <kbd>Cadastrar</kbd>, bloco <kbd>Obra</kbd>.</li>
@@ -250,7 +259,7 @@
   <!-- -------------------------------------------------------------- sumiu -->
   <article class="verbete" id="m-sumiu">
     <p class="onde-fica">Cadastrar</p>
-    <h2>Um livro sumiu ou estragou</h2>
+    <h2 tabindex="-1">Um livro sumiu ou estragou</h2>
 
     <p>
       Isso se chama <strong>dar baixa</strong>. O exemplar sai do acervo, mas a
@@ -274,7 +283,7 @@
   <!-- ------------------------------------------------------------ pessoas -->
   <article class="verbete" id="m-pessoas">
     <p class="onde-fica">Cadastrar</p>
-    <h2>Gente nova, e gente que mudou</h2>
+    <h2 tabindex="-1">Gente nova, e gente que mudou</h2>
 
     <p>
       Em <kbd>Cadastrar → Pessoa nova</kbd>, só o nome é obrigatório. Telefone e
@@ -316,7 +325,7 @@
   <!-- --------------------------------------------------------------- tema -->
   <article class="verbete" id="m-tema">
     <p class="onde-fica">Agenda</p>
-    <h2>Informar o tema da reunião</h2>
+    <h2 tabindex="-1">Informar o tema da reunião</h2>
 
     <p>
       A aba <kbd>Agenda</kbd> mostra as próximas reuniões e quem palestra em
@@ -339,7 +348,7 @@
   <!-- --------------------------------------------------------------- meus -->
   <article class="verbete" id="m-meus">
     <p class="onde-fica">Meus livros</p>
-    <h2>Até quando é o meu livro</h2>
+    <h2 tabindex="-1">Até quando é o meu livro</h2>
 
     <p>
       Qualquer frequentador vê os próprios prazos sem entrar: aba
@@ -356,7 +365,7 @@
   <!-- ----------------------------------------------------------- planilha -->
   <article class="verbete" id="m-planilha">
     <p class="onde-fica">Cuidado</p>
-    <h2>O que não mexer na planilha</h2>
+    <h2 tabindex="-1">O que não mexer na planilha</h2>
 
     <p>
       Quase tudo se faz pelo sistema. Se você tem acesso à planilha, três coisas
@@ -406,7 +415,7 @@
   <!-- ------------------------------------------------------------- travou -->
   <article class="verbete" id="m-travou">
     <p class="onde-fica">Socorro</p>
-    <h2>Quando alguma coisa trava</h2>
+    <h2 tabindex="-1">Quando alguma coisa trava</h2>
 
     <dl class="e-se">
       <dt>O sistema não abre</dt>
@@ -445,7 +454,7 @@
   <!-- ------------------------------------------------------------ palavras -->
   <article class="verbete" id="m-palavras">
     <p class="onde-fica">Referência</p>
-    <h2>As palavras que o sistema usa</h2>
+    <h2 tabindex="-1">As palavras que o sistema usa</h2>
 
     <dl class="palavras">
       <dt>Título</dt>
@@ -493,7 +502,7 @@
     </dl>
   </article>
 
-  <p class="manual-fim">
+  <p class="manual-fim so-no-indice">
     Este manual descreve o sistema como ele está hoje. Se a tela não
     corresponder ao que está escrito aqui, o manual é que está velho — avise
     quem administra. E lembre: nada no sistema apaga informação, então errar e
