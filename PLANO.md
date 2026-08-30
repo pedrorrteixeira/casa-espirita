@@ -350,6 +350,42 @@ importa aqui, porque o editor não abre neste navegador (ver Fase 0).
 
 ---
 
+## O que é testado, e o que não é
+
+Decisão tomada em 30/08/2026, consciente: **a camada que grava é verificada
+pela interface, à mão.** Não há teste automatizado dela, e não haverá até que
+alguém decida o contrário.
+
+| camada | linhas | cobertura |
+|---|---|---|
+|  — funções puras | ~760 | 104 testes |
+| arquitetura — manifesto, escopos, guardas, manual | — | 16 testes |
+| , , , , , , ,  | ~2.800 | nenhum |
+
+Nenhuma função que escreve na planilha jamais foi executada por um teste. Elas
+dependem de ,  e , que não existem
+no node — testá-las exigiria escrever uma planilha falsa.
+
+**O que o teste manual pega bem:** o que está errado agora. Foi assim que
+apareceram o  das fórmulas, a obra duplicável, a coluna recusada, o
+manual fora do lugar e a rolagem que se desfazia. Nenhum desses teria sido
+pego por teste de unidade.
+
+**O que ele não pega:** regressão. Ele verifica o que alguém abre hoje, não o
+que uma mudança futura quebra num canto que ninguém pensou em reabrir. O caso
+concreto foi : a Fase 5 mudou a assinatura e o
+gatilho diário passaria a morrer às 5h da manhã, em silêncio, só aparecendo
+quando alguém notasse que os avisos de atraso pararam de chegar.
+
+**Se um dia isso apertar**, o caminho é uma planilha falsa em node (~200 linhas
+de andaime) e testes para: gravar em coluna depois das derivadas, dois
+empréstimos do mesmo tombo, devolver o que não está emprestado, a guarda
+ recusando perfil insuficiente, e token expirado ou reusado. Continua
+fora do alcance o que só o Google sabe fazer: se a  calcula, se
+o  serializa, se o e-mail sai.
+
+---
+
 ## Riscos a vigiar
 
 - **Bus factor.** Se sair da conta da casa e voltar para a pessoal, o projeto
