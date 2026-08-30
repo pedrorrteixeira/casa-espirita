@@ -15,7 +15,7 @@ const {
   calcularSituacao, acharEmprestimoAberto, calcularDataPrevista,
   estaAtrasado, diasDeAtraso, planejarSincronizacao,
   montarAvisoDeAtrasos, escolherReuniaoSemTema,
-  podeFazer, normalizarContato, mesmoContato,
+  podeFazer, normalizarContato, mesmoContato, ehEmailValido, formatarTelefone,
   SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO
 } = require('../src/dominio.js');
 
@@ -966,4 +966,78 @@ test('contato vazio ou curto demais nunca casa', () => {
 
 test('e-mail não casa com telefone', () => {
   assert.equal(mesmoContato('maria@exemplo.com', '11987654321'), false);
+});
+
+// --- ehEmailValido -----------------------------------------------------------
+
+test('aceita os e-mails que a casa vai receber', () => {
+  for (const bom of ['maria@exemplo.com', 'joao.silva@gmail.com',
+                     'casa+livros@exemplo.com.br', 'a@b.co',
+                     'nome_com_underline@exemplo.org']) {
+    assert.equal(ehEmailValido(bom), true, `"${bom}" devia ser aceito`);
+  }
+});
+
+test('recusa o que é erro de digitação, não endereço estranho', () => {
+  for (const ruim of ['maria', 'maria@', '@exemplo.com', 'maria@exemplo',
+                      'maria @exemplo.com', 'maria@exemplo .com',
+                      'maria@@exemplo.com', 'maria@exemplo.c',
+                      'maria@.com', 'maria@exemplo..com', 'maria@-exemplo.com',
+                      '', '   ', null, undefined]) {
+    assert.equal(ehEmailValido(ruim), false,
+      `${JSON.stringify(ruim)} devia ser recusado`);
+  }
+});
+
+test('espaço nas pontas não invalida — quem digita deixa espaço', () => {
+  assert.equal(ehEmailValido('  maria@exemplo.com  '), true);
+});
+
+// --- formatarTelefone --------------------------------------------------------
+
+test('escreve o telefone como se lê no Brasil', () => {
+  assert.equal(formatarTelefone('11987654321'), '(11) 98765-4321');   // celular
+  assert.equal(formatarTelefone('1133334444'), '(11) 3333-4444');     // fixo
+});
+
+test('formata enquanto se digita, sem atrapalhar', () => {
+  // A máscara aparece conforme o número cresce; não pode travar no meio.
+  assert.equal(formatarTelefone('1'), '1');
+  assert.equal(formatarTelefone('11'), '11');
+  assert.equal(formatarTelefone('119'), '(11) 9');
+  assert.equal(formatarTelefone('11987'), '(11) 987');
+  assert.equal(formatarTelefone('119876543'), '(11) 9876-543');
+});
+
+test('ignora o que já veio formatado, e reformata', () => {
+  assert.equal(formatarTelefone('(11) 98765-4321'), '(11) 98765-4321');
+  assert.equal(formatarTelefone('11 9 8765 4321'), '(11) 98765-4321');
+  assert.equal(formatarTelefone('11.98765.4321'), '(11) 98765-4321');
+});
+
+test('tira o 55 do país quando o resto é um número brasileiro', () => {
+  assert.equal(formatarTelefone('+55 11 98765-4321'), '(11) 98765-4321');
+  assert.equal(formatarTelefone('5511987654321'), '(11) 98765-4321');
+});
+
+test('não confunde DDD 55 com código de país', () => {
+  // Rio Grande do Sul tem DDD 55. Um número de lá tem 11 dígitos, não 13 —
+  // e cortar o "55" dele deixaria o telefone errado.
+  assert.equal(formatarTelefone('55987654321'), '(55) 98765-4321');
+});
+
+test('número torto devolve o que dá, sem recusar', () => {
+  // Recusar telefone estranho no cadastro é pior que guardá-lo: a casa perde
+  // o contato de quem quis dar.
+  assert.equal(formatarTelefone(''), '');
+  assert.equal(formatarTelefone(null), '');
+  assert.equal(formatarTelefone('abc'), '');
+  assert.equal(formatarTelefone('123'), '(12) 3');
+});
+
+test('a máscara não atrapalha a comparação de contato', () => {
+  // A máscara é APRESENTAÇÃO. Quem compara joga fora tudo que não é dígito —
+  // por isso mudar a máscara nunca quebra o que já está gravado.
+  assert.ok(mesmoContato(formatarTelefone('11987654321'), '11987654321'));
+  assert.ok(mesmoContato(formatarTelefone('+5511987654321'), '(11) 98765-4321'));
 });

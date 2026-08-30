@@ -346,6 +346,57 @@ function acrescentarExemplar(sessao, idTitulo, dados) {
   });
 }
 
+/**
+ * O que já foi digitado antes, para a tela oferecer de volta.
+ *
+ * Não é só conveniência de digitação: é o que mantém o acervo consistente.
+ * Sem isto, "FEB", "F.E.B." e "Feb Editora" viram três editoras diferentes, e
+ * aí a busca por editora não acha e o agrupamento por edição se despedaça —
+ * em silêncio, porque nada erra: só existem três coisas onde havia uma.
+ *
+ * Exige perfil de catalogação porque `doado_por` é nome de pessoa.
+ */
+function lerSugestoesDeCadastro(sessao) {
+  exigir_(sessao, 'cadastrar_obra');
+
+  var titulos = lerTitulos();
+  var exemplares = lerExemplares();
+
+  return {
+    autor_ou_medium: distintos_(titulos, 'autor_ou_medium'),
+    autor_espiritual: distintos_(titulos, 'autor_espiritual'),
+    tradutor: distintos_(titulos, 'tradutor'),
+    serie: distintos_(titulos, 'serie'),
+    editora: distintos_(exemplares, 'editora'),
+    doado_por: distintos_(exemplares, 'doado_por')
+  };
+}
+
+/**
+ * Valores distintos de uma coluna, em ordem alfabética.
+ *
+ * Compara normalizado para não oferecer "FEB Editora" e "feb editora" como se
+ * fossem duas opções — mas devolve a grafia como foi escrita, porque é ela que
+ * vai para a ficha.
+ */
+function distintos_(linhas, campo) {
+  var vistos = {};
+  var lista = [];
+
+  (linhas || []).forEach(function (linha) {
+    var valor = limparCampo_(linha[campo]);
+    if (!valor) return;
+    var chave = normalizarTexto(valor);
+    if (vistos[chave]) return;
+    vistos[chave] = true;
+    lista.push(valor);
+  });
+
+  return lista.sort(function (a, b) {
+    return normalizarTexto(a).localeCompare(normalizarTexto(b));
+  });
+}
+
 /** Categorias e estados que a tela de cadastro oferece, da mesma fonte que a
  *  validação da planilha usa. */
 function lerListasDeCadastro() {

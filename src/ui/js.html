@@ -71,6 +71,7 @@
         if (quem) { EU.nome = quem.nome; EU.perfil = quem.perfil; }
         else { esquecerSessao(); }
         mostrarIdentidade();
+        carregarSugestoes();
       })
       .withFailureHandler(function () { esquecerSessao(); mostrarIdentidade(); })
       .verSessao(EU.sessao);
@@ -1317,6 +1318,87 @@
       })
       .acrescentarExemplar(EU.sessao, obraEscolhida.id_titulo, dados);
   });
+
+
+  // ---------------------------------------------------------- campos guiados
+  // Três comportamentos que existem pelo mesmo motivo: o que se digita à mão
+  // ao longo de anos, por gente diferente, acaba inconsistente — e a
+  // inconsistência não dá erro, só faz a busca deixar de achar.
+
+  /**
+   * Campos que só aceitam dígito.
+   *
+   * Filtra no `input`, e não só no `pattern`: o `pattern` avisa depois de
+   * digitar, este impede na hora. Num campo de ano, "19 78" com espaço é o
+   * erro que vira um ano que nenhuma busca acha.
+   */
+  document.querySelectorAll('[data-so-digitos]').forEach(function (campo) {
+    campo.addEventListener('input', function () {
+      var limpo = campo.value.replace(/\D/g, '');
+      if (limpo !== campo.value) campo.value = limpo;
+    });
+  });
+
+  /**
+   * Telefone com máscara, escrita enquanto se digita.
+   *
+   * A máscara é APRESENTAÇÃO: quem compara contato joga fora tudo que não é
+   * dígito. Por isso ela nunca quebra o que já está gravado, e por isso pode
+   * ser generosa — número torto entra como está, em vez de ser recusado. A
+   * casa perder o contato de quem quis dar é pior que guardá-lo torto.
+   */
+  function mascararTelefone(campo) {
+    var antes = campo.value;
+    var d = antes.replace(/\D/g, '').slice(0, 11);
+
+    var texto = d;
+    if (d.length > 2) {
+      var corte = d.length > 10 ? 7 : 6;
+      texto = '(' + d.slice(0, 2) + ') ' +
+        (d.length > 6 ? d.slice(2, corte) + '-' + d.slice(corte) : d.slice(2));
+    }
+
+    if (texto !== antes) campo.value = texto;
+  }
+
+  document.querySelectorAll('[data-telefone]').forEach(function (campo) {
+    campo.addEventListener('input', function () { mascararTelefone(campo); });
+  });
+
+  /**
+   * Sugestões vindas do que já foi cadastrado.
+   *
+   * Carregadas uma vez, ao entrar — e só para quem cataloga, porque a lista de
+   * doadores é nome de pessoa. Falhar aqui não atrapalha nada: sem sugestão, o
+   * campo continua sendo texto livre.
+   */
+  function carregarSugestoes() {
+    if (!EU.sessao || !podeVer('cadastrar_obra')) return;
+
+    google.script.run
+      .withSuccessHandler(function (sugestoes) {
+        [['editora', 'lista-editora'],
+         ['serie', 'lista-serie'],
+         ['tradutor', 'lista-tradutor'],
+         ['doado_por', 'lista-doado-por'],
+         ['autor_ou_medium', 'lista-autor-ou-medium'],
+         ['autor_espiritual', 'lista-autor-espiritual']
+        ].forEach(function (par) {
+          var lista = document.getElementById(par[1]);
+          if (!lista) return;
+          lista.innerHTML = '';
+          (sugestoes[par[0]] || []).forEach(function (valor) {
+            var opcao = document.createElement('option');
+            opcao.value = valor;
+            lista.appendChild(opcao);
+          });
+        });
+      })
+      .withFailureHandler(function () {
+        // Sem sugestão o cadastro funciona igual. Não vale um aviso na tela.
+      })
+      .lerSugestoesDeCadastro(EU.sessao);
+  }
 
   // ------------------------------------------------------------- auxiliares
   /**

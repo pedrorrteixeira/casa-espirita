@@ -346,6 +346,57 @@ function podeFazer(perfil, acao) {
 }
 
 /**
+ * O texto parece um e-mail?
+ *
+ * Deliberadamente permissiva. Validar e-mail com rigor é impossível — a regra
+ * de verdade tem centenas de linhas e ainda assim recusa endereços válidos.
+ * O que se quer aqui é pegar o erro humano: falta de arroba, espaço no meio,
+ * domínio sem ponto. Endereço estranho mas legítimo passa, e passar é o certo:
+ * o custo de recusar o e-mail de um frequentador é ele ficar sem aviso de
+ * atraso.
+ */
+function ehEmailValido(texto) {
+  var alvo = limpar_(texto);
+  if (!alvo) return false;
+  if (/\s/.test(alvo)) return false;
+
+  var partes = alvo.split('@');
+  if (partes.length !== 2) return false;
+  if (!partes[0]) return false;
+
+  var dominio = partes[1];
+  if (dominio.indexOf('.') === -1) return false;
+  if (/^[.-]|[.-]$/.test(dominio)) return false;
+  if (dominio.indexOf('..') !== -1) return false;
+
+  // Depois do último ponto tem que haver letra: "casa@exemplo.c" não existe.
+  return /\.[A-Za-z]{2,}$/.test(dominio);
+}
+
+/**
+ * Escreve o telefone no formato que se lê no Brasil.
+ *
+ * A máscara é só APRESENTAÇÃO: quem compara é , que joga
+ * fora tudo que não é dígito. Por isso a máscara pode mudar sem quebrar nada
+ * do que já está gravado — e por isso ela pode ser generosa com número torto,
+ * devolvendo o que veio em vez de recusar.
+ */
+function formatarTelefone(texto) {
+  var d = limpar_(texto).replace(/\D/g, '');
+
+  // Tira o 55 do país só quando o que sobra ainda é um número brasileiro.
+  if (d.length > 11 && d.indexOf('55') === 0) d = d.slice(2);
+  d = d.slice(0, 11);
+
+  if (d.length <= 2) return d;
+  if (d.length <= 6) return '(' + d.slice(0, 2) + ') ' + d.slice(2);
+
+  // 11 dígitos é celular (9 na frente); 10 é fixo.
+  var corte = d.length > 10 ? 7 : 6;
+  return '(' + d.slice(0, 2) + ') ' + d.slice(2, corte) + '-' + d.slice(corte);
+}
+
+/**
  * Reduz e-mail ou telefone à forma comparável.
  *
  * Telefone é digitado de sete jeitos — com DDD, sem, com parênteses, com
@@ -747,6 +798,8 @@ if (typeof module !== 'undefined') {
     PERFIS: PERFIS,
     EXIGENCIA: EXIGENCIA,
     podeFazer: podeFazer,
+    ehEmailValido: ehEmailValido,
+    formatarTelefone: formatarTelefone,
     normalizarContato: normalizarContato,
     mesmoContato: mesmoContato,
     montarAvisoDeAtrasos: montarAvisoDeAtrasos,

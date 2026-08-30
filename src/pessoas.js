@@ -34,11 +34,18 @@ function criarPessoa(sessao, dados) {
       );
     }
 
+    // Conferido no SERVIDOR, e não só pelo type="email" da tela: o navegador
+    // é conveniência, e `google.script.run` é chamável sem passar por ela.
+    var email = limparCampo_(dados.email);
+    if (email && !ehEmailValido(email)) {
+      throw new Error('"' + email + '" não parece um e-mail. Confira, ou deixe em branco.');
+    }
+
     var registro = {
       id_pessoa: proximoId_(ABA_PESSOAS, 'id_pessoa'),
       nome: nome,
       telefone: limparCampo_(dados.telefone),
-      email: limparCampo_(dados.email),
+      email: email,
       frequentador: dados.frequentador === false ? 'NÃO' : 'SIM',
       palestrante: dados.palestrante ? 'SIM' : 'NÃO',
       perfil: 'consulta',
@@ -178,6 +185,9 @@ function atualizarPessoa(sessao, idPessoa, mudancas) {
     if (dados.limpar_telefone) aplicar.telefone = '';
 
     var email = limparCampo_(dados.email);
+    if (email && !ehEmailValido(email)) {
+      throw new Error('"' + email + '" não parece um e-mail. Confira, ou deixe em branco.');
+    }
     if (email) aplicar.email = email;
     if (dados.limpar_email) aplicar.email = '';
 
