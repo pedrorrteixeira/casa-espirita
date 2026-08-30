@@ -439,14 +439,27 @@
     padding-left: .7rem;
   }
 
-  /* A leitura é um DOCUMENTO: cabeçalho com régua embaixo, separando o assunto
-     do resto. É o que diz "você saiu da lista e entrou num texto". */
-  .verbete { padding-top: 0; }
+  /* O assunto é uma FOLHA sobre a página: fundo próprio, borda, cantos
+     arredondados. O índice fica no papel branco; o texto, numa folha por cima.
+     A diferença de superfície diz "você saiu da lista e entrou num documento"
+     antes de qualquer palavra ser lida. */
+  .verbete {
+    padding: 1.1rem 1.2rem 1.6rem;
+    background: var(--fundo-suave);
+    border: 1px solid var(--borda);
+    border-radius: 10px;
+  }
   .verbete > h2 {
-    margin: .3rem 0 1.2rem;
+    margin: .2rem 0 1.2rem;
     padding-bottom: .8rem;
     border-bottom: 2px solid var(--acento);
-    font-size: 1.45rem;
+    font-size: 1.4rem;
+  }
+
+  /* Numa tela estreita a folha ocupa quase tudo; margem lateral grossa só
+     rouba largura de leitura. */
+  @media (max-width: 30rem) {
+    .verbete { padding: .9rem .85rem 1.3rem; border-radius: 8px; }
   }
   .verbete h2:focus { outline: none; }   /* o foco existe para leitor de tela */
 
@@ -489,12 +502,14 @@
     text-align: center;
   }
 
+  /* Fundo do PAPEL, não da folha: sobre o painel cinza, a tecla fica em
+     relevo. Com o cinza que a folha usa, ela desapareceria. */
   kbd {
     padding: .1rem .38rem;
     border: 1px solid var(--borda);
     border-bottom-width: 2px;
     border-radius: 3px;
-    background: var(--fundo-suave);
+    background: var(--fundo);
     color: var(--tinta);
     font-family: inherit;
     font-size: .92em;
@@ -515,7 +530,9 @@
     color: var(--tinta);
   }
   .cuidado { background: var(--aviso-fundo); border-top: 3px solid var(--aviso-borda); }
-  .proibido { background: var(--fundo-suave); border-top: 3px solid var(--erro); }
+  /* Branco sobre a folha cinza, e não cinza sobre cinza: o que não se pode
+     fazer tem que saltar da página, não se dissolver nela. */
+  .proibido { background: var(--fundo); border-top: 3px solid var(--erro); }
   .cuidado p, .proibido p { margin: 0; }
   .cuidado p + p, .proibido p + p { margin-top: .55rem; }
   .proibido strong { color: var(--erro); }
