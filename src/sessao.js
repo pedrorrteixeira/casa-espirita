@@ -56,10 +56,15 @@ function pedirAcesso(email) {
   if (!pessoa) return recado;
   if (String(pessoa.ativo).trim() !== 'SIM') return recado;
 
-  // `consulta` é o perfil de quem não é voluntário. Ele não tem tela para
-  // entrar, então não recebe link.
+  // Quem entra: voluntário (perfil acima de consulta) OU palestrante.
+  //
+  // O palestrante não é voluntário e o perfil dele costuma ser `consulta`, mas
+  // ele precisa entrar para escrever o tema da PRÓPRIA palestra — que até aqui
+  // só um atendente conseguia fazer por ele. A flag no cadastro existia e não
+  // servia para nada.
   var perfil = limparCampo_(pessoa.perfil) || 'consulta';
-  if (perfil === 'consulta') return recado;
+  var ehPalestrante = String(pessoa.palestrante).trim() === 'SIM';
+  if (perfil === 'consulta' && !ehPalestrante) return recado;
 
   var codigo = gerarSegredo_();
   PropertiesService.getScriptProperties().setProperty(
@@ -134,7 +139,8 @@ function abrirSessao(codigo) {
   return {
     sessao: sessao,
     nome: pessoa.nome,
-    perfil: limparCampo_(pessoa.perfil) || 'consulta'
+    perfil: limparCampo_(pessoa.perfil) || 'consulta',
+    palestrante: String(pessoa.palestrante).trim() === 'SIM'
   };
 }
 
@@ -150,7 +156,7 @@ function encerrarSessao(sessao) {
 function verSessao(sessao) {
   var quem = donoDaSessao_(sessao);
   if (!quem) return null;
-  return { nome: quem.nome, perfil: quem.perfil };
+  return { nome: quem.nome, perfil: quem.perfil, palestrante: quem.palestrante };
 }
 
 // --- Guarda ------------------------------------------------------------------
@@ -201,7 +207,9 @@ function donoDaSessao_(sessao) {
   return {
     id_pessoa: pessoa.id_pessoa,
     nome: pessoa.nome,
-    perfil: limparCampo_(pessoa.perfil) || 'consulta'
+    email: limparCampo_(pessoa.email),
+    perfil: limparCampo_(pessoa.perfil) || 'consulta',
+    palestrante: String(pessoa.palestrante).trim() === 'SIM'
   };
 }
 

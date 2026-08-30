@@ -1001,18 +1001,19 @@
         agendaCarregada = false;   // deixa tentar de novo
         dizer(estadoAgenda, erro.message || 'Não consegui carregar.', 'erro');
       })
-      .listarProximasReunioes(12);
+      .listarProximasReunioes(12, EU.sessao);
   }
 
   function itemReuniao(reuniao) {
     var item = document.createElement('li');
-    item.className = 'resultado';
+    item.className = 'resultado' + (reuniao.minha ? ' minha' : '');
 
     item.appendChild(elemento('h2',
       reuniao.data + (reuniao.horario ? ' às ' + reuniao.horario : '')));
 
     item.appendChild(elemento('p',
-      reuniao.palestrante || 'sem palestrante inscrito', 'autoria'));
+      (reuniao.minha ? 'Você' : reuniao.palestrante) || 'sem palestrante inscrito',
+      'autoria'));
 
     if (reuniao.tema) {
       item.appendChild(elemento('p', reuniao.tema, 'meta'));
@@ -1020,7 +1021,11 @@
 
     // Campo de tema aparece só onde falta: reunião com tema definido vira
     // leitura, e a tela não fica um formulário gigante.
-    if (!reuniao.tema) {
+    // Quem escreve o tema: o atendente para cima, em QUALQUER reunião — é ele
+    // quem preenche pelo palestrante que não consegue entrar no sistema. E o
+    // palestrante, só na dele.
+    var possoPorPermissao = podeVer('definir_tema');
+    if (!reuniao.tema && (possoPorPermissao || reuniao.minha)) {
       var linha = document.createElement('div');
       linha.className = 'linha-isbn';
 
@@ -1052,7 +1057,12 @@
             botao.disabled = false;
             dizer(estadoAgenda, erro.message || 'Não consegui gravar.', 'erro');
           })
-          .definirTema(EU.sessao, reuniao.id_reuniao, texto);
+          // Duas portas, e a de permissão vem primeiro. Quem é atendente para
+          // cima grava o tema de qualquer reunião — inclusive da própria, se
+          // também for palestrante. Quem só é palestrante entra pela porta de
+          // propriedade, e o servidor confere se a reunião é dele.
+          [possoPorPermissao ? 'definirTema' : 'definirMeuTema'](
+            EU.sessao, reuniao.id_reuniao, texto);
       });
 
       linha.appendChild(campo);

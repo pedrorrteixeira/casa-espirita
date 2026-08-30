@@ -581,6 +581,40 @@
     font-weight: 600;
   }
 
+  /* Convite para marcar data. Azul da casa: é ação pública, aberta a qualquer
+     palestrante, e não uma tela de voluntário. */
+  .convite {
+    margin: 1.2rem 0 0;
+    padding: 1rem 1.1rem;
+    background: var(--acento-suave);
+    border-radius: 8px;
+  }
+  .convite p { margin: 0 0 .5rem; }
+  .convite p:first-child { color: var(--acento); }
+
+  .botao-link {
+    display: inline-block;
+    margin-top: .3rem;
+    padding: .6rem 1.1rem;
+    min-height: 44px;
+    line-height: 1.6;
+    border-radius: 6px;
+    background: var(--acento);
+    color: var(--sobre-acento);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .botao-link:hover { opacity: .9; }
+
+  /* A reunião de quem está olhando. O contorno diz "esta é sua" antes de
+     qualquer texto — é o que faz o palestrante achar a dele numa lista de
+     doze. */
+  .resultado.minha {
+    border-left: 4px solid var(--acento);
+    padding-left: .7rem;
+    background: var(--acento-suave);
+  }
+
   /* Telas estreitas: dois campos lado a lado viram ilegíveis. */
   @media (max-width: 30rem) {
     .par, .linha-isbn { flex-direction: column; gap: 0; }

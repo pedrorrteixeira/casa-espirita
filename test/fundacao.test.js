@@ -335,6 +335,13 @@ test('toda função que grava exige sessão', () => {
   // Uma função "grava" quando chama algo que escreve na planilha.
   const ESCRITAS = /escreverLinha_|atualizarCelulas_|appendRow|setValue/;
 
+  // Duas formas legítimas de saber QUEM está chamando, e o teste aceita as
+  // duas.  é permissão por PERFIL — a escada consulta → admin.
+  //  é permissão por DONO: o palestrante escreve o tema da
+  // própria palestra sem estar em degrau nenhum da escada. O que a regra
+  // exige não é um mecanismo específico; é que ninguém anônimo grave.
+  const IDENTIFICA = /exigir_\(|donoDaSessao_\(/;
+
   const problemas = [];
 
   for (const arquivo of listarJs(SRC)) {
@@ -348,8 +355,8 @@ test('toda função que grava exige sessão', () => {
       if (SEM_SESSAO.has(nome)) continue;
       if (!ESCRITAS.test(parte)) continue;       // não grava
 
-      if (!/exigir_\(/.test(parte)) {
-        problemas.push(`${path.basename(arquivo)}: ${nome}() grava sem exigir_()`);
+      if (!IDENTIFICA.test(parte)) {
+        problemas.push(`${path.basename(arquivo)}: ${nome}() grava sem saber quem chamou`);
       }
     }
   }

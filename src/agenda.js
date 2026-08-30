@@ -141,10 +141,13 @@ function traduzirEvento_(evento, contexto) {
  * informação pública da casa. Mas NÃO devolve o e-mail de quem reservou —
  * esse é dado de contato, e vale a mesma regra da tela de pessoa.
  */
-function listarProximasReunioes(quantas) {
+function listarProximasReunioes(quantas, sessao) {
   var limite = Number(quantas);
   if (!isFinite(limite) || limite <= 0) limite = 12;
 
+  // Quem está olhando, se estiver identificado. Serve só para marcar quais
+  // reuniões são dele — a lista em si é pública e não muda.
+  var eu = sessao ? donoDaSessao_(sessao) : null;
   var hoje = soDataDeHoje_();
 
   return lerAba_(ABA_REUNIOES)
@@ -164,9 +167,78 @@ function listarProximasReunioes(quantas) {
         horario: reuniao.horario,
         palestrante: limparCampo_(reuniao.nome_reservado),
         tema: limparCampo_(reuniao.tema),
-        status: limparCampo_(reuniao.status)
+        status: limparCampo_(reuniao.status),
+        minha: ehMinhaReuniao_(reuniao, eu)
       };
     });
+}
+
+/**
+ * A reunião é de quem está olhando?
+ *
+ * Casa por id_palestrante — o vínculo que a sincronização resolve — e também
+ * por e-mail, porque o vínculo fica vazio quando a reserva foi feita com um
+ * endereço diferente do cadastrado. Sem a segunda comparação, justamente o
+ * palestrante cuja inscrição não foi reconhecida ficaria sem escrever o tema.
+ */
+function ehMinhaReuniao_(reuniao, eu) {
+  if (!eu) return false;
+
+  if (limparCampo_(reuniao.id_palestrante) !== '' &&
+      Number(reuniao.id_palestrante) === Number(eu.id_pessoa)) {
+    return true;
+  }
+
+  var meuEmail = normalizarTexto(eu.email);
+  return meuEmail !== '' && normalizarTexto(reuniao.email_reservado) === meuEmail;
+}
+
+/**
+ * O palestrante grava o tema da PRÓPRIA palestra.
+ *
+ * Separado de `definirTema` de propósito: aquele é permissão por PERFIL — um
+ * atendente pode gravar o tema de qualquer reunião. Este é por DONO, e não
+ * cabe na hierarquia de perfis: o palestrante não está acima nem abaixo do
+ * atendente, ele é outra coisa.
+ *
+ * Misturar os dois obrigaria a inventar um perfil "palestrante" no meio da
+ * escada, e aí um palestrante herdaria emprestar livro.
+ */
+function definirMeuTema(sessao, idReuniao, tema) {
+  var eu = donoDaSessao_(sessao);
+  if (!eu) throw new Error('Sua sessão expirou. Entre de novo para continuar.');
+
+  var texto = limparCampo_(tema);
+  if (!texto) throw new Error('Escreva o tema.');
+
+  return comTrava_(function () {
+    var alvo = Number(idReuniao);
+    var achadas = lerAba_(ABA_REUNIOES).filter(function (reuniao) {
+      return Number(reuniao.id_reuniao) === alvo;
+    });
+    if (!achadas.length) throw new Error('Reunião não encontrada.');
+
+    var reuniao = achadas[0];
+
+    // A checagem de dono é do SERVIDOR. A tela só mostra o campo nas reuniões
+    // certas; sem isto, qualquer pessoa identificada escreveria o tema da
+    // palestra de outra — e o tema é público.
+    if (!ehMinhaReuniao_(reuniao, eu)) {
+      throw new Error('Esta reunião não é sua. Fale com quem coordena a agenda.');
+    }
+    if (limparCampo_(reuniao.status) === STATUS_CANCELADA) {
+      throw new Error('Esta reunião está cancelada.');
+    }
+
+    var mudancas = { tema: texto };
+    if (limparCampo_(reuniao.status) !== STATUS_REALIZADA) {
+      mudancas.status = STATUS_TEMA_CONFIRMADO;
+    }
+
+    atualizarCelulas_(ABA_REUNIOES, reuniao._linha, mudancas);
+    registrarLog_(eu.nome, 'tema', 'reuniao', alvo, 'pelo palestrante');
+    return alvo;
+  });
 }
 
 /**
