@@ -324,7 +324,17 @@ function enviarEmail_(destinatario, assunto, corpo, oQue) {
     return false;
   }
 
-  MailApp.sendEmail({ to: destinatario, subject: assunto, body: corpo });
+  // O endereço continua sendo o da conta — em conta Gmail comum não há como
+  // trocar. Mas o NOME de exibição pode, e é o que a pessoa vê na caixa de
+  // entrada: a casa, e não "gefranciscodeassis1973". Num aviso de atraso ou
+  // num link de acesso, isso é a diferença entre parecer mensagem da casa e
+  // parecer golpe.
+  MailApp.sendEmail({
+    to: destinatario,
+    subject: assunto,
+    body: corpo,
+    name: limparCampo_(lerConfig('nome_casa', '')) || 'Biblioteca'
+  });
   return true;
 }
 

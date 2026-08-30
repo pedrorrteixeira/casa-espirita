@@ -9,13 +9,7 @@
        já tem sete itens e não comporta um botão à direita num celular. -->
   <div class="cabeca">
     <div class="marca">
-      <!-- `logo_url` no Config ganha da embutida: é a saída para trocar a
-           marca sem depender de quem mexe no código. -->
-      <? if (logoUrl) { ?>
-        <img class="logo" src="<?= logoUrl ?>" alt="">
-      <? } else { ?>
-        <?!= include('ui/logo'); ?>
-      <? } ?>
+      <?!= include('ui/logo'); ?>
       <h1><?= nomeCasa ?></h1>
     </div>
 
