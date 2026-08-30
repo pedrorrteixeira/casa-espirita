@@ -358,31 +358,31 @@ alguém decida o contrário.
 
 | camada | linhas | cobertura |
 |---|---|---|
-|  — funções puras | ~760 | 104 testes |
+| `dominio.js` — funções puras | ~760 | 104 testes |
 | arquitetura — manifesto, escopos, guardas, manual | — | 16 testes |
-| , , , , , , ,  | ~2.800 | nenhum |
+| `planilha` · `catalogo` · `emprestimos` · `pessoas` · `agenda` · `sessao` · `gatilhos` · `setup` | ~2.800 | nenhum |
 
 Nenhuma função que escreve na planilha jamais foi executada por um teste. Elas
-dependem de ,  e , que não existem
+dependem de `SpreadsheetApp`, `PropertiesService` e `MailApp`, que não existem
 no node — testá-las exigiria escrever uma planilha falsa.
 
 **O que o teste manual pega bem:** o que está errado agora. Foi assim que
-apareceram o  das fórmulas, a obra duplicável, a coluna recusada, o
+apareceram o `#ERROR!` das fórmulas, a obra duplicável, a coluna recusada, o
 manual fora do lugar e a rolagem que se desfazia. Nenhum desses teria sido
 pego por teste de unidade.
 
 **O que ele não pega:** regressão. Ele verifica o que alguém abre hoje, não o
 que uma mudança futura quebra num canto que ninguém pensou em reabrir. O caso
-concreto foi : a Fase 5 mudou a assinatura e o
-gatilho diário passaria a morrer às 5h da manhã, em silêncio, só aparecendo
-quando alguém notasse que os avisos de atraso pararam de chegar.
+concreto foi `listarEmprestados(true)`: a Fase 5 mudou a assinatura e o gatilho
+diário passaria a morrer às 5h da manhã, em silêncio, só aparecendo quando
+alguém notasse que os avisos de atraso pararam de chegar.
 
 **Se um dia isso apertar**, o caminho é uma planilha falsa em node (~200 linhas
 de andaime) e testes para: gravar em coluna depois das derivadas, dois
 empréstimos do mesmo tombo, devolver o que não está emprestado, a guarda
- recusando perfil insuficiente, e token expirado ou reusado. Continua
-fora do alcance o que só o Google sabe fazer: se a  calcula, se
-o  serializa, se o e-mail sai.
+`exigir_()` recusando perfil insuficiente, e token expirado ou reusado. Continua
+fora do alcance o que só o Google sabe fazer: se a `ARRAYFORMULA` calcula, se o
+`LockService` serializa, se o e-mail sai.
 
 ---
 
