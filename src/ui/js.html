@@ -1141,14 +1141,18 @@
     soNoIndice.forEach(function (parte) { parte.classList.add('oculta'); });
     voltarManual.classList.remove('oculta');
 
-    // O assunto escolhido tem que começar onde os olhos já estão, e não onde a
-    // rolagem do índice parou.
-    window.scrollTo(0, 0);
-
-    // Leva o foco ao título: quem usa teclado ou leitor de tela precisa saber
-    // que a tela trocou, e não só que algo sumiu.
+    // Leva o foco ao título — quem usa teclado ou leitor de tela precisa saber
+    // que a tela TROCOU, e não só que algo sumiu.
+    //
+     //  não é detalhe: sem ele, focar rola a página até o
+    // elemento e desfaz o scrollTo abaixo. O assunto abria com o cabeçalho já
+    // fora da tela, parecendo ter aparecido no fim.
     var titulo = document.querySelector('#' + id + ' h2');
-    if (titulo) titulo.focus();
+    if (titulo) titulo.focus({ preventScroll: true });
+
+    // Só então sobe: o assunto começa onde os olhos já estão, e não onde a
+    // rolagem do índice tinha parado.
+    window.scrollTo(0, 0);
   }
 
   indiceManual.querySelectorAll('a').forEach(function (link) {

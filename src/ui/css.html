@@ -357,34 +357,68 @@
   #visao-manual { max-width: 36rem; margin-inline: auto; }
   .manual-abertura { font-size: 1rem; margin-bottom: 1.5rem; }
 
-  .manual-indice { display: flex; flex-direction: column; }
-  /* Cada linha é um alvo de toque de 44px, não um link de texto: escolhe-se
-     um assunto em pé, com o polegar. */
+  /* O índice é um MENU, e precisa parecer um. Antes cada linha repetia a
+     etiqueta de contexto ("NO BALCÃO" quatro vezes) num arranjo idêntico ao
+     cabeçalho do texto — clicar parecia expandir e duplicar, não navegar.
+     Agora a etiqueta virou título de grupo, e a linha virou uma escolha. */
+  .manual-indice { display: block; margin-top: .5rem; }
+
+  .manual-indice h3 {
+    margin: 1.6rem 0 .3rem;
+    color: var(--marrom);
+    font-family: inherit;
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .manual-indice h3:first-child { margin-top: 0; }
+
   .manual-indice a {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-height: 56px;
-    padding: .55rem .3rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+    min-height: 50px;
+    padding: .5rem .2rem .5rem .8rem;
     border-bottom: 1px solid var(--borda);
+    border-left: 3px solid transparent;
     color: var(--tinta);
     text-decoration: none;
   }
-  .manual-indice a:hover { background: var(--fundo-suave); color: var(--acento); }
-  .manual-indice span {
-    display: block;
-    color: var(--marrom);
-    font-size: .74rem;
-    font-weight: 700;
-    letter-spacing: .09em;
-    text-transform: uppercase;
+  /* A seta diz que a linha LEVA a algum lugar. Decorativa para leitor de tela:
+     o link já anuncia o destino. */
+  .manual-indice a::after {
+    content: "›";
+    color: var(--tinta-fraca);
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+  .manual-indice a:hover,
+  .manual-indice a:focus-visible {
+    background: var(--acento-suave);
+    border-left-color: var(--acento);
+    color: var(--acento);
+  }
+  .manual-indice a:hover::after { color: var(--acento); }
+
+  /* Voltar é o controle mais importante da tela de leitura: quem se perdeu no
+     meio de um assunto precisa achá-lo sem procurar. */
+  #voltar-manual {
+    margin-bottom: 1.4rem;
+    padding-left: .7rem;
   }
 
-  #voltar-manual { margin-bottom: 1.2rem; }
-
-  .verbete { padding-top: .5rem; }
-  .verbete h2:focus { outline: none; }   /* o foco é para leitor de tela */
-  .verbete h2 { margin: .25rem 0 .75rem; font-size: 1.3rem; }
+  /* A leitura é um DOCUMENTO: cabeçalho com régua embaixo, separando o assunto
+     do resto. É o que diz "você saiu da lista e entrou num texto". */
+  .verbete { padding-top: 0; }
+  .verbete > h2 {
+    margin: .3rem 0 1.2rem;
+    padding-bottom: .8rem;
+    border-bottom: 2px solid var(--acento);
+    font-size: 1.45rem;
+  }
+  .verbete h2:focus { outline: none; }   /* o foco existe para leitor de tela */
 
   /* Diz ONDE se faz a coisa. É informação: metade da dúvida do voluntário é
      "isso é no sistema ou na planilha?". */
