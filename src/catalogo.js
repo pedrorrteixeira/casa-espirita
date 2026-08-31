@@ -400,7 +400,10 @@ function distintos_(linhas, campo) {
 /** Categorias e estados que a tela de cadastro oferece, da mesma fonte que a
  *  validação da planilha usa. */
 function lerListasDeCadastro() {
-  return { categorias: LISTA_CATEGORIA, estados: LISTA_ESTADO };
+  // `perfis` vem de `PERFIS`, a mesma constante que a escada de permissões
+  // usa. Uma lista escrita à mão no HTML sairia de sincronia no dia em que um
+  // perfil novo aparecesse, e a tela ofereceria um acesso que não existe.
+  return { categorias: LISTA_CATEGORIA, estados: LISTA_ESTADO, perfis: PERFIS };
 }
 
 /**

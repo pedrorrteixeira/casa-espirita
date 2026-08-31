@@ -15,7 +15,7 @@ const {
   calcularSituacao, acharEmprestimoAberto, calcularDataPrevista,
   estaAtrasado, diasDeAtraso, planejarSincronizacao,
   montarAvisoDeAtrasos, escolherReuniaoSemTema,
-  podeFazer, normalizarContato, mesmoContato, ehEmailValido, formatarTelefone,
+  podeFazer, perfilValido, sobraOutroAdmin, normalizarContato, mesmoContato, ehEmailValido, formatarTelefone,
   SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO
 } = require('../src/dominio.js');
 
@@ -1110,4 +1110,65 @@ test('sem qtd_exemplares nenhum, a ordem antiga é preservada', () => {
   ];
   const achados = buscarTitulos(semColuna, 'e');
   assert.deepEqual(idsDe(achados), [2, 1]);   // alfabética, como antes
+});
+
+// --- perfil: validade e o último admin ----------------------------------------
+
+test('perfilValido aceita só os quatro degraus da escada', () => {
+  ['consulta', 'atendente', 'bibliotecario', 'admin']
+    .forEach((p) => assert.equal(perfilValido(p), true, p));
+
+  // A validação de dados da planilha não vale para `setValues` — ela só barra
+  // digitação humana no Sheets. Sem esta conferência, "Admin" ou "diretoria"
+  // entrariam na coluna e `podeFazer` recusaria tudo para essa pessoa, sem
+  // ninguém entender por quê.
+  ['Admin', 'ADMIN', 'diretoria', '', '  ', 'bibliotecário']
+    .forEach((p) => assert.equal(perfilValido(p), false, JSON.stringify(p)));
+});
+
+test('sobraOutroAdmin ignora a própria pessoa', () => {
+  const pessoas = [
+    { id_pessoa: 1, perfil: 'admin', ativo: 'SIM' },
+    { id_pessoa: 2, perfil: 'atendente', ativo: 'SIM' }
+  ];
+  assert.equal(sobraOutroAdmin(pessoas, 1), false);
+  assert.equal(sobraOutroAdmin(pessoas, 2), true);
+});
+
+test('sobraOutroAdmin não conta admin inativo', () => {
+  // Quem está inativo não entra no sistema. Contá-lo deixaria a casa trancada
+  // com um "administrador" que não consegue abrir a porta.
+  const pessoas = [
+    { id_pessoa: 1, perfil: 'admin', ativo: 'SIM' },
+    { id_pessoa: 2, perfil: 'admin', ativo: 'NÃO' }
+  ];
+  assert.equal(sobraOutroAdmin(pessoas, 1), false);
+});
+
+test('sobraOutroAdmin compara id como número', () => {
+  // A planilha devolve número; a tela manda string. Comparar sem converter
+  // faria a pessoa não se reconhecer e o guarda liberaria o rebaixamento do
+  // último admin.
+  const pessoas = [{ id_pessoa: 7, perfil: 'admin', ativo: 'SIM' }];
+  assert.equal(sobraOutroAdmin(pessoas, '7'), false);
+});
+
+test('com dois admins ativos, um pode ser rebaixado', () => {
+  const pessoas = [
+    { id_pessoa: 1, perfil: 'admin', ativo: 'SIM' },
+    { id_pessoa: 2, perfil: 'admin', ativo: 'SIM' }
+  ];
+  assert.equal(sobraOutroAdmin(pessoas, 1), true);
+  assert.equal(sobraOutroAdmin(pessoas, 2), true);
+});
+
+test('só o admin muda perfil — a escada não deixa o bibliotecário subir', () => {
+  // O ponto sensível: `editar_pessoa` é de bibliotecário, e ele tem a tela de
+  // edição na mão. Se `mudar_perfil` fosse do mesmo degrau, bastaria editar a
+  // própria ficha para virar admin.
+  assert.equal(podeFazer('admin', 'mudar_perfil'), true);
+  ['bibliotecario', 'atendente', 'consulta']
+    .forEach((p) => assert.equal(podeFazer(p, 'mudar_perfil'), false, p));
+
+  assert.equal(podeFazer('bibliotecario', 'editar_pessoa'), true);
 });

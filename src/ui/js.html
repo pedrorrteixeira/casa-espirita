@@ -58,6 +58,12 @@
       aba.classList.toggle('oculta', !podeVer(aba.dataset.exige));
     });
 
+    // Mudar acesso é só da diretoria. Esconder aqui é conveniência — quem
+    // recusa de verdade é `perfilPedido_`, no servidor.
+    var soAdmin = !podeVer('mudar_perfil');
+    $('#perfil-novo').classList.toggle('oculta', soAdmin);
+    $('#perfil-edicao').classList.toggle('oculta', soAdmin);
+
     // A legenda só faz sentido para quem enxerga as duas cores.
     $('#legenda-abas').classList.toggle('oculta', !entrou);
   }
@@ -331,6 +337,10 @@
       preencherSelect($('#categoria'), listas.categorias, 'doutrinário');
       preencherSelect($('#estado-exemplar'), listas.estados, 'bom');
       preencherSelect($('#estado-exemplar-avulso'), listas.estados, 'bom');
+      // A lista de perfis vem do servidor, da mesma constante que a escada
+      // de permissões usa — escrita à mão no HTML, sairia de sincronia.
+      preencherSelect($('#perfil-pessoa'), listas.perfis, 'consulta');
+      preencherSelect($('#perfil-pessoa-edicao'), listas.perfis, 'consulta');
     })
     .withFailureHandler(function () {
       dizer(estadoCadastro, 'Não consegui carregar as listas de categoria.', 'erro');
@@ -576,6 +586,10 @@
     });
 
     delete dados.quem_registrou;
+    // O select existe no formulário mesmo escondido, e mandá-lo faria o
+    // servidor recusar a gravação inteira de um bibliotecário — que tem
+    // direito de cadastrar pessoa, só não de dar acesso.
+    if (!podeVer('mudar_perfil')) delete dados.perfil;
     delete dados.psicografada;   // controle de tela, não coluna
 
     return { dados: dados };
@@ -998,6 +1012,7 @@
         formEditar.elements.palestrante.checked = pessoa.palestrante;
         formEditar.elements.ativo.checked = pessoa.ativo;
         formEditar.elements.observacao.value = pessoa.observacao || '';
+        $('#perfil-pessoa-edicao').value = pessoa.perfil || 'consulta';
 
         // Só diz SE existe, nunca o valor.
         $('#tem-telefone').textContent = pessoa.tem_telefone
@@ -1030,6 +1045,11 @@
       ativo: formEditar.elements.ativo.checked,
       observacao: formEditar.elements.observacao.value.trim()
     };
+
+    // Campo ausente é 'não mexer' no servidor. Só o admin manda.
+    if (podeVer('mudar_perfil')) {
+      mudancas.perfil = $('#perfil-pessoa-edicao').value;
+    }
 
     botao.disabled = true;
     dizer(estadoEditar, 'Salvando…');

@@ -305,6 +305,21 @@
           Observação
           <input name="observacao">
         </label>
+
+        <!-- Só a diretoria mexe em acesso. O bloco é escondido para os
+             outros por conveniência; quem recusa de verdade é o servidor,
+             porque `google.script.run` é chamável do console do navegador. -->
+        <div id="perfil-novo" class="oculta">
+          <label>
+            Acesso no sistema
+            <select name="perfil" id="perfil-pessoa"></select>
+          </label>
+          <p class="dica">
+            Deixe em <strong>consulta</strong> se a pessoa só pega livro
+            emprestado. Os outros acessos são para quem trabalha no sistema —
+            veja no Manual o que cada um alcança.
+          </p>
+        </div>
       </fieldset>
 
       <button type="submit" id="btn-salvar-pessoa">Salvar pessoa</button>
@@ -378,6 +393,19 @@
             Observação
             <input name="observacao">
           </label>
+
+          <div id="perfil-edicao" class="oculta">
+            <label>
+              Acesso no sistema
+              <select name="perfil" id="perfil-pessoa-edicao"></select>
+            </label>
+            <p class="dica">
+              Este é o único lugar do sistema onde se muda o acesso de alguém —
+              não precisa mais abrir a planilha. O sistema recusa tirar o acesso
+              do <strong>último</strong> administrador ativo: promova outra
+              pessoa antes.
+            </p>
+          </div>
 
           <button type="submit" id="btn-salvar-edicao">Salvar alteração</button>
         </div>

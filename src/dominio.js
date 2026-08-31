@@ -805,6 +805,37 @@ function numeroOuNulo_(valor) {
   return isFinite(numero) ? numero : null;
 }
 
+
+/**
+ * O perfil existe na escada?
+ *
+ * Confere no servidor porque a validação de dados da planilha NÃO vale para
+ * `setValues` — ela só barra digitação humana na interface do Sheets. É a
+ * mesma razão pela qual `criarExemplar` confere o estado.
+ */
+function perfilValido(perfil) {
+  return PERFIS.indexOf(limpar_(perfil)) !== -1;
+}
+
+/**
+ * Sobra algum admin ativo se ESTA pessoa deixar de ser um?
+ *
+ * A tela de perfis existe para a casa não depender da planilha. Se o único
+ * admin puder se rebaixar — ou se desativar — pela tela, ela produz
+ * exatamente a dependência que veio remover, e num momento pior: ninguém mais
+ * consegue promover ninguém, e a saída é abrir a planilha, que é o que só duas
+ * pessoas conseguem fazer.
+ *
+ * Pessoa inativa não conta como admin: ela não entra no sistema.
+ */
+function sobraOutroAdmin(pessoas, idPessoa) {
+  return (pessoas || []).some(function (pessoa) {
+    return limpar_(pessoa.perfil) === 'admin' &&
+      String(pessoa.ativo).trim() === 'SIM' &&
+      Number(pessoa.id_pessoa) !== Number(idPessoa);
+  });
+}
+
 if (typeof module !== 'undefined') {
   module.exports = {
     normalizarTexto: normalizarTexto,
@@ -823,6 +854,8 @@ if (typeof module !== 'undefined') {
     PERFIS: PERFIS,
     EXIGENCIA: EXIGENCIA,
     podeFazer: podeFazer,
+    perfilValido: perfilValido,
+    sobraOutroAdmin: sobraOutroAdmin,
     ehEmailValido: ehEmailValido,
     formatarTelefone: formatarTelefone,
     normalizarContato: normalizarContato,

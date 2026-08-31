@@ -551,3 +551,45 @@ test('o doGet não põe no template nenhuma chave restrita do Config', () => {
     `doGet manda ao template chave(s) restrita(s): ${vazadas.join(', ')}. ` +
     'Sirva por função que identifique quem chamou, como verLinkDeAgendamento.');
 });
+
+test('quem grava a coluna perfil passa por mudar_perfil', () => {
+  // A escalada de privilégio que este projeto podia ter: `editar_pessoa` é de
+  // BIBLIOTECÁRIO, e é a mesma função que grava a coluna `perfil`. Um
+  // `aplicar.perfil = dados.perfil` escrito direto, sem passar por
+  // `perfilPedido_`, deixaria o bibliotecário abrir a própria ficha e virar
+  // admin — com a guarda `exigir_` presente na função e satisfeita, porque ela
+  // pede a permissão errada.
+  //
+  // Guardas de escrita não pegam isto: a função É guardada. O que muda é QUAL
+  // permissão o campo exige.
+  const fonte = fs.readFileSync(path.join(SRC, 'pessoas.js'), 'utf8');
+
+  const partes = fonte.split(/^function\s+/m).slice(1);
+  const problemas = [];
+
+  for (const parte of partes) {
+    const nome = /^(\w+)/.exec(parte)[1];
+
+    const semComentarios = parte
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/^\s*\/\/.*$/gm, ' ');
+
+    // "Menciona perfil como chave" não basta: `verPessoa` DEVOLVE `perfil:`
+    // num objeto de retorno e não grava nada. O que caracteriza escrita é
+    // chamar quem grava — a mesma definição que a guarda de sessão usa.
+    const grava = /escreverLinhas?_|atualizarCelulas_/.test(semComentarios);
+    const mexeNoPerfil = /^\s*perfil\s*:/m.test(semComentarios) ||
+      /\baplicar\.perfil\s*=/.test(semComentarios);
+    if (!grava || !mexeNoPerfil) continue;
+
+    // Ou pede a permissão certa, ou delega a quem pede.
+    const confere = /exigir_\(\s*sessao\s*,\s*'mudar_perfil'\s*\)/.test(semComentarios) ||
+      /perfilPedido_\(/.test(semComentarios);
+
+    if (!confere) {
+      problemas.push(`${nome}() grava a coluna perfil sem exigir mudar_perfil`);
+    }
+  }
+
+  assert.deepEqual(problemas, [], problemas.join('\n'));
+});

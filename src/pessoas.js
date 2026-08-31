@@ -48,7 +48,7 @@ function criarPessoa(sessao, dados) {
       email: email,
       frequentador: dados.frequentador === false ? 'NÃO' : 'SIM',
       palestrante: dados.palestrante ? 'SIM' : 'NÃO',
-      perfil: 'consulta',
+      perfil: perfilPedido_(sessao, dados.perfil, 'consulta'),
       ativo: 'SIM',
       data_cadastro: new Date(),
       observacao: limparCampo_(dados.observacao)
@@ -139,6 +139,10 @@ function verPessoa(sessao, idPessoa) {
     frequentador: String(pessoa.frequentador).trim() === 'SIM',
     palestrante: String(pessoa.palestrante).trim() === 'SIM',
     ativo: String(pessoa.ativo).trim() === 'SIM',
+    // O perfil sai, ao contrário do telefone. Não é dado de contato: é o que
+    // a pessoa pode fazer no sistema, e sem ele o admin editaria às cegas,
+    // sem saber se está promovendo ou rebaixando.
+    perfil: limparCampo_(pessoa.perfil) || 'consulta',
     observacao: pessoa.observacao
   };
 }
@@ -204,13 +208,41 @@ function atualizarPessoa(sessao, idPessoa, mudancas) {
       aplicar.observacao = limparCampo_(dados.observacao);
     }
 
+    if (dados.perfil !== undefined) {
+      var novoPerfil = perfilPedido_(sessao, dados.perfil, '');
+      if (novoPerfil) aplicar.perfil = novoPerfil;
+    }
+
+    // A casa não pode ficar sem admin — nem por rebaixamento, nem por
+    // desativação. Sem isto, a tela que veio tirar a dependência da planilha
+    // criaria a pior versão dela: ninguém mais promove ninguém, e a saída é
+    // abrir a planilha, que só duas pessoas conseguem.
+    var deixaDeSerAdmin =
+      limparCampo_(pessoa.perfil) === 'admin' &&
+      ((aplicar.perfil !== undefined && aplicar.perfil !== 'admin') ||
+       aplicar.ativo === 'NÃO');
+
+    if (deixaDeSerAdmin && !sobraOutroAdmin(lerPessoas(), idPessoa)) {
+      throw new Error(
+        'Este é o único administrador ativo. Promova outra pessoa a admin ' +
+        'antes de mudar o acesso ou desativar esta — senão ninguém mais ' +
+        'consegue mexer nos perfis pelo sistema.'
+      );
+    }
+
     if (Object.keys(aplicar).length === 0) return Number(idPessoa);
 
     atualizarCelulas_(ABA_PESSOAS, pessoa._linha, aplicar);
 
     // Quais campos mudaram, nunca os valores: o Log é visível e fica retido.
+    //
+    // O perfil é a exceção, e de propósito: "quem virou admin, e quando" é
+    // justamente o que se quer poder auditar depois. Não é dado pessoal.
+    var mudados = Object.keys(aplicar).map(function (campo) {
+      return campo === 'perfil' ? 'perfil -> ' + aplicar.perfil : campo;
+    });
     registrarLog_(quemRegistrou, 'atualizar', 'pessoa', idPessoa,
-      Object.keys(aplicar).join(', '));
+      mudados.join(', '));
     return Number(idPessoa);
   });
 }
@@ -243,4 +275,33 @@ function buscarPessoasParaEditar(sessao, termo) {
         ativo: String(pessoa.ativo).trim() === 'SIM'
       };
     });
+}
+
+/**
+ * Resolve o perfil que a tela pediu, conferindo QUEM está pedindo.
+ *
+ * Esta é a função que impede a escalada de privilégio, e ela precisa existir
+ * separada porque as duas permissões não coincidem: cadastrar e editar pessoa
+ * são de `bibliotecario`, mas mudar perfil é de `admin` (`mudar_perfil` na
+ * escada). Sem esta separação, bastaria a um bibliotecário editar a própria
+ * ficha e se promover — e ele já tem acesso à tela de edição.
+ *
+ * Falha alto quando um não-admin manda `perfil`. Ignorar calado seria pior:
+ * a pessoa acharia que gravou, e o cadastro diria outra coisa.
+ *
+ * `padrao` é o que vale quando ninguém pediu nada: 'consulta' no cadastro
+ * novo, vazio na edição (que significa "não mexer").
+ */
+function perfilPedido_(sessao, pedido, padrao) {
+  var querido = limparCampo_(pedido);
+  if (!querido) return padrao;
+
+  exigir_(sessao, 'mudar_perfil');
+
+  if (!perfilValido(querido)) {
+    throw new Error(
+      'Acesso "' + querido + '" não existe. Use: ' + PERFIS.join(', ') + '.'
+    );
+  }
+  return querido;
 }
