@@ -179,6 +179,46 @@
   .estado.erro { color: var(--erro); }
   .estado.ok { color: var(--disponivel); }
 
+
+  /* Os tombos gerados agora, para copiar na etiqueta.
+     Marrom do hábito: é a única coisa da tela que sai para o papel, e não é
+     nem estado do sistema (azul) nem disponibilidade (verde). */
+  .etiquetas {
+    margin: 0 0 1.2rem;
+    padding: .8rem 1rem 1rem;
+    background: var(--marrom-suave);
+    border-left: 4px solid var(--marrom);
+    border-radius: 6px;
+  }
+  .etiquetas-titulo {
+    margin: 0 0 .5rem;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--marrom);
+  }
+  .etiquetas ul { list-style: none; margin: 0; padding: 0; }
+  .etiquetas li {
+    display: flex;
+    align-items: baseline;
+    gap: .7rem;
+    padding: .25rem 0;
+  }
+  .etiqueta-tombo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--tinta);
+    /* Dígitos de mesma largura: a coluna de números fica alinhada e o
+       voluntário confere a pilha de cima a baixo sem reler. */
+    font-variant-numeric: tabular-nums;
+    min-width: 3.2ch;
+    text-align: right;
+  }
+  .etiqueta-obra { color: var(--tinta-fraca); font-size: .9rem; }
+
+  .etiquetas .discreto { margin-top: .6rem; }
+
   /* --- formulário --- */
   fieldset {
     border: 1px solid var(--borda);

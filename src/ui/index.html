@@ -205,6 +205,24 @@
       <button type="button" class="aba-interna" data-bloco="editar">Alterar pessoa</button>
     </div>
 
+    <!-- Os tombos gerados agora, para etiquetar depois.
+
+         O tombo era dito uma vez, numa linha de status abaixo do botão, e a
+         gravação seguinte a apagava. Quem cataloga uma doação de dez livros
+         salva os dez e só então pega a caneta — e aí só existia o último
+         número. O resto voltava a depender da planilha, que é o que esta tela
+         veio evitar.
+
+         Fica acima dos formulários porque os dois — obra nova e exemplar
+         avulso — geram tombo, e porque tem que estar à vista sem rolar. -->
+    <div id="etiquetas" class="etiquetas oculta">
+      <p class="etiquetas-titulo">Etiquetas para colar</p>
+      <ul id="lista-etiquetas"></ul>
+      <button type="button" id="limpar-etiquetas" class="discreto">
+        Já etiquetei, pode limpar
+      </button>
+    </div>
+
     <!-- Segunda cópia de um livro que a casa já tem.
 
          Existia só o caminho inverso: cadastrar a obra de novo e deixar o

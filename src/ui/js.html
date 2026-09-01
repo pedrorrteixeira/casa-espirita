@@ -609,6 +609,7 @@
         var recado = 'Título ' + resposta.id_titulo + ' cadastrado.';
         if (resposta.tombo) {
           recado += ' Etiquete o livro com o tombo ' + resposta.tombo + '.';
+          anotarEtiqueta(resposta.tombo, formulario.elements.titulo.value.trim());
         }
         dizer(estadoCadastro, recado, 'ok');
         limparFormulario();
@@ -943,6 +944,35 @@
         dizer(estadoPessoa, erro.message || 'Não consegui salvar.', 'erro');
       })
       .criarPessoa(EU.sessao, dados);
+  });
+
+
+  // ------------------------------------------------------- etiquetas geradas
+  //
+  // O tombo é o único dado que precisa sair da tela e ir para o mundo físico:
+  // alguém escreve o número numa etiqueta e cola no livro. Uma mensagem de
+  // status não serve para isso — ela é apagada pela gravação seguinte, e quem
+  // cataloga uma pilha salva tudo antes de pegar a caneta.
+  var caixaEtiquetas = $('#etiquetas');
+  var listaEtiquetas = $('#lista-etiquetas');
+
+  function anotarEtiqueta(tombo, titulo) {
+    if (!tombo) return;
+
+    var item = document.createElement('li');
+
+    var numero = elemento('span', String(tombo), 'etiqueta-tombo');
+    item.appendChild(numero);
+    item.appendChild(elemento('span', titulo || '', 'etiqueta-obra'));
+
+    // O mais novo em cima: é o livro que ainda está na mão.
+    listaEtiquetas.insertBefore(item, listaEtiquetas.firstChild);
+    caixaEtiquetas.classList.remove('oculta');
+  }
+
+  $('#limpar-etiquetas').addEventListener('click', function () {
+    listaEtiquetas.innerHTML = '';
+    caixaEtiquetas.classList.add('oculta');
   });
 
   // -------------------------------------------------- cadastro: alterar pessoa
@@ -1467,6 +1497,7 @@
         botao.disabled = false;
         dizer(estadoExemplar,
           'Exemplar criado. Etiquete o livro com o tombo ' + tombo + '.', 'ok');
+        anotarEtiqueta(tombo, obraEscolhida.titulo);
 
         // A obra continua escolhida: numa doação de três cópias, salva-se as
         // três seguidas sem procurar de novo. Editora e doador também ficam,
