@@ -359,6 +359,28 @@ function verTitulo(idTitulo) {
 }
 
 /**
+ * Relatório do acervo: tudo o que a casa tem, obra por obra, para conferir e
+ * imprimir. Quem monta é `montarRelatorioDoAcervo`, em dominio.js — e é lá
+ * que está o porquê de não trazer nome de quem está com o livro.
+ *
+ * Aqui só se lê e se formata data: `google.script.run` não devolve Date.
+ */
+function relatorioDoAcervo(sessao) {
+  exigir_(sessao, 'cadastrar_obra');
+
+  var relatorio = montarRelatorioDoAcervo(lerTitulos(), lerExemplares(), lerEmprestimos());
+  relatorio.obras.forEach(function (obra) {
+    obra.exemplares.forEach(function (exemplar) {
+      exemplar.previsao = exemplar.previsao ? formatarData_(exemplar.previsao) : '';
+    });
+  });
+
+  relatorio.casa = limparCampo_(lerConfig('nome_casa', ''));
+  relatorio.gerado_em = Utilities.formatDate(new Date(), SETUP_FUSO, "dd/MM/yyyy 'às' HH:mm");
+  return relatorio;
+}
+
+/**
  * A tela pergunta isto ANTES de salvar, para poder oferecer a saída certa em
  * vez de só recusar. Quem cadastra um livro que já existe quase sempre quer
  * acrescentar um exemplar, não criar outra ficha.

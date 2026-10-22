@@ -356,6 +356,75 @@
     font-weight: 600;
   }
 
+  /* --- relatório do acervo ---
+     Uma obra por bloco, os exemplares embaixo, um por linha. Lista e não
+     tabela: no celular, quatro colunas não cabem, e a lista quebra sozinha. */
+  .rel-acoes { margin-bottom: .5rem; }
+  .rel-titulo { margin: 0; font-size: 1.2rem; }
+  .rel-resumo { margin: .6rem 0 .2rem; font-weight: 600; }
+  .rel-obra { padding: .7rem 0; border-bottom: 1px solid var(--borda); }
+  .rel-obra h3 { margin: 0; font-size: 1.02rem; }
+  .rel-obra .meta { margin: .1rem 0 .3rem; color: var(--tinta-fraca); font-size: .85rem; }
+  .rel-exemplares { list-style: none; margin: 0; padding: 0; }
+  .rel-exemplares li {
+    display: flex;
+    align-items: baseline;
+    gap: .7rem;
+    padding: .15rem 0;
+    font-size: .9rem;
+  }
+  .rel-tombo {
+    flex: none;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    min-width: 3.2ch;
+    text-align: right;
+  }
+  /* Tudo depois do tombo: quebra dentro desta coluna, alinhado. */
+  .rel-corpo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .1rem .7rem;
+  }
+  .rel-edicao { color: var(--tinta-fraca); }
+  .rel-situacao { font-weight: 600; }
+  .rel-situacao.disponivel { color: var(--disponivel); }
+  .rel-situacao.emprestado { color: var(--emprestado); }
+  .rel-situacao.so_na_casa { color: var(--so-na-casa); }
+  .rel-observacao {
+    flex-basis: 100%;
+    color: var(--tinta-fraca);
+    font-style: italic;
+  }
+
+  /* Impressão: sai só o relatório. A classe entra no <body> pelo botão
+     Imprimir e sai no `afterprint`; imprimir de qualquer outra tela continua
+     como sempre foi.
+
+     Tudo em preto, sem fundo. Muita impressora é preto e branco, e no tema
+     escuro a tinta é clara — sairia branco no papel branco. Por isso a
+     situação é escrita por extenso, e não só pela cor. */
+  @media print {
+    body.imprimindo-relatorio header.topo,
+    body.imprimindo-relatorio main > :not(#visao-cadastro),
+    body.imprimindo-relatorio #visao-cadastro > :not(#relatorio-acervo),
+    body.imprimindo-relatorio .rel-acoes,
+    body.imprimindo-relatorio #estado-relatorio { display: none !important; }
+
+    body.imprimindo-relatorio { padding: 0; font-size: 10.5pt; }
+    body.imprimindo-relatorio,
+    body.imprimindo-relatorio * {
+      color: #000 !important;
+      background: transparent !important;
+    }
+    body.imprimindo-relatorio .rel-obra {
+      break-inside: avoid;
+      border-bottom-color: #999;
+      padding: .4rem 0;
+    }
+  }
+
   /* Ficha do exemplar no balcão. Grande e legível: é lida em pé, de relance. */
   .ficha {
     border: 1px solid var(--borda);

@@ -12,6 +12,7 @@ const assert = require('node:assert/strict');
 
 const {
   normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria, resumirEdicoes, acharTituloEquivalente,
+  montarRelatorioDoAcervo, descreverEdicao,
   calcularSituacao, soParaLerNaCasa, acharEmprestimoAberto, calcularDataPrevista,
   estaAtrasado, diasDeAtraso, planejarSincronizacao,
   montarAvisoDeAtrasos, escolherReuniaoSemTema,
@@ -320,6 +321,99 @@ test('emprestado com outro só para ler na casa: o título está emprestado', ()
   assert.equal(resumo.estado, 'emprestado');
   assert.equal(resumo.so_na_casa, 1);
   assert.ok(resumo.previsao instanceof Date);
+});
+
+// --- relatório do acervo -----------------------------------------------------
+
+const TITULOS_DO_RELATORIO = [
+  { id_titulo: 1, titulo: 'Nosso Lar', autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
+    autor_espiritual: 'André Luiz', categoria: 'romance' },
+  { id_titulo: 2, titulo: 'A Gênese', autor_ou_medium: 'Allan Kardec', categoria: 'doutrinário' },
+  { id_titulo: 3, titulo: 'Ação e Reação', autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
+    autor_espiritual: 'André Luiz' }
+];
+
+test('relatório só lista obra que a casa tem, em ordem de título', () => {
+  // "A Gênese" está no catálogo sem exemplar: é lista de doação, não acervo.
+  const relatorio = montarRelatorioDoAcervo(TITULOS_DO_RELATORIO, [
+    exemplar({ tombo: 5, id_titulo: 1 }),
+    exemplar({ tombo: 2, id_titulo: 3 })
+  ], []);
+  assert.deepEqual(relatorio.obras.map((o) => o.titulo), ['Ação e Reação', 'Nosso Lar'],
+    'ordem alfabética sem ligar para acento, e sem a obra que a casa não tem');
+  assert.equal(relatorio.resumo.obras, 2);
+  assert.equal(relatorio.resumo.exemplares, 2);
+});
+
+test('relatório põe os exemplares de cada obra em ordem de tombo', () => {
+  const relatorio = montarRelatorioDoAcervo(TITULOS_DO_RELATORIO, [
+    exemplar({ tombo: 30, id_titulo: 1 }),
+    exemplar({ tombo: 4, id_titulo: 1 }),
+    exemplar({ tombo: 12, id_titulo: 1 })
+  ], []);
+  assert.deepEqual(relatorio.obras[0].exemplares.map((e) => e.tombo), [4, 12, 30]);
+});
+
+test('relatório tira o baixado da lista, mas conta no resumo', () => {
+  // Sem a contagem, o total do papel não fecharia com a planilha e ninguém
+  // saberia por quê.
+  const relatorio = montarRelatorioDoAcervo(TITULOS_DO_RELATORIO, [
+    exemplar({ tombo: 1, id_titulo: 1 }),
+    exemplar({ tombo: 2, id_titulo: 1, ativo: 'NÃO' }),
+    exemplar({ tombo: 3, id_titulo: 2, ativo: 'NÃO' })
+  ], []);
+  assert.deepEqual(relatorio.obras.map((o) => o.titulo), ['Nosso Lar'],
+    'obra só com exemplar baixado não está mais na casa');
+  assert.deepEqual(relatorio.obras[0].exemplares.map((e) => e.tombo), [1]);
+  assert.equal(relatorio.resumo.baixados, 2);
+});
+
+test('relatório conta exemplar cuja obra não existe', () => {
+  const relatorio = montarRelatorioDoAcervo(TITULOS_DO_RELATORIO, [
+    exemplar({ tombo: 1, id_titulo: 1 }),
+    exemplar({ tombo: 9, id_titulo: 99 })
+  ], []);
+  assert.equal(relatorio.resumo.sem_obra, 1);
+  assert.equal(relatorio.resumo.exemplares, 1);
+});
+
+test('relatório tira a situação dos empréstimos e soma cada uma', () => {
+  const relatorio = montarRelatorioDoAcervo(TITULOS_DO_RELATORIO, [
+    exemplar({ tombo: 1, id_titulo: 1 }),
+    exemplar({ tombo: 2, id_titulo: 1 }),
+    exemplar({ tombo: 3, id_titulo: 1, emprestavel: 'NÃO' })
+  ], [emprestimo({ tombo: 2, data_prevista: new Date(2026, 9, 30) })]);
+
+  const [um, dois, tres] = relatorio.obras[0].exemplares;
+  assert.equal(um.situacao, SITUACAO_DISPONIVEL);
+  assert.equal(dois.situacao, SITUACAO_EMPRESTADO);
+  assert.equal(dois.previsao.getTime(), new Date(2026, 9, 30).getTime());
+  assert.equal(tres.situacao, SITUACAO_SO_NA_CASA);
+  assert.equal(um.previsao, null);
+
+  assert.deepEqual(
+    [relatorio.resumo.disponiveis, relatorio.resumo.emprestados, relatorio.resumo.so_na_casa],
+    [1, 1, 1]);
+});
+
+test('relatório não diz com quem está o livro', () => {
+  // Papel impresso circula. O que alguém está lendo não vai nele.
+  const relatorio = montarRelatorioDoAcervo(TITULOS_DO_RELATORIO, [
+    exemplar({ tombo: 2, id_titulo: 1, com_quem: 'Maria da Silva', doado_por: 'João Souza' })
+  ], [emprestimo({ tombo: 2, id_pessoa: 7 })]);
+
+  const serializado = JSON.stringify(relatorio);
+  assert.equal(serializado.indexOf('Maria'), -1, 'vazou quem está com o livro');
+  assert.equal(serializado.indexOf('id_pessoa'), -1, 'vazou o id de quem está com o livro');
+  assert.deepEqual(Object.keys(relatorio.obras[0].exemplares[0]).sort(),
+    ['edicao', 'estado', 'observacao', 'previsao', 'situacao', 'tombo']);
+});
+
+test('descreverEdicao junta editora, ano e edição, e diz o que é o número', () => {
+  assert.equal(descreverEdicao({ editora: 'FEB Editora', ano: 1978, edicao: '3' }),
+    'FEB Editora · 1978 · 3ª ed.');
+  assert.equal(descreverEdicao({ editora: 'FEB Editora', ano: '', edicao: '' }), 'FEB Editora');
+  assert.equal(descreverEdicao({}), '');
 });
 
 test('o vocabulário de situacao é o mesmo em dominio.js e setup.js', () => {

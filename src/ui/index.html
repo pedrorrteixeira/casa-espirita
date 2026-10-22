@@ -215,6 +215,7 @@
         <button type="button" class="aba-interna ativa" data-bloco="obra">Obra nova</button>
         <button type="button" class="aba-interna" data-bloco="exemplar">Novo exemplar</button>
         <button type="button" class="aba-interna" data-bloco="alterar-exemplar">Alterar exemplar</button>
+        <button type="button" class="aba-interna" data-bloco="relatorio">Relatório do acervo</button>
       </div>
       <div class="grupo-abas" role="group" aria-labelledby="grupo-abas-pessoas">
         <span id="grupo-abas-pessoas" class="grupo-abas-titulo">Pessoas</span>
@@ -318,6 +319,22 @@
       </fieldset>
       <div id="estado-exemplar-novo" class="estado" role="status" aria-live="polite"></div>
     </form>
+
+    <!-- Relatório do acervo: tudo o que a casa tem, obra por obra, com os
+         exemplares embaixo. Monta de novo cada vez que se abre, então nunca
+         está velho. O Imprimir do navegador também salva em PDF.
+
+         Sem o nome de quem está com cada livro, de propósito: papel impresso
+         circula e fica esquecido em mesa. Quem precisa do nome tem a aba
+         Atrasos. -->
+    <div id="relatorio-acervo" class="bloco-cadastro oculta">
+      <div class="rel-acoes escolhas-linha">
+        <button type="button" id="btn-imprimir-relatorio" disabled>Imprimir</button>
+        <button type="button" id="btn-atualizar-relatorio" class="discreto">Atualizar</button>
+      </div>
+      <div id="estado-relatorio" class="estado" role="status" aria-live="polite"></div>
+      <div id="relatorio-conteudo"></div>
+    </div>
 
     <!-- Alterar um exemplar que já existe. Nasceu para os livros antigos e
          frágeis, que já estavam no acervo quando a marca "só para ler na

@@ -948,6 +948,10 @@
       $('#form-exemplar').classList.toggle('oculta', aba.dataset.bloco !== 'exemplar');
       $('#form-alterar-exemplar').classList.toggle('oculta',
         aba.dataset.bloco !== 'alterar-exemplar');
+      $('#relatorio-acervo').classList.toggle('oculta', aba.dataset.bloco !== 'relatorio');
+      // Monta de novo a cada abertura: relatório guardado da última vez
+      // mostraria como disponível o livro que saiu há cinco minutos.
+      if (aba.dataset.bloco === 'relatorio') carregarRelatorio();
       $('#form-pessoa').classList.toggle('oculta', aba.dataset.bloco !== 'pessoa');
       $('#form-editar-pessoa').classList.toggle('oculta', aba.dataset.bloco !== 'editar');
     });
@@ -1657,6 +1661,137 @@
         dizer(estadoAlterarExemplar, erro.message || 'Não consegui salvar.', 'erro');
       })
       .atualizarExemplar(EU.sessao, tombo, mudancas);
+  });
+
+  // ------------------------------------------------ cadastro: relatório do acervo
+  // Tudo o que a casa tem, obra por obra, com os exemplares embaixo. Para
+  // conferir na tela e para imprimir — o Imprimir do navegador também salva
+  // em PDF, então não há arquivo nenhum para gerar nem para ficar velho.
+
+  var relatorioConteudo = $('#relatorio-conteudo');
+  var estadoRelatorio = $('#estado-relatorio');
+  var botaoImprimir = $('#btn-imprimir-relatorio');
+  var relatorioEmVoo = 0;
+
+  function carregarRelatorio() {
+    var este = ++relatorioEmVoo;
+    relatorioConteudo.innerHTML = '';
+    botaoImprimir.disabled = true;
+    dizer(estadoRelatorio, 'Montando o relatório…');
+
+    google.script.run
+      .withSuccessHandler(function (relatorio) {
+        if (este !== relatorioEmVoo) return;
+        dizer(estadoRelatorio, '');
+        desenharRelatorio(relatorio);
+        botaoImprimir.disabled = !relatorio.obras.length;
+      })
+      .withFailureHandler(function (erro) {
+        if (este !== relatorioEmVoo) return;
+        dizer(estadoRelatorio, erro.message || 'Não consegui montar o relatório.', 'erro');
+      })
+      .relatorioDoAcervo(EU.sessao);
+  }
+
+  function desenharRelatorio(relatorio) {
+    var r = relatorio.resumo;
+
+    // O cabeçalho vai DENTRO do conteúdo, e não no topo da tela: o topo some
+    // na impressão, e o papel precisa dizer de onde é e de quando.
+    relatorioConteudo.appendChild(elemento('h2', 'Relatório do acervo', 'rel-titulo'));
+    relatorioConteudo.appendChild(elemento('p',
+      (relatorio.casa ? relatorio.casa + ' · ' : '') + 'gerado em ' + relatorio.gerado_em,
+      'meta'));
+
+    if (!relatorio.obras.length) {
+      relatorioConteudo.appendChild(elemento('p',
+        'A casa ainda não tem nenhum exemplar cadastrado.', 'dica'));
+      return;
+    }
+
+    var situacoes = [plural(r.disponiveis, 'disponível', 'disponíveis')];
+    if (r.emprestados) situacoes.push(plural(r.emprestados, 'emprestado', 'emprestados'));
+    if (r.so_na_casa) situacoes.push(r.so_na_casa + ' só para ler na casa');
+    relatorioConteudo.appendChild(elemento('p',
+      plural(r.obras, 'obra', 'obras') + ' · ' +
+      plural(r.exemplares, 'exemplar', 'exemplares') + ': ' + situacoes.join(', ') + '.',
+      'rel-resumo'));
+
+    // O que não entra na lista, dito — senão o total do papel não fecha com
+    // a planilha, e ninguém sabe por quê.
+    var fora = [];
+    if (r.baixados) fora.push(plural(r.baixados, 'exemplar baixado', 'exemplares baixados'));
+    if (r.sem_obra) {
+      fora.push(plural(r.sem_obra, 'exemplar aponta', 'exemplares apontam') +
+        ' para obra que não existe — avise quem cuida da planilha');
+    }
+    if (fora.length) {
+      relatorioConteudo.appendChild(elemento('p', 'Fora da lista: ' + fora.join('; ') + '.', 'dica'));
+    }
+
+    relatorio.obras.forEach(function (obra) {
+      relatorioConteudo.appendChild(obraDoRelatorio(obra));
+    });
+  }
+
+  function obraDoRelatorio(obra) {
+    var bloco = document.createElement('article');
+    bloco.className = 'rel-obra';
+
+    bloco.appendChild(elemento('h3', obra.titulo + (obra.subtitulo ? ' — ' + obra.subtitulo : '')));
+
+    var meta = [];
+    if (obra.autoria) meta.push(obra.autoria);
+    if (obra.categoria) meta.push(obra.categoria);
+    if (obra.serie) meta.push(obra.serie + (obra.ordem_na_serie ? ' nº ' + obra.ordem_na_serie : ''));
+    if (meta.length) bloco.appendChild(elemento('p', meta.join(' · '), 'meta'));
+
+    var lista = document.createElement('ul');
+    lista.className = 'rel-exemplares';
+    obra.exemplares.forEach(function (exemplar) {
+      var item = document.createElement('li');
+      item.appendChild(elemento('span', String(exemplar.tombo), 'rel-tombo'));
+
+      // O resto numa coluna só, depois do tombo: no celular a linha quebra,
+      // e o que desce fica alinhado em vez de voltar para baixo do número.
+      var corpo = elemento('span', '', 'rel-corpo');
+      item.appendChild(corpo);
+
+      var descricao = [exemplar.edicao, exemplar.estado].filter(function (p) { return p; });
+      if (descricao.length) corpo.appendChild(elemento('span', descricao.join(' · '), 'rel-edicao'));
+
+      var classe = exemplar.situacao === 'emprestado' ? 'emprestado'
+        : exemplar.situacao === 'só para ler na casa' ? 'so_na_casa'
+        : 'disponivel';
+      var situacao = exemplar.situacao === 'emprestado' && exemplar.previsao
+        ? 'emprestado até ' + exemplar.previsao
+        : exemplar.situacao;
+      corpo.appendChild(elemento('span', situacao, 'rel-situacao ' + classe));
+
+      if (exemplar.observacao) {
+        corpo.appendChild(elemento('span', exemplar.observacao, 'rel-observacao'));
+      }
+      lista.appendChild(item);
+    });
+    bloco.appendChild(lista);
+
+    return bloco;
+  }
+
+  function plural(quantos, um, varios) {
+    return quantos + ' ' + (quantos === 1 ? um : varios);
+  }
+
+  $('#btn-atualizar-relatorio').addEventListener('click', carregarRelatorio);
+
+  // Na impressão sai só o relatório: o CSS de impressão esconde o resto da
+  // página enquanto esta classe estiver no <body>.
+  botaoImprimir.addEventListener('click', function () {
+    document.body.classList.add('imprimindo-relatorio');
+    window.print();
+  });
+  window.addEventListener('afterprint', function () {
+    document.body.classList.remove('imprimindo-relatorio');
   });
 
 

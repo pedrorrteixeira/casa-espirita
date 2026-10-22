@@ -727,6 +727,107 @@ function resumirDisponibilidade(exemplares) {
   };
 }
 
+/**
+ * O acervo físico, obra por obra, com os exemplares de cada uma embaixo.
+ *
+ * Só entra obra com exemplar ativo. É a relação do que está na casa, não do
+ * catálogo: as centenas de obras pré-cadastradas sem exemplar (D5) afogariam
+ * as que existem, e o papel viraria lista de doação. Exemplar baixado fica
+ * fora pela mesma razão, mas é contado no resumo — e o exemplar cuja obra
+ * não existe também, para a conta fechar com a planilha em vez de sumir.
+ *
+ * A situação vem dos empréstimos (`calcularSituacao`), não da coluna de
+ * fórmula. E o relatório NÃO diz com quem está o livro: papel impresso
+ * circula e fica esquecido em mesa, e numa casa espírita a escolha de livro
+ * revela luto e doença (PLANO.md, Fase 5). Quem precisa do nome tem a aba
+ * Atrasos.
+ *
+ * `previsao` sai como Date; quem chama formata.
+ */
+function montarRelatorioDoAcervo(titulos, exemplares, emprestimos) {
+  var resumo = {
+    obras: 0, exemplares: 0, disponiveis: 0, emprestados: 0, so_na_casa: 0,
+    baixados: 0, sem_obra: 0
+  };
+
+  var porTitulo = {};
+  (exemplares || []).forEach(function (exemplar) {
+    if (String(exemplar.ativo).trim() !== 'SIM') { resumo.baixados++; return; }
+    var id = Number(exemplar.id_titulo);
+    if (!porTitulo[id]) porTitulo[id] = [];
+    porTitulo[id].push(exemplar);
+  });
+
+  var obras = [];
+  (titulos || []).forEach(function (titulo) {
+    var id = Number(titulo.id_titulo);
+    var meus = porTitulo[id];
+    if (!meus) return;
+    delete porTitulo[id];   // o que sobrar no fim não tem obra
+
+    var linhas = meus
+      .slice()
+      .sort(function (a, b) { return Number(a.tombo) - Number(b.tombo); })
+      .map(function (exemplar) {
+        var situacao = calcularSituacao(exemplar, emprestimos);
+        var aberto = situacao === SITUACAO_EMPRESTADO
+          ? acharEmprestimoAberto(emprestimos, exemplar.tombo)
+          : null;
+
+        if (situacao === SITUACAO_EMPRESTADO) resumo.emprestados++;
+        else if (situacao === SITUACAO_SO_NA_CASA) resumo.so_na_casa++;
+        else resumo.disponiveis++;
+
+        return {
+          tombo: Number(exemplar.tombo),
+          edicao: descreverEdicao(exemplar),
+          estado: limpar_(exemplar.estado),
+          situacao: situacao,
+          previsao: aberto ? comoData_(aberto.data_prevista) : null,
+          observacao: limpar_(exemplar.observacao)
+        };
+      });
+
+    resumo.exemplares += linhas.length;
+    obras.push({
+      id_titulo: id,
+      titulo: limpar_(titulo.titulo),
+      subtitulo: limpar_(titulo.subtitulo),
+      autoria: montarAutoria(titulo),
+      categoria: limpar_(titulo.categoria),
+      serie: limpar_(titulo.serie),
+      ordem_na_serie: limpar_(titulo.ordem_na_serie),
+      exemplares: linhas
+    });
+  });
+
+  Object.keys(porTitulo).forEach(function (id) {
+    resumo.sem_obra += porTitulo[id].length;
+  });
+
+  obras.sort(function (a, b) {
+    return normalizarTexto(a.titulo).localeCompare(normalizarTexto(b.titulo)) ||
+      a.id_titulo - b.id_titulo;
+  });
+  resumo.obras = obras.length;
+
+  return { resumo: resumo, obras: obras };
+}
+
+/**
+ * Editora, ano e edição de um exemplar numa linha: "FEB Editora · 1978 ·
+ * 3ª ed.". A edição é gravada só com o número (a tela só aceita dígito), e
+ * "3" solto no meio da linha não diz o que é.
+ */
+function descreverEdicao(exemplar) {
+  var edicao = limpar_(exemplar && exemplar.edicao);
+  if (/^\d+$/.test(edicao)) edicao += 'ª ed.';
+
+  return [limpar_(exemplar && exemplar.editora), limpar_(exemplar && exemplar.ano), edicao]
+    .filter(function (parte) { return parte !== ''; })
+    .join(' · ');
+}
+
 // --- Auxiliares --------------------------------------------------------------
 
 /**
@@ -873,6 +974,8 @@ if (typeof module !== 'undefined') {
     buscarTitulos: buscarTitulos,
     separarAutoria: separarAutoria,
     resumirDisponibilidade: resumirDisponibilidade,
+    montarRelatorioDoAcervo: montarRelatorioDoAcervo,
+    descreverEdicao: descreverEdicao,
     resumirEdicoes: resumirEdicoes,
     acharTituloEquivalente: acharTituloEquivalente,
     calcularSituacao: calcularSituacao,
