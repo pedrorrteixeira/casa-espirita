@@ -24,21 +24,23 @@
   </button>
   <nav class="manual-indice" aria-label="Assuntos do manual">
     <details class="grupo">
-      <summary>No balcão<small>4 assuntos</small></summary>
+      <summary>No balcão<small>5 assuntos</small></summary>
       <a href="#m-emprestar">Alguém quer levar um livro</a>
+      <a href="#m-estante">O frequentador pegou o livro sozinho</a>
       <a href="#m-devolver">Trouxeram um livro de volta</a>
       <a href="#m-renovar">Querem ficar mais tempo com o livro</a>
       <a href="#m-atrasos">Ver quem está com livro atrasado</a>
     </details>
 
     <details class="grupo">
-      <summary>Cuidar do acervo<small>7 assuntos</small></summary>
+      <summary>Cuidar do acervo<small>8 assuntos</small></summary>
       <a href="#m-doacao">Chegaram livros novos</a>
       <a href="#m-maisum">Já temos esse livro, chegou outra cópia</a>
       <a href="#m-alterar">Um livro ficou frágil e não pode mais sair</a>
       <a href="#m-sumiu">Um livro sumiu ou estragou</a>
       <a href="#m-catalogo">Aparecem livros que a casa não tem</a>
       <a href="#m-relatorio">Uma lista de tudo o que a casa tem</a>
+      <a href="#m-cartaz">Pôr o cartaz do QR na estante</a>
       <a href="#m-pessoas">Gente nova, e gente que mudou</a>
     </details>
 
@@ -123,6 +125,11 @@
 
     <p>São 21 dias, contados de hoje.</p>
 
+    <p>
+      Se a pessoa tem e-mail no cadastro, ela recebe na hora um e-mail com o
+      livro e a data de devolução.
+    </p>
+
     <dl class="e-se">
       <dt>O nome da pessoa não aparece</dt>
       <dd>
@@ -163,6 +170,63 @@
       <dd>
         Não insista pela tela. Há um motivo registrado, e quem resolve é a
         bibliotecária.
+      </dd>
+    </dl>
+  </article>
+
+  <!-- ------------------------------------------------------------ estante -->
+  <article class="verbete" id="m-estante">
+    <p class="onde-fica">No balcão</p>
+    <h2 tabindex="-1">O frequentador pegou o livro sozinho</h2>
+
+    <p>
+      Na estante há um cartaz com um QR code. O frequentador aponta o celular,
+      digita o <strong>tombo</strong> do livro e o <strong>e-mail ou
+      telefone</strong> do cadastro, e toca em <kbd>Pegar o livro</kbd>. O
+      empréstimo fica registrado como se tivesse passado pelo balcão, com os
+      mesmos 21 dias.
+    </p>
+
+    <ul>
+      <li>
+        Pela estante, cada pessoa só pode estar com <strong>1 livro</strong> de
+        cada vez. Para levar outro, devolve o primeiro ou passa no balcão — no
+        balcão não há esse limite.
+      </li>
+      <li>
+        Quem tem e-mail recebe na hora um aviso com o livro e a data. Se não
+        foi ela que pegou, o aviso pede para avisar o balcão.
+      </li>
+      <li>
+        Só funciona com cadastro: quem não tem, ou não lembra qual contato deu,
+        vem ao balcão.
+      </li>
+      <li>
+        Na planilha, esses empréstimos aparecem como registrados por
+        <strong>autoatendimento</strong>. Nas telas do sistema eles são iguais
+        aos outros: atrasam, renovam e se devolvem do mesmo jeito.
+      </li>
+    </ul>
+
+    <dl class="e-se">
+      <dt>Registraram em nome de outra pessoa, ou por engano</dt>
+      <dd>
+        Desfaça pelo balcão: digite o tombo e toque em
+        <kbd>Registrar devolução</kbd>. Depois empreste a quem está de fato com
+        o livro.
+      </dd>
+
+      <dt>O livro está na estante, mas o sistema diz que está emprestado</dt>
+      <dd>
+        Alguém pode ter registrado de longe sem levar. Com o livro na mão,
+        registre a devolução, e ele volta a ficar disponível.
+      </dd>
+
+      <dt>Quero mudar o limite de 1 livro, ou suspender a estante</dt>
+      <dd>
+        É na aba <kbd>Config</kbd> da planilha, linha
+        <kbd>limite_autoatendimento</kbd>. Zero suspende o empréstimo pela
+        estante. Depois de mudar, imprima o cartaz de novo: ele diz o limite.
       </dd>
     </dl>
   </article>
@@ -577,6 +641,38 @@
         São exemplares que não entram na relação: os que receberam baixa e, se
         houver, algum que aponta para uma obra que não existe mais. O número
         está ali para a conta fechar com a planilha.
+      </dd>
+    </dl>
+  </article>
+
+  <!-- ------------------------------------------------------------- cartaz -->
+  <article class="verbete" id="m-cartaz">
+    <p class="onde-fica">Cadastrar</p>
+    <h2 tabindex="-1">Pôr o cartaz do QR na estante</h2>
+
+    <ol class="passos">
+      <li>
+        Aba <kbd>Cadastrar</kbd>, no grupo <strong>Livros</strong>:
+        <kbd>Cartaz da estante ↗</kbd>. Ele abre numa aba nova.
+      </li>
+      <li>Toque em <kbd>Imprimir</kbd>.</li>
+      <li>
+        Antes de colar, <strong>teste</strong>: aponte o celular para o papel e
+        veja se abre a tela "Pegar um livro emprestado".
+      </li>
+    </ol>
+
+    <p>
+      O cartaz traz o QR, três passos curtos e o limite de livros por pessoa.
+      Imprima de novo se o limite mudar no <kbd>Config</kbd>, ou se o link do
+      sistema mudar.
+    </p>
+
+    <dl class="e-se">
+      <dt>O botão do cartaz não aparece</dt>
+      <dd>
+        Falta o link do sistema na aba <kbd>Config</kbd> da planilha, linha
+        <kbd>url_sistema</kbd>. Peça a quem tem acesso para preencher.
       </dd>
     </dl>
   </article>

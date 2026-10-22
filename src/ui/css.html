@@ -347,6 +347,16 @@
     padding: .4rem .9rem;
     white-space: nowrap;
   }
+  /* O "Cartaz da estante" é link (abre outra página), com cara de aba. O
+     `display` aqui perde para `.oculta`, que é `!important`. */
+  a.aba-interna {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    border-radius: 6px;
+    text-decoration: none;
+  }
   /* No celular o título sobe para a própria linha, e os botões esticam para
      preencher a deles: o que quebrar para baixo fica com cara de proposital,
      e não de sobra. */
@@ -360,6 +370,26 @@
     border-color: var(--acento);
     font-weight: 600;
   }
+
+  /* --- estante: pegar livro sozinho, pelo QR ---
+     Aberta em pé, no corredor, com o livro numa mão: letra e botão grandes. */
+  .pegar-titulo { margin: 0 0 .2rem; font-size: 1.3rem; }
+  #visao-pegar #btn-pegar { width: 100%; margin-top: .8rem; }
+  .aviso-pegar {
+    margin: .6rem 0 0;
+    padding: .5rem .7rem;
+    border-left: 4px solid var(--aviso-borda);
+    background: var(--aviso-fundo);
+    border-radius: 4px;
+  }
+  .pronto {
+    margin-top: 1rem;
+    padding: .9rem 1rem;
+    border-left: 4px solid var(--disponivel);
+    background: var(--fundo-suave);
+    border-radius: 6px;
+  }
+  .pronto-texto { margin: 0; font-size: 1.1rem; font-weight: 600; }
 
   /* --- relatório do acervo ---
      Uma obra por bloco, os exemplares embaixo, um por linha. Lista e não

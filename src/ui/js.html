@@ -36,6 +36,9 @@
     try { EU.sessao = localStorage.getItem('sessao') || ''; } catch (erro) {}
   }
 
+  // Veio pelo QR da estante: abre direto na tela de pegar livro.
+  if (TELA_INICIAL === 'pegar') irPara('pegar');
+
   function podeVer(acao) {
     var ordem = ['consulta', 'atendente', 'bibliotecario', 'admin'];
     var exige = {
@@ -939,9 +942,11 @@
   }
 
   // --------------------------------------------------- cadastro: abas internas
-  document.querySelectorAll('.aba-interna').forEach(function (aba) {
+  // Só as que têm `data-bloco`: o "Cartaz da estante" tem a mesma cara, mas é
+  // link para outra página — tratado como aba, ele esconderia todos os blocos.
+  document.querySelectorAll('.aba-interna[data-bloco]').forEach(function (aba) {
     aba.addEventListener('click', function () {
-      document.querySelectorAll('.aba-interna').forEach(function (outra) {
+      document.querySelectorAll('.aba-interna[data-bloco]').forEach(function (outra) {
         outra.classList.toggle('ativa', outra === aba);
       });
       $('#form-cadastro').classList.toggle('oculta', aba.dataset.bloco !== 'obra');
@@ -1143,6 +1148,109 @@
         dizer(estadoEditar, erro.message || 'Não consegui salvar.', 'erro');
       })
       .atualizarPessoa(EU.sessao, pessoaEmEdicao.id_pessoa, mudancas);
+  });
+
+  // ---------------------------------------------------------------- estante
+  // Pegar livro sozinho, pelo QR. A mesma coreografia do balcão — digita o
+  // tombo, a ficha aparece — mas sem login: a pessoa se identifica pelo e-mail
+  // ou telefone, e o servidor nunca devolve o nome dela.
+
+  var tomboPegar = $('#tombo-pegar');
+  var estadoTomboPegar = $('#estado-tombo-pegar');
+  var livroPegar = $('#livro-pegar');
+  var formPegar = $('#form-pegar');
+  var estadoPegar = $('#estado-pegar');
+  var prontoPegar = $('#pronto-pegar');
+  var pegarEmVoo = 0;
+  var temporizadorPegar = null;
+
+  tomboPegar.addEventListener('input', function () {
+    livroPegar.classList.add('oculta');
+    prontoPegar.classList.add('oculta');
+    dizer(estadoPegar, '');
+    clearTimeout(temporizadorPegar);
+    temporizadorPegar = setTimeout(carregarLivroParaPegar, 350);
+  });
+
+  function carregarLivroParaPegar() {
+    var valor = tomboPegar.value.trim();
+    if (!valor) { dizer(estadoTomboPegar, ''); return; }
+
+    var este = ++pegarEmVoo;
+    dizer(estadoTomboPegar, 'Procurando o livro…');
+
+    google.script.run
+      .withSuccessHandler(function (livro) {
+        if (este !== pegarEmVoo) return;
+        dizer(estadoTomboPegar, '');
+        mostrarLivroParaPegar(livro);
+      })
+      .withFailureHandler(function (erro) {
+        if (este !== pegarEmVoo) return;
+        dizer(estadoTomboPegar, erro.message || 'Não consegui procurar o livro.', 'erro');
+      })
+      .verLivroParaPegar(valor);
+  }
+
+  function mostrarLivroParaPegar(livro) {
+    // Sem tombo na resposta: o número não existe.
+    if (!livro.tombo) {
+      dizer(estadoTomboPegar, livro.aviso, 'erro');
+      return;
+    }
+
+    $('#livro-pegar-titulo').textContent = livro.titulo;
+    $('#livro-pegar-autoria').textContent = livro.autoria;
+    $('#livro-pegar-meta').textContent = ['tombo ' + livro.tombo, livro.edicao]
+      .filter(function (parte) { return parte; })
+      .join(' · ');
+
+    var aviso = $('#livro-pegar-aviso');
+    aviso.textContent = livro.aviso;
+    aviso.classList.toggle('oculta', !livro.aviso);
+
+    formPegar.classList.toggle('oculta', !livro.pode_pegar);
+    livroPegar.classList.remove('oculta');
+  }
+
+  formPegar.addEventListener('submit', function (evento) {
+    evento.preventDefault();
+    var botao = $('#btn-pegar');
+    var campoContato = $('#contato-pegar');
+    var contato = campoContato.value.trim();
+
+    if (!contato) {
+      dizer(estadoPegar, 'Escreva o e-mail ou o telefone do seu cadastro.', 'erro');
+      campoContato.focus();
+      return;
+    }
+
+    botao.disabled = true;
+    dizer(estadoPegar, 'Registrando…');
+
+    google.script.run
+      .withSuccessHandler(function (resposta) {
+        botao.disabled = false;
+        dizer(estadoPegar, '');
+        livroPegar.classList.add('oculta');
+
+        // O título e a data, e nada da pessoa: quem confirma que é ela é o
+        // e-mail que acabou de sair.
+        $('#pronto-pegar-texto').textContent = 'Pronto! "' + resposta.titulo +
+          '" é seu até ' + resposta.data_prevista + '.';
+        $('#pronto-pegar-email').textContent = resposta.avisado_por_email
+          ? 'Mandamos a confirmação para o e-mail do cadastro. Boa leitura.'
+          : 'Anote a data: a devolução é no balcão. Boa leitura.';
+        prontoPegar.classList.remove('oculta');
+
+        tomboPegar.value = '';
+        campoContato.value = '';
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer(estadoPegar, erro.message || 'Não consegui registrar.', 'erro');
+      })
+      .pegarLivro(tomboPegar.value.trim(), contato);
   });
 
   // ----------------------------------------------------------------- agenda
@@ -1783,6 +1891,14 @@
   }
 
   $('#btn-atualizar-relatorio').addEventListener('click', carregarRelatorio);
+
+  // ---------------------------------------------------- cadastro: cartaz do QR
+  // O cartaz aponta para `url_sistema`, do Config. Sem ele não há o que pôr no
+  // QR, e o link fica escondido em vez de abrir um cartaz que não funciona.
+  if (URL_SISTEMA) {
+    $('#link-cartaz').href = URL_SISTEMA + (URL_SISTEMA.indexOf('?') === -1 ? '?' : '&') + 'cartaz=1';
+    $('#link-cartaz').classList.remove('oculta');
+  }
 
   // Na impressão sai só o relatório: o CSS de impressão esconde o resto da
   // página enquanto esta classe estiver no <body>.

@@ -199,6 +199,36 @@ voluntários serve aqui, e é trocar uma linha.
 
 ---
 
+## Fase 6 — Autoatendimento pela estante
+
+Objetivo: o frequentador pega o livro sozinho, sem esperar o balcão. Pedido do
+Weldson. Regras 16 a 18 da especificação, e os riscos aceitos na seção 6.
+
+- [x] 🤖 Tela "Pegar um livro emprestado", sem aba, aberta pelo `?pegar` do
+      QR: tombo, e-mail ou telefone, e "Pegar o livro". Identifica por
+      contato, nunca por nome (LGPD), e a confirmação não mostra o nome.
+- [x] 🤖 `emprestar_`: o miolo do empréstimo, o mesmo para balcão e estante.
+      Na estante, conta os livros em mãos dentro da trava contra
+      `limite_autoatendimento` do Config.
+- [x] 🤖 Aviso por e-mail em todo empréstimo, balcão também, depois da trava.
+- [x] 🤖 Cartaz da estante (`?cartaz`): página pública com o QR de
+      `url_sistema?pegar=1` e as instruções. A biblioteca de QR
+      (`qrcode-generator` 1.4.4, MIT) está copiada em `src/ui/qrcode.html`,
+      sem CDN. O QR foi decodificado na verificação e leva ao link certo.
+- [ ] 👤 Rodar *Biblioteca → Criar / atualizar estrutura da planilha* para
+      `limite_autoatendimento` aparecer no Config.
+- [ ] 👤 Conferir `url_sistema` no Config, imprimir o cartaz em Cadastrar →
+      Livros → Cartaz da estante, testar com o celular e colar na estante.
+- [ ] 👤 Teste de ponta a ponta: pegar um livro de teste com o próprio
+      e-mail, conferir a linha em `Emprestimos` (`autoatendimento`), o e-mail
+      recebido, a recusa do segundo, e devolver no balcão.
+
+**Aceite:** com limite 1, a mesma pessoa não consegue pegar o segundo livro
+pela estante; o empréstimo aparece em `Emprestimos` com `quem_registrou` =
+`autoatendimento`; o aviso por e-mail chega; nenhuma tela pública mostra nome.
+
+---
+
 ## Estrutura de pastas
 
 ```
@@ -225,7 +255,9 @@ biblioteca-casa-espirita/
 │       ├── css.html
 │       ├── js.html
 │       ├── logo.html      # a logomarca embutida, em base64
-│       └── manual.html    # o manual do voluntário — ver CLAUDE.md
+│       ├── manual.html    # o manual do voluntário — ver CLAUDE.md
+│       ├── cartaz.html    # o cartaz com o QR da estante (Fase 6)
+│       └── qrcode.html    # biblioteca de QR, copiada (MIT) — só o cartaz usa
 └── test/
     └── dominio.test.js
 ```

@@ -17,6 +17,7 @@ const {
   estaAtrasado, diasDeAtraso, planejarSincronizacao,
   montarAvisoDeAtrasos, escolherReuniaoSemTema,
   podeFazer, perfilValido, sobraOutroAdmin, normalizarContato, mesmoContato, ehEmailValido, formatarTelefone,
+  acharQuemPega, contarEmprestimosAbertos,
   SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO, SITUACAO_SO_NA_CASA
 } = require('../src/dominio.js');
 
@@ -1134,6 +1135,57 @@ test('contato vazio ou curto demais nunca casa', () => {
 
 test('e-mail não casa com telefone', () => {
   assert.equal(mesmoContato('maria@exemplo.com', '11987654321'), false);
+});
+
+// --- autoatendimento: quem pega, e quantos já tem ----------------------------
+
+const CADASTRO = [
+  { id_pessoa: 1, nome: 'Maria da Silva', email: 'maria@exemplo.com',
+    telefone: '(11) 98765-4321', ativo: 'SIM' },
+  { id_pessoa: 2, nome: 'João Souza', email: '', telefone: '(11) 91111-2222', ativo: 'SIM' },
+  { id_pessoa: 3, nome: 'Ana Lima', email: 'ana@exemplo.com', telefone: '', ativo: 'NÃO' },
+  // Mãe e filho com o mesmo telefone de casa.
+  { id_pessoa: 4, nome: 'Rosa Prado', email: '', telefone: '(11) 93333-4444', ativo: 'SIM' },
+  { id_pessoa: 5, nome: 'Pedro Prado', email: '', telefone: '11 93333-4444', ativo: 'SIM' }
+];
+
+test('acharQuemPega acha pelo e-mail, sem ligar para maiúsculas', () => {
+  assert.equal(acharQuemPega(CADASTRO, ' Maria@Exemplo.COM ').id_pessoa, 1);
+});
+
+test('acharQuemPega acha pelo telefone, digitado de qualquer jeito', () => {
+  for (const forma of ['11911112222', '91111-2222', '(11) 9 1111 2222']) {
+    assert.equal(acharQuemPega(CADASTRO, forma).id_pessoa, 2, `"${forma}" devia achar o João`);
+  }
+});
+
+test('acharQuemPega não acha pessoa inativa — regra 5', () => {
+  assert.equal(acharQuemPega(CADASTRO, 'ana@exemplo.com'), null);
+});
+
+test('acharQuemPega não escolhe entre duas pessoas com o mesmo contato', () => {
+  // A família que divide o telefone. Escolher uma às cegas poria o livro no
+  // nome de quem não pegou.
+  assert.equal(acharQuemPega(CADASTRO, '(11) 93333-4444'), null);
+});
+
+test('acharQuemPega não acha com contato vazio, curto ou desconhecido', () => {
+  // Vazio é o caso perigoso: casaria com todo cadastro sem e-mail.
+  for (const contato of ['', '   ', null, undefined, '123', 'ninguem@exemplo.com']) {
+    assert.equal(acharQuemPega(CADASTRO, contato), null, JSON.stringify(contato));
+  }
+});
+
+test('contarEmprestimosAbertos conta só os da pessoa e só os não devolvidos', () => {
+  const emprestimos = [
+    { tombo: 1, id_pessoa: 1, data_devolucao: '' },
+    { tombo: 2, id_pessoa: 1, data_devolucao: new Date(2026, 9, 1) },
+    { tombo: 3, id_pessoa: 2, data_devolucao: '' }
+  ];
+  assert.equal(contarEmprestimosAbertos(emprestimos, 1), 1);
+  assert.equal(contarEmprestimosAbertos(emprestimos, '2'), 1);
+  assert.equal(contarEmprestimosAbertos(emprestimos, 9), 0);
+  assert.equal(contarEmprestimosAbertos([], 1), 0);
 });
 
 // --- ehEmailValido -----------------------------------------------------------

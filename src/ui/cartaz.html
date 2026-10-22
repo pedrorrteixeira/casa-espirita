@@ -1,0 +1,122 @@
+<!-- ui/cartaz.html — o cartaz com o QR code que vai impresso na estante.
+
+     Página própria, aberta pelo `?cartaz` do doGet, e não uma tela do sistema:
+     só ela carrega a biblioteca de QR (ui/qrcode.html). É pública e não tem
+     dado nenhum — o nome da casa e o link da tela de pegar livro.
+
+     Preto no branco sempre, tema escuro ou não: vai para o papel, e QR com
+     pouco contraste a câmera não lê. -->
+<?!= include('ui/css'); ?>
+
+<style>
+  body { background: #fff; color: #000; }
+  .cartaz {
+    max-width: 34rem;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #000;
+  }
+  .cartaz-casa { margin: 0; font-size: 1.1rem; color: #333; }
+  .cartaz h1 { margin: .3rem 0 1rem; font-size: 2.1rem; color: #000; }
+  .cartaz-qr { width: 15rem; height: 15rem; margin: 0 auto; }
+  .cartaz-qr svg { width: 100%; height: 100%; display: block; }
+  .cartaz-passos {
+    text-align: left;
+    margin: 1.4rem auto 0;
+    padding-left: 1.6rem;
+    font-size: 1.2rem;
+    line-height: 1.5;
+  }
+  .cartaz-passos li { margin: .35rem 0; }
+  .cartaz-regra { margin: 1.2rem 0 0; font-size: 1.2rem; font-weight: 700; }
+  #btn-imprimir-cartaz { margin-top: 1.6rem; }
+
+  @media print {
+    .nao-imprime { display: none !important; }
+    .cartaz { padding-top: 0; }
+    /* No papel, maior: a câmera lê de mais longe, com a mão tremendo. */
+    .cartaz-qr { width: 9cm; height: 9cm; }
+  }
+</style>
+
+<main class="cartaz">
+  <p class="cartaz-casa"><?= nomeCasa ?></p>
+  <h1>Pegue um livro emprestado</h1>
+
+  <div id="qr" class="cartaz-qr" role="img"
+       aria-label="QR code que abre a tela de pegar livro"></div>
+  <p id="cartaz-sem-link" class="estado erro oculta">
+    Falta o link do sistema. Preencha <strong>url_sistema</strong> na aba
+    Config da planilha e abra este cartaz de novo.
+  </p>
+
+  <ol class="cartaz-passos">
+    <li>Aponte a câmera do celular para o código.</li>
+    <li>Digite o <strong>tombo</strong> — o número carimbado na última contracapa.</li>
+    <li>
+      Escreva o <strong>e-mail ou telefone</strong> do seu cadastro e toque em
+      <strong>Pegar o livro</strong>.
+    </li>
+  </ol>
+  <p class="cartaz-regra"><?= regra ?></p>
+
+  <button type="button" id="btn-imprimir-cartaz" class="nao-imprime">Imprimir</button>
+</main>
+
+<?!= include('ui/qrcode'); ?>
+<script>
+(function () {
+  'use strict';
+
+  var LINK_DO_QR = <?!= linkDoQr ?>;
+
+  document.getElementById('btn-imprimir-cartaz').addEventListener('click', function () {
+    window.print();
+  });
+
+  if (!LINK_DO_QR) {
+    document.getElementById('cartaz-sem-link').classList.remove('oculta');
+    document.getElementById('btn-imprimir-cartaz').disabled = true;
+    return;
+  }
+
+  // Correção 'M' (15%): aguenta o cartaz um pouco amassado ou desbotado sem
+  // inchar o código. Tamanho 0 deixa a biblioteca escolher o menor que cabe.
+  var qr = qrcode(0, 'M');
+  qr.addData(LINK_DO_QR);
+  qr.make();
+
+  // SVG montado elemento a elemento, sem innerHTML. Um caminho só com todos
+  // os quadrados pretos: imprime nítido em qualquer tamanho.
+  var MARGEM = 4;   // a "zona quieta" que a câmera precisa em volta
+  var modulos = qr.getModuleCount();
+  var lado = modulos + MARGEM * 2;
+  var ns = 'http://www.w3.org/2000/svg';
+
+  var svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + lado + ' ' + lado);
+  svg.setAttribute('shape-rendering', 'crispEdges');
+
+  var fundo = document.createElementNS(ns, 'rect');
+  fundo.setAttribute('width', lado);
+  fundo.setAttribute('height', lado);
+  fundo.setAttribute('fill', '#fff');
+  svg.appendChild(fundo);
+
+  var trilha = [];
+  for (var linha = 0; linha < modulos; linha++) {
+    for (var coluna = 0; coluna < modulos; coluna++) {
+      if (qr.isDark(linha, coluna)) {
+        trilha.push('M' + (coluna + MARGEM) + ' ' + (linha + MARGEM) + 'h1v1h-1z');
+      }
+    }
+  }
+  var pretos = document.createElementNS(ns, 'path');
+  pretos.setAttribute('d', trilha.join(''));
+  pretos.setAttribute('fill', '#000');
+  svg.appendChild(pretos);
+
+  document.getElementById('qr').appendChild(svg);
+})();
+</script>

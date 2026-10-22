@@ -422,6 +422,35 @@ function mesmoContato(a, b) {
 }
 
 /**
+ * Quem está pegando o livro na estante, pelo e-mail ou telefone digitado.
+ *
+ * Contato e não nome, por decisão do Weldson: a tela da estante é pública, e
+ * uma busca por nome ali viraria a lista de quem frequenta a casa. É a mesma
+ * regra de "Meus livros".
+ *
+ * Devolve a pessoa só quando há EXATAMENTE uma. Zero é contato errado; duas é
+ * a família que divide o telefone — e escolher uma delas às cegas poria o
+ * livro no nome de quem não pegou. Pessoa inativa não conta (regra 5).
+ */
+function acharQuemPega(pessoas, contato) {
+  if (!normalizarContato(contato)) return null;
+
+  var achadas = (pessoas || []).filter(function (pessoa) {
+    return String(pessoa.ativo).trim() === 'SIM' &&
+      (mesmoContato(contato, pessoa.email) || mesmoContato(contato, pessoa.telefone));
+  });
+  return achadas.length === 1 ? achadas[0] : null;
+}
+
+/** Quantos livros a pessoa tem em mãos agora. Aberto = sem `data_devolucao`. */
+function contarEmprestimosAbertos(emprestimos, idPessoa) {
+  var alvo = Number(idPessoa);
+  return (emprestimos || []).filter(function (emprestimo) {
+    return Number(emprestimo.id_pessoa) === alvo && semValor_(emprestimo.data_devolucao);
+  }).length;
+}
+
+/**
  * Status possíveis de uma reunião.
  * `vaga_aberta` existe para data criada à mão na planilha, sem reserva ainda.
  */
@@ -994,6 +1023,8 @@ if (typeof module !== 'undefined') {
     formatarTelefone: formatarTelefone,
     normalizarContato: normalizarContato,
     mesmoContato: mesmoContato,
+    acharQuemPega: acharQuemPega,
+    contarEmprestimosAbertos: contarEmprestimosAbertos,
     montarAvisoDeAtrasos: montarAvisoDeAtrasos,
     escolherReuniaoSemTema: escolherReuniaoSemTema,
     SITUACAO_DISPONIVEL: SITUACAO_DISPONIVEL,

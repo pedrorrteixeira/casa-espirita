@@ -40,10 +40,24 @@ function onOpen() {
 }
 
 function doGet(evento) {
+  var parametros = (evento && evento.parameter) || {};
+
+  // O cartaz da estante é outra página, com a biblioteca de QR que as telas
+  // do dia a dia não precisam carregar.
+  if (parametros.cartaz !== undefined) return paginaDoCartaz_();
+
   var pagina = HtmlService.createTemplateFromFile('ui/index');
 
   // Nada de nome de casa hardcoded: vem do Config, como toda configuração.
   pagina.nomeCasa = lerConfig('nome_casa', 'Biblioteca');
+
+  // O link público do sistema, para o botão que abre o cartaz. Não é segredo:
+  // é o mesmo link que todo voluntário tem.
+  pagina.urlSistema = comoJsNoHtml_(limparCampo_(lerConfig('url_sistema', '')));
+
+  // `?pegar` é o QR da estante: abre direto na tela de pegar livro, que não
+  // tem aba — quem navega pelo sistema de casa não esbarra nela.
+  pagina.telaInicial = comoJsNoHtml_(parametros.pegar !== undefined ? 'pegar' : '');
 
   // `url_agendamento` NÃO entra aqui, e a ausência é a correção de um bug.
   //
@@ -62,7 +76,7 @@ function doGet(evento) {
   // A sessão vai para o HTML e o cliente a guarda. Ela nunca volta a aparecer
   // numa URL — URL vai parar em histórico, print e grupo de WhatsApp.
   pagina.entrada = 'null';
-  var codigo = evento && evento.parameter ? evento.parameter.codigo : '';
+  var codigo = parametros.codigo;
   if (codigo) {
     var aberta = abrirSessao(codigo);
     if (aberta) pagina.entrada = JSON.stringify(aberta);
@@ -71,6 +85,44 @@ function doGet(evento) {
   return pagina.evaluate()
     .setTitle(pagina.nomeCasa)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/**
+ * O cartaz com o QR code que vai impresso na estante.
+ *
+ * Público e sem dado nenhum: só o nome da casa e o link da tela de pegar livro.
+ * O link sai de `url_sistema`, o mesmo que o e-mail de acesso usa com
+ * `?codigo=` — se aquele funciona, este também. Se o link mudar um dia, é só
+ * imprimir o cartaz de novo.
+ */
+function paginaDoCartaz_() {
+  var cartaz = HtmlService.createTemplateFromFile('ui/cartaz');
+  cartaz.nomeCasa = lerConfig('nome_casa', 'Biblioteca');
+
+  // `&` se o link já tiver `?` — encurtador às vezes tem.
+  var url = limparCampo_(lerConfig('url_sistema', ''));
+  cartaz.linkDoQr = comoJsNoHtml_(url ? url + (url.indexOf('?') === -1 ? '?' : '&') + 'pegar=1' : '');
+
+  // A regra vem do Config, como o limite que a tela aplica: um cartaz que diz
+  // "um por vez" enquanto o sistema aceita dois ensina a regra errada.
+  var limite = lerConfigNumero('limite_autoatendimento', 1);
+  cartaz.regra = limite <= 0
+    ? 'O empréstimo pela estante está suspenso. Procure o balcão.'
+    : (limite === 1 ? 'Um livro por vez.' : 'Até ' + limite + ' livros por vez.') +
+      ' A devolução é no balcão.';
+
+  return cartaz.evaluate()
+    .setTitle('Cartaz da estante — ' + cartaz.nomeCasa)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/**
+ * Valor pronto para ir dentro de um <script> da página: JSON, com `<` trocado
+ * pelo escape. Sem isso, um "</script>" num texto do Config fecharia o bloco
+ * no meio e o resto viraria HTML.
+ */
+function comoJsNoHtml_(valor) {
+  return JSON.stringify(valor).replace(/</g, '\\u003c');
 }
 
 /** Injeta um arquivo HTML dentro de outro. Padrão do HtmlService. */

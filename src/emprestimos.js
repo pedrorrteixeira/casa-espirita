@@ -15,12 +15,14 @@
  * instante da gravação.
  */
 
+/** O que vai em `quem_registrou` e no Log quando a pessoa pega pela estante. */
+var QUEM_AUTOATENDIMENTO = 'autoatendimento';
+
 /**
- * Empresta um exemplar a uma pessoa.
+ * Empresta um exemplar a uma pessoa, pelo balcão.
  *
- * Regras 1, 2, 3 e 5: exemplar ativo, que pode sair da casa e sem empréstimo
- * aberto, pessoa ativa, e data prevista calculada a partir do prazo da aba
- * `Config`.
+ * As regras moram em `emprestar_`, que a estante também usa: são as mesmas
+ * nos dois caminhos, só muda quem registra.
  */
 function registrarEmprestimo(sessao, tombo, idPessoa, observacao) {
   var quemRegistrou = exigir_(sessao, 'emprestar').nome;
@@ -34,6 +36,119 @@ function registrarEmprestimo(sessao, tombo, idPessoa, observacao) {
   var quem = limparCampo_(quemRegistrou);
   if (!quem) throw new Error('Informe quem está registrando o empréstimo.');
 
+  // Sem limite no balcão: quem decide é o atendente (regra 4).
+  var feito = emprestar_(alvo, pessoaId, quem, observacao, null);
+  enviarReciboDeEmprestimo_(feito);
+
+  return {
+    id_emprestimo: feito.registro.id_emprestimo,
+    tombo: alvo,
+    nome: feito.pessoa.nome,
+    data_prevista: formatarData_(feito.registro.data_prevista)
+  };
+}
+
+/**
+ * A pessoa pega o livro sozinha, pela tela da estante (QR). Pública.
+ *
+ * Sem sessão, por decisão do Weldson: a pessoa se identifica pelo e-mail ou
+ * telefone do cadastro, como em "Meus livros". Em troca, e de propósito:
+ *
+ *  - há um teto de livros em mãos (`limite_autoatendimento`, no Config);
+ *  - vai um aviso por e-mail — é o que denuncia quem registrar em nome de
+ *    outro;
+ *  - a resposta NÃO traz o nome: digitar um telefone não pode revelar de quem
+ *    ele é;
+ *  - contato não achado, inativo ou repetido em dois cadastros dão a MESMA
+ *    mensagem, para a tela não dizer qual dos três é.
+ *
+ * Os riscos que ficam de pé estão na ESPECIFICACAO, seção 6.
+ */
+function pegarLivro(tombo, contato) {
+  var alvo = Number(limparCampo_(tombo));
+  if (!limparCampo_(tombo) || !isFinite(alvo)) throw new Error('Digite o número do tombo.');
+
+  // Zero desliga a estante sem mexer em código: é o jeito de a casa suspender
+  // o autoatendimento se um dia ele der problema.
+  var limite = lerConfigNumero('limite_autoatendimento', 1);
+  if (limite <= 0) {
+    throw new Error('O empréstimo pela estante está desligado. Procure o balcão.');
+  }
+
+  var pessoa = acharQuemPega(lerPessoas(), contato);
+  if (!pessoa) {
+    throw new Error(
+      'Não consegui registrar com esse e-mail ou telefone. Confira o que ' +
+      'digitou, ou procure o balcão.'
+    );
+  }
+
+  var feito = emprestar_(alvo, Number(pessoa.id_pessoa), QUEM_AUTOATENDIMENTO, '', limite);
+  var avisado = enviarReciboDeEmprestimo_(feito);
+  var titulo = lerTitulo(feito.exemplar.id_titulo);
+
+  return {
+    titulo: titulo ? titulo.titulo : '',
+    data_prevista: formatarData_(feito.registro.data_prevista),
+    avisado_por_email: avisado
+  };
+}
+
+/**
+ * O livro que a pessoa tem na mão, para a tela da estante. Pública, só lê.
+ *
+ * Diz se pode pegar e, se não pode, por quê — mas nunca com quem o livro
+ * está: a tela abre sem login, e o tombo de um livro emprestado não pode
+ * virar "quem está lendo o quê".
+ */
+function verLivroParaPegar(tombo) {
+  var alvo = Number(limparCampo_(tombo));
+  if (!limparCampo_(tombo) || !isFinite(alvo)) {
+    return { pode_pegar: false, aviso: 'Digite o número do tombo.' };
+  }
+
+  var exemplar = acharExemplar_(alvo);
+  if (!exemplar) {
+    return {
+      pode_pegar: false,
+      aviso: 'Não achei esse tombo. Confira o número carimbado na última contracapa.'
+    };
+  }
+
+  var situacao = calcularSituacao(exemplar, lerEmprestimos());
+  var titulo = lerTitulo(exemplar.id_titulo);
+  var avisos = {};
+  avisos[SITUACAO_EMPRESTADO] = 'Este exemplar consta como emprestado. Se ele ' +
+    'está na sua mão, leve ao balcão para acertar.';
+  avisos[SITUACAO_SO_NA_CASA] = 'Este livro é só para ler na casa: pode ler ' +
+    'aqui, mas ele não sai.';
+  avisos[SITUACAO_BAIXADO] = 'Este exemplar não está mais no acervo. Leve ao balcão.';
+
+  return {
+    tombo: alvo,
+    titulo: titulo ? titulo.titulo : '(título não encontrado)',
+    autoria: titulo ? montarAutoria(titulo) : '',
+    edicao: descreverEdicao(exemplar),
+    pode_pegar: situacao === SITUACAO_DISPONIVEL,
+    aviso: avisos[situacao] || ''
+  };
+}
+
+/**
+ * O empréstimo em si, para o balcão e para a estante.
+ *
+ * Regras 1 e 2: verifica e grava dentro da mesma trava. Regra 3: a data
+ * prevista sai do prazo do Config, calculada uma vez e gravada como valor.
+ * Regra 5: pessoa inativa não leva.
+ *
+ * `limite` é o teto de livros em mãos. Só a estante passa; o balcão passa
+ * null. A contagem fica DENTRO da trava: contada fora, duas abas abertas no
+ * celular pegariam dois livros com limite 1.
+ *
+ * Devolve registro, pessoa e exemplar inteiros. Quem chama escolhe o que
+ * mostra — e a estante não mostra o nome.
+ */
+function emprestar_(alvo, pessoaId, quem, observacao, limite) {
   return comTrava_(function () {
     var exemplar = acharExemplar_(alvo);
     if (!exemplar) throw new Error('Tombo ' + alvo + ' não existe.');
@@ -51,6 +166,18 @@ function registrarEmprestimo(sessao, tombo, idPessoa, observacao) {
 
     // Regras 1 e 2: a checagem e a gravação, no mesmo lock.
     var emprestimos = lerEmprestimos();
+
+    if (limite !== null && limite !== undefined) {
+      var emMaos = contarEmprestimosAbertos(emprestimos, pessoaId);
+      if (emMaos >= limite) {
+        throw new Error(
+          'Você já está com ' + (emMaos === 1 ? '1 livro' : emMaos + ' livros') +
+          ' da biblioteca. Para levar outro, devolva o anterior, ou procure ' +
+          'alguém da casa no balcão.'
+        );
+      }
+    }
+
     var situacao = calcularSituacao(exemplar, emprestimos);
 
     if (situacao === SITUACAO_BAIXADO) {
@@ -88,13 +215,59 @@ function registrarEmprestimo(sessao, tombo, idPessoa, observacao) {
     escreverLinha_(ABA_EMPRESTIMOS, registro);
     registrarLog_(quem, 'emprestar', 'exemplar', alvo, 'pessoa ' + pessoaId);
 
-    return {
-      id_emprestimo: registro.id_emprestimo,
-      tombo: alvo,
-      nome: pessoa.nome,
-      data_prevista: formatarData_(registro.data_prevista)
-    };
+    return { registro: registro, pessoa: pessoa, exemplar: exemplar };
   });
+}
+
+/**
+ * Avisa por e-mail que a pessoa pegou um livro — em todo empréstimo, balcão e
+ * estante, por decisão do Weldson.
+ *
+ * Na estante é o que denuncia quem registrar em nome de outro; no balcão é a
+ * data de devolução por escrito. Chamado DEPOIS da trava: e-mail leva um
+ * segundo, e a trava segura o sistema inteiro enquanto isso.
+ *
+ * Falhar aqui não desfaz nada nem estoura: o empréstimo já está gravado, e
+ * estourar faria o balcão dizer "não consegui" de um livro que já saiu. Pessoa
+ * sem e-mail simplesmente não recebe. Devolve se o aviso foi.
+ */
+function enviarReciboDeEmprestimo_(feito) {
+  var email = limparCampo_(feito.pessoa.email);
+  if (!email) return false;
+
+  try {
+    var titulo = lerTitulo(feito.exemplar.id_titulo);
+    var livro = titulo ? '"' + titulo.titulo + '"' : 'o livro';
+    var url = limparCampo_(lerConfig('url_sistema', ''));
+
+    return enviarEmail_(
+      email,
+      'Você pegou um livro da biblioteca',
+      [
+        'Olá, ' + feito.pessoa.nome + '.',
+        '',
+        'Você pegou ' + livro + ' (tombo ' + feito.registro.tombo + ') em ' +
+          formatarData_(feito.registro.data_emprestimo) + '.',
+        'Devolva até ' + formatarData_(feito.registro.data_prevista) + '.',
+        '',
+        url
+          ? 'Para ver seus prazos, abra ' + url + ' e toque em "Meus livros".'
+          : 'Para ver seus prazos, abra o sistema da biblioteca e toque em "Meus livros".',
+        '',
+        'Se não foi você que pegou este livro, avise no balcão da biblioteca.',
+        '',
+        '—',
+        'Sistema da biblioteca. Não responda a este e-mail.'
+      ].join('\n'),
+      'aviso de empréstimo'
+    );
+  } catch (erro) {
+    // Sem a mensagem do erro: a do MailApp costuma trazer o endereço, e o Log
+    // não recebe dado pessoal.
+    registrarLog_('sistema', 'erro', 'email', feito.registro.tombo,
+      'aviso de empréstimo não enviado');
+    return false;
+  }
 }
 
 /**

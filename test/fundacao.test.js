@@ -297,6 +297,22 @@ test('o JavaScript das telas compila', () => {
   }
 });
 
+test('o JavaScript do cartaz da estante compila', () => {
+  // O cartaz é outra página, com script próprio, e o teste de cima só lê
+  // ui/js.html. Os scriptlets do template viram `null` antes de compilar —
+  // é o servidor que os preenche.
+  const html = fs.readFileSync(path.join(SRC, 'ui', 'cartaz.html'), 'utf8');
+  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  assert.ok(scripts.length, 'ui/cartaz.html perdeu o bloco <script>');
+
+  const proprio = scripts[scripts.length - 1][1].replace(/<\?!?=[\s\S]*?\?>/g, 'null');
+  try {
+    new Function(proprio);
+  } catch (erro) {
+    assert.fail(`ui/cartaz.html não compila: ${erro.message}`);
+  }
+});
+
 test('as telas não montam HTML por concatenação de texto', () => {
   // Título de livro e nome de pessoa são digitados por gente e podem conter
   // < e &. innerHTML com texto vindo do servidor é injeção esperando acontecer.
@@ -327,6 +343,8 @@ test('toda função que grava exige sessão', () => {
     'encerrarSessao',     // sair não precisa de permissão
     'verSessao',          // valida a própria sessão
     'meusEmprestimos',    // decisão do Weldson: contato basta, sem token
+    'pegarLivro',         // idem, na estante: contato basta, com teto de livros
+                          // em mãos no Config e aviso por e-mail a cada um
     'criarEstruturaPlanilha', 'popularConfigPadrao',   // menu da planilha,
     'sincronizarReunioes', 'sincronizarAgora',         // que já exige ser
     'instalarGatilhos', 'verGatilhos',                 // editor dela
@@ -345,7 +363,11 @@ test('toda função que grava exige sessão', () => {
   // (`escreverLinha_`) não casava com ele. A função que importa o acervo base
   // grava centenas de linhas e passou pela guarda sem ser vista. Gravador novo com
   // nome parecido é justamente o que escapa de uma lista de nomes.
-  const ESCRITAS = /escreverLinhas?_|atualizarCelulas_|appendRow|setValue/;
+  //
+  // `emprestar_` entra pelo mesmo motivo: é o miolo do empréstimo, que o
+  // balcão e a estante chamam. Sem ele aqui, `registrarEmprestimo` deixaria de
+  // contar como função que grava, e a guarda dele poderia sumir sem ninguém ver.
+  const ESCRITAS = /escreverLinhas?_|atualizarCelulas_|appendRow|setValue|emprestar_\(/;
 
   // Duas formas legítimas de saber QUEM está chamando, e o teste aceita as
   // duas. "exigir_" é permissão por PERFIL — a escada consulta → admin.

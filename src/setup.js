@@ -115,6 +115,9 @@ var F_REUNIAO_DUPLICADA =
 
 var CONFIG_PADRAO = [
   ['prazo_devolucao_dias', 21, 'Dias de prazo padrão do empréstimo.'],
+  ['limite_autoatendimento', 1, 'Quantos livros a pessoa pode ter ao mesmo ' +
+    'tempo pegando sozinha pela estante (QR). No balcão não há limite. ' +
+    'Zero desliga o empréstimo pela estante.'],
   ['email_admin', '', 'PREENCHER: e-mail que recebe os avisos de atraso.'],
   ['id_calendario', '', 'PREENCHER NA FASE 3: ID do calendário das reuniões.'],
   ['horario_reuniao', '19:30', 'Horário fixo das reuniões de segunda-feira.'],

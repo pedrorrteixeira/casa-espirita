@@ -61,6 +61,8 @@ Pares chave/valor. Nada de configuração no código.
 | chave | exemplo | uso |
 |---|---|---|
 | `prazo_devolucao_dias` | `21` | prazo padrão de empréstimo |
+| `limite_autoatendimento` | `1` | livros em mãos que a pessoa pode ter pegando pela estante (QR); `0` suspende a estante |
+| `url_sistema` | `https://...` | link público do sistema; vai nos e-mails e no QR do cartaz |
 | `email_admin` | `...@gmail.com` | destinatário dos avisos internos |
 | `id_calendario` | `...@group.calendar.google.com` | agenda das reuniões |
 | `horario_reuniao` | `19:30` | horário fixo das segundas |
@@ -185,8 +187,20 @@ Toda escrita do Web App grava aqui. Sem dado pessoal sensível no `detalhe`.
     é definido depois — já vem fixo da configuração da página de agendamento.
 
 **Geral**
-14. Toda escrita registra `quem_registrou` e grava na aba `Log`.
+14. Toda escrita registra `quem_registrou` e grava na aba `Log`. Na estante,
+    `quem_registrou` é `autoatendimento`.
 15. Nenhuma função apaga linha de planilha. Baixa é sempre lógica.
+
+**Autoatendimento (estante)**
+16. O frequentador pode pegar o livro sozinho pela tela aberta pelo QR do
+    cartaz da estante. Ele se identifica pelo **e-mail ou telefone** do
+    cadastro, como em "Meus livros" — nunca pelo nome, porque numa tela
+    pública a busca por nome viraria a lista de quem frequenta a casa.
+17. Pela estante, a pessoa só leva se tiver menos livros em mãos que
+    `limite_autoatendimento` (começa em 1). A contagem e a gravação ficam na
+    mesma trava. No balcão não há limite: vale a regra 4.
+18. Todo empréstimo — balcão ou estante — manda um aviso por e-mail a quem
+    tem e-mail, com o livro e a data. Falhar no envio não desfaz o empréstimo.
 
 ---
 
@@ -231,6 +245,24 @@ script confere se está em `Pessoas`, gera um token com validade curta em
 `PropertiesService` e envia um link. Telas de consulta ficam abertas; telas que
 gravam exigem token válido.
 
+**Exceção consciente: o autoatendimento (regras 16 a 18).** É a única
+gravação sem sessão. A pessoa se identifica só pelo contato, então ficam de
+pé, por decisão do Weldson:
+
+- quem souber o e-mail ou telefone de alguém registra em nome dessa pessoa.
+  O aviso por e-mail denuncia, e o balcão desfaz com "Registrar devolução";
+- a tela precisa dizer quando não acha o contato, então responde "este
+  contato está cadastrado?". Contato não achado, inativo e repetido em dois
+  cadastros dão a mesma mensagem, para não dizer qual é;
+- o link do QR funciona de qualquer lugar, então alguém pode registrar de
+  casa um livro que continua na estante. O limite de livros em mãos reduz o
+  estrago;
+- a confirmação nunca mostra o nome, para que digitar um telefone não revele
+  de quem ele é.
+
+Se um dia incomodar, `limite_autoatendimento` = 0 suspende a estante sem
+mexer em código.
+
 **Privacidade nas telas**: a busca pública mostra "emprestado — previsão de
 devolução dd/mm". Nunca o nome de quem está com o livro. Esse dado só aparece
 nas telas de `atendente` para cima.
@@ -241,7 +273,9 @@ nas telas de `atendente` para cima.
 
 - **100 destinatários de e-mail por dia.** Agrupe avisos num único e-mail para
   o admin em vez de disparar um por atraso. Cheque
-  `MailApp.getRemainingDailyQuota()` antes de laços de envio.
+  `MailApp.getRemainingDailyQuota()` antes de laços de envio. O aviso de
+  empréstimo (regra 18) gasta um por empréstimo — folgado para o movimento da
+  casa, e cota esgotada só deixa o aviso de sair, nunca o empréstimo.
 - **6 minutos por execução, 90 minutos/dia de gatilhos.** Folgado para o
   volume esperado (centenas de livros, dezenas de pessoas), mas mantém a
   disciplina de leitura em lote.

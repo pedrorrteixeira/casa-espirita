@@ -167,6 +167,51 @@
     <ul id="lista-meus" class="resultados"></ul>
   </section>
 
+  <!-- --------------------------------------------------------------- estante -->
+  <!-- Pegar livro sozinho, pelo QR do cartaz da estante (?pegar). Não tem aba:
+       quem navega pelo sistema de casa não esbarra nela.
+
+       A pessoa se identifica pelo e-mail ou telefone do cadastro, como em
+       "Meus livros". Nome não: numa tela pública, a busca por nome viraria a
+       lista de quem frequenta a casa. E a resposta nunca traz o nome — digitar
+       um telefone não pode revelar de quem ele é. -->
+  <section id="visao-pegar" class="visao oculta">
+    <h2 class="pegar-titulo">Pegar um livro emprestado</h2>
+    <p class="dica">Para o livro que está na sua mão. A devolução é no balcão.</p>
+
+    <label>
+      Tombo do livro
+      <input id="tombo-pegar" inputmode="numeric" data-so-digitos autocomplete="off"
+             placeholder="o número carimbado na última contracapa" enterkeyhint="next">
+    </label>
+    <div id="estado-tombo-pegar" class="estado" role="status" aria-live="polite"></div>
+
+    <div id="livro-pegar" class="ficha oculta">
+      <h2 id="livro-pegar-titulo"></h2>
+      <p id="livro-pegar-autoria" class="autoria"></p>
+      <p id="livro-pegar-meta" class="meta"></p>
+      <p id="livro-pegar-aviso" class="aviso-pegar oculta"></p>
+
+      <form id="form-pegar" class="oculta" autocomplete="off">
+        <label>
+          Seu e-mail ou telefone
+          <input id="contato-pegar" placeholder="o mesmo que você deu no cadastro"
+                 enterkeyhint="send">
+        </label>
+        <p class="dica">
+          Não tem cadastro, ou não lembra qual contato deu? Procure o balcão.
+        </p>
+        <button type="submit" id="btn-pegar">Pegar o livro</button>
+      </form>
+    </div>
+    <div id="estado-pegar" class="estado" role="status" aria-live="polite"></div>
+
+    <div id="pronto-pegar" class="pronto oculta" role="status">
+      <p id="pronto-pegar-texto" class="pronto-texto"></p>
+      <p id="pronto-pegar-email" class="dica"></p>
+    </div>
+  </section>
+
   <!-- --------------------------------------------------------------- entrada -->
   <section id="visao-entrada" class="visao oculta">
     <div class="cartao-entrada">
@@ -216,6 +261,9 @@
         <button type="button" class="aba-interna" data-bloco="exemplar">Novo exemplar</button>
         <button type="button" class="aba-interna" data-bloco="alterar-exemplar">Alterar exemplar</button>
         <button type="button" class="aba-interna" data-bloco="relatorio">Relatório do acervo</button>
+        <!-- Abre o cartaz numa aba nova, onde se imprime. Link de verdade, e
+             não botão: é outra página. Some se faltar `url_sistema`. -->
+        <a id="link-cartaz" class="aba-interna oculta" target="_blank" rel="noopener">Cartaz da estante ↗</a>
       </div>
       <div class="grupo-abas" role="group" aria-labelledby="grupo-abas-pessoas">
         <span id="grupo-abas-pessoas" class="grupo-abas-titulo">Pessoas</span>
@@ -727,5 +775,7 @@
   // Injetado pelo doGet. include() nao avalia scriptlet, entao a sessao
   // precisa entrar por aqui, que e o template de verdade.
   var ENTRADA_DO_SERVIDOR = <?!= entrada ?>;
+  var TELA_INICIAL = <?!= telaInicial ?>;
+  var URL_SISTEMA = <?!= urlSistema ?>;
 </script>
 <?!= include('ui/js'); ?>
