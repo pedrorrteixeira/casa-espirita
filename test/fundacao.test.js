@@ -598,3 +598,14 @@ test('quem grava a coluna perfil passa por mudar_perfil', () => {
 
   assert.deepEqual(problemas, [], problemas.join('\n'));
 });
+
+test('.oculta esconde sempre, contra qualquer outra classe', () => {
+  // Esconder é `classList.toggle('oculta', ...)` em todo o sistema, e só
+  // funciona se a regra vencer as outras. Sem `!important`, uma classe com
+  // `display` declarada mais abaixo no CSS ganha o empate. Aconteceu no
+  // balcão: `.escolhas` (flex) manteve "Registrar devolução" e "Renovar o
+  // prazo" à vista num livro disponível, desde a Fase 2, sem erro nenhum.
+  const css = fs.readFileSync(path.join(SRC, 'ui', 'css.html'), 'utf8');
+  assert.match(css, /^\s*\.oculta\s*\{\s*display:\s*none\s*!important;\s*\}/m,
+    '.oculta precisa ser `display: none !important`');
+});

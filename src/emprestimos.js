@@ -275,9 +275,9 @@ function verExemplar(sessao, tombo) {
     tombo: alvo,
     titulo: titulo ? titulo.titulo : '(título não encontrado)',
     autoria: titulo ? montarAutoria(titulo) : '',
-    edicao: [exemplar.editora, exemplar.ano, exemplar.edicao]
-      .filter(function (parte) { return limparCampo_(parte) !== ''; })
-      .join(' · '),
+    // "FEB · 2022 · 34ª ed.", e não "FEB · 2022 · 34": o número solto não
+    // diz que é a edição. A mesma redação do relatório do acervo.
+    edicao: descreverEdicao(exemplar),
     estado: exemplar.estado,
     so_na_casa: soParaLerNaCasa(exemplar),
     observacao: limparCampo_(exemplar.observacao),

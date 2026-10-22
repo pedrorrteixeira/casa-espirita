@@ -147,7 +147,12 @@
   .legenda-abas strong { color: var(--marrom); }
 
   .visao { padding-top: 1.25rem; }
-  .oculta { display: none; }
+  /* `!important` porque esconder tem que vencer sempre. Sem ele, qualquer
+     classe declarada mais abaixo que defina `display` ganha empate: foi o
+     que fez `.escolhas` (flex) manter "Registrar devolução" e "Renovar o
+     prazo" à vista num livro disponível — o JavaScript escondia e o CSS
+     mostrava de novo. */
+  .oculta { display: none !important; }
 
   /* --- busca --- */
   .linha-busca { display: flex; gap: .5rem; }
