@@ -135,9 +135,10 @@ function criarExemplar(sessao, dados) {
       );
     }
 
-    // A validação de dados da planilha NÃO vale para `setValues`: ela só
-    // barra digitação humana na interface do Sheets. Escrita por código passa
-    // reto. Então o enum é conferido aqui também, contra a mesma lista que
+    // A validação de dados da planilha também barra `setValues`, mas não dá
+    // para contar com ela: a mensagem não diz qual campo está errado, e a
+    // regra pode estar na coluna errada (ver `limparValidacoesOrfas_` em
+    // setup.js). Então o enum é conferido aqui, contra a mesma lista que
     // `setup.js` usa na validação — uma fonte de verdade só.
     var estado = limparCampo_(dados.estado) || 'bom';
     if (LISTA_ESTADO.indexOf(estado) === -1) {

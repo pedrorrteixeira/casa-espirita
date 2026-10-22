@@ -7,7 +7,7 @@
  *
  * ATENÇÃO A QUEM FOR MEXER
  * ------------------------
- * As colunas derivadas (Titulos!P:Q e Exemplares!G:I) são uma ARRAYFORMULA
+ * As colunas derivadas (Titulos!M:N e Exemplares!J:L) são uma ARRAYFORMULA
  * única, escrita na LINHA 2, que se expande sozinha para as linhas novas.
  * Nenhum código pode escrever nessas colunas — escrever quebra a fórmula com
  * #REF (decisão D7 da ESPECIFICACAO.md).
@@ -35,6 +35,9 @@
 var SETUP_FUSO = 'America/Sao_Paulo';
 var SETUP_LOCALE = 'pt_BR';
 var SETUP_MARCA_PROTECAO = 'setup.js';
+// Começo do texto de ajuda de toda validação criada aqui. É como
+// `limparValidacoesOrfas_` reconhece as regras deste arquivo.
+var SETUP_MARCA_VALIDACAO = 'Valores aceitos: ';
 
 // --- Listas de validação -----------------------------------------------------
 
@@ -372,6 +375,7 @@ function configurarAba_(ss, spec, sep) {
     });
   });
 
+  limparValidacoesOrfas_(aba, spec, nCols, linhasDados);
   (spec.validacoes || []).forEach(function (regra) {
     aba.getRange(2, regra.coluna, linhasDados, 1)
       .setDataValidation(criarValidacao_(regra.lista, regra.bloqueia));
@@ -459,8 +463,34 @@ function criarValidacao_(lista, bloqueia) {
   return SpreadsheetApp.newDataValidation()
     .requireValueInList(lista, true)
     .setAllowInvalid(!bloqueia)
-    .setHelpText('Valores aceitos: ' + lista.join(', '))
+    .setHelpText(SETUP_MARCA_VALIDACAO + lista.join(', '))
     .build();
+}
+
+/**
+ * Tira a validação que este arquivo deixou numa coluna que hoje não tem regra.
+ *
+ * Reaplicar não basta quando as colunas mudam de lugar. Em 22/08/2026
+ * `edicao`, `editora` e `ano` entraram em Exemplares e empurraram `estado` da
+ * C para a F: a F ganhou a lista, mas a C — agora `edicao` — continuou só
+ * aceitando "novo, bom, regular, ruim". Regra que bloqueia vale também para
+ * `setValues`, então todo cadastro com edição preenchida morria com
+ * "Exception: Valores aceitos: novo, bom, regular, ruim".
+ *
+ * Só remove regra com a marca deste arquivo. Validação feita à mão fica, pela
+ * mesma razão que `aplicarProtecoes_` não mexe em proteção alheia.
+ */
+function limparValidacoesOrfas_(aba, spec, nCols, linhasDados) {
+  var comRegra = (spec.validacoes || []).map(function (regra) { return regra.coluna; });
+  var atuais = aba.getRange(2, 1, linhasDados, nCols).getDataValidations();
+
+  for (var c = 0; c < nCols; c++) {
+    if (comRegra.indexOf(c + 1) !== -1) continue;
+    var orfa = atuais.some(function (linha) {
+      return linha[c] && String(linha[c].getHelpText()).indexOf(SETUP_MARCA_VALIDACAO) === 0;
+    });
+    if (orfa) aba.getRange(2, c + 1, linhasDados, 1).clearDataValidations();
+  }
 }
 
 /**

@@ -15,7 +15,7 @@
  *    Script conta isso como conteúdo: devolve 1000. Use sempre
  *    `ultimaLinhaDeDados_()`, que conta pela coluna-chave.
  *
- * 3. NUNCA escrever em coluna derivada (`Titulos!P:Q`, `Exemplares!G:I`).
+ * 3. NUNCA escrever em coluna derivada (`Titulos!M:N`, `Exemplares!J:L`).
  *    Escrever quebra a ARRAYFORMULA com #REF!. `escreverLinha_()` recusa.
  */
 
@@ -32,9 +32,9 @@ var ABA_LOG = 'Log';
  * Colunas que são ARRAYFORMULA, por aba, em base 1.
  *
  * É um CONJUNTO, não uma fronteira. Em `Exemplares` as derivadas são as três
- * últimas, mas em `Titulos` elas ficam no MEIO: P e Q são fórmula e R
+ * últimas, mas em `Titulos` elas ficam no MEIO: M e N são fórmula e O
  * (`observacao`) volta a ser escrita normal. Tratar isso como "tudo a partir
- * da coluna 16" recusava gravar a observação de qualquer título.
+ * da coluna 13" recusava gravar a observação de qualquer título.
  *
  * Nas abas listadas aqui, `getLastRow()` também não serve — a fórmula preenche
  * a coluna inteira com "" e o Apps Script conta como conteúdo.
@@ -227,8 +227,8 @@ function escreverLinha_(nome, registro) {
   var linha = ultimaLinhaDeDados_(aba) + 1;
 
   // Grava em trechos contíguos, pulando as derivadas. Em `Titulos` são dois
-  // trechos (A:O e R), porque P e Q ficam no meio. Um `setValues` cobrindo
-  // A:R passaria por cima das fórmulas.
+  // trechos (A:L e O), porque M e N ficam no meio. Um `setValues` cobrindo
+  // A:O passaria por cima das fórmulas.
   var trecho = [];
   var inicio = 0;
   for (var c = 1; c <= totalColunas; c++) {

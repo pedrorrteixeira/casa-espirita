@@ -48,7 +48,7 @@ Plano de execução: @PLANO.md
   Apps Script conta isso como conteúdo: `getLastRow()` devolve 1000. Nessas duas
   abas, ache a última linha lendo a coluna A em lote e contando. As outras
   cinco não têm fórmula e podem usar `getLastRow()`.
-- **Nunca escreva em coluna derivada** (`Titulos!P:Q`, `Exemplares!G:I`).
+- **Nunca escreva em coluna derivada** (`Titulos!M:N`, `Exemplares!J:L`).
   Escrever quebra a `ARRAYFORMULA` com `#REF!`. Ver o cabeçalho de `setup.js`.
 - **`setFormula()` não traduz separador.** Ele grava o texto literal e quem
   interpreta é a planilha, que em `pt_BR` espera `;` e não `,`. Vírgula ali dá

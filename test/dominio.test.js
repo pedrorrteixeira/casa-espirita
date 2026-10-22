@@ -1118,10 +1118,10 @@ test('perfilValido aceita só os quatro degraus da escada', () => {
   ['consulta', 'atendente', 'bibliotecario', 'admin']
     .forEach((p) => assert.equal(perfilValido(p), true, p));
 
-  // A validação de dados da planilha não vale para `setValues` — ela só barra
-  // digitação humana no Sheets. Sem esta conferência, "Admin" ou "diretoria"
-  // entrariam na coluna e `podeFazer` recusaria tudo para essa pessoa, sem
-  // ninguém entender por quê.
+  // A validação de dados da planilha também barra `setValues`, mas só se
+  // estiver na coluna certa — e já houve regra na coluna errada. Sem esta
+  // conferência, "Admin" ou "diretoria" podiam entrar na coluna e `podeFazer`
+  // recusaria tudo para essa pessoa, sem ninguém entender por quê.
   ['Admin', 'ADMIN', 'diretoria', '', '  ', 'bibliotecário']
     .forEach((p) => assert.equal(perfilValido(p), false, JSON.stringify(p)));
 });

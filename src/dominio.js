@@ -809,9 +809,10 @@ function numeroOuNulo_(valor) {
 /**
  * O perfil existe na escada?
  *
- * Confere no servidor porque a validação de dados da planilha NÃO vale para
- * `setValues` — ela só barra digitação humana na interface do Sheets. É a
- * mesma razão pela qual `criarExemplar` confere o estado.
+ * Confere no servidor, e não só na validação de dados da planilha: aquela
+ * também barra `setValues`, mas só se estiver na coluna certa, e com uma
+ * mensagem que não diz o campo. É a mesma razão pela qual `criarExemplar`
+ * confere o estado.
  */
 function perfilValido(perfil) {
   return PERFIS.indexOf(limpar_(perfil)) !== -1;
