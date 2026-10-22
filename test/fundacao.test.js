@@ -187,6 +187,11 @@ test('as fórmulas apontam para as colunas certas de Exemplares', () => {
   assert.ok(fonte.includes(`Exemplares!$${colSituacao}$2:$${colSituacao},"disponível"`),
     `F_QTD_DISPONIVEIS devia ler Exemplares!${colSituacao}, e não lê`);
 
+  // situacao lê `emprestavel` para saber se o livro é só para ler na casa
+  const colEmprestavel = letra(exemplares.cabecalhos, 'emprestavel');
+  assert.ok(fonte.includes(`IF(${colEmprestavel}2:${colEmprestavel}="NÃO","só para ler na casa"`),
+    `F_SITUACAO devia ler emprestavel em ${colEmprestavel}, e não lê`);
+
   // as duas abas usam a coluna A como chave nas fórmulas
   assert.equal(exemplares.cabecalhos[0], 'tombo');
   assert.equal(titulos.cabecalhos[0], 'id_titulo');

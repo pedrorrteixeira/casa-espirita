@@ -88,12 +88,25 @@ Pares chave/valor. Nada de configuração no código.
   serve para consulta e alimenta a lista de doações desejadas.
 
 ### Aba `Exemplares` — o objeto físico
-`tombo` (PK) · `id_titulo` (FK) · `estado` · `doado_por` · `data_entrada` ·
-`ativo` · `situacao` (fórmula) · `com_quem` (fórmula) · `previsao_devolucao` (fórmula)
+`tombo` (PK) · `id_titulo` (FK) · `edicao` · `editora` · `ano` · `estado` ·
+`doado_por` · `data_entrada` · `ativo` · `situacao` (fórmula) · `com_quem` (fórmula) ·
+`previsao_devolucao` (fórmula) · `emprestavel` · `observacao`
 
 - `estado`: novo, bom, regular, ruim.
 - `ativo` = NÃO significa baixa (perdido, danificado, repassado). Nunca apagar linha.
 - `com_quem` só aparece nas telas internas. **Nunca na busca pública.**
+- `emprestavel` = NÃO marca o exemplar **só para ler na casa**: livro raro ou
+  frágil que fica no acervo mas não sai. Só `NÃO` restringe; vazio (linhas
+  anteriores à coluna) conta como pode sair. Fica separado de `estado` porque
+  são coisas diferentes: um livro em bom estado pode não sair por ser raro, e
+  um em estado ruim pode continuar saindo.
+- `observacao`: texto livre sobre **este** exemplar ("de bolso", "falta a
+  pág. 40"). Aparece na ficha do balcão, nunca na busca pública. Não é lista de
+  características de propósito: só vira campo de marcar o que o sistema precisa
+  usar, como `emprestavel`.
+- `emprestavel` e `observacao` ficam **depois** das derivadas, no fim da aba.
+  O setup reescreve cabeçalho mas não move dado, então coluna nova no meio
+  desalinharia as linhas que já existem.
 
 ### Aba `Pessoas`
 `id_pessoa` (PK) · `nome` · `telefone` · `email` · `frequentador` · `palestrante` ·
@@ -136,7 +149,8 @@ Toda escrita do Web App grava aqui. Sem dado pessoal sensível no `detalhe`.
 ## 4. Regras de negócio
 
 **Empréstimo**
-1. Só é possível emprestar exemplar com `ativo` = SIM e sem empréstimo aberto.
+1. Só é possível emprestar exemplar com `ativo` = SIM, `emprestavel` ≠ NÃO e
+   sem empréstimo aberto.
 2. A validação de disponibilidade e a gravação acontecem dentro do mesmo
    `LockService`. Verificar e depois gravar sem lock é uma condição de corrida.
 3. `data_prevista` = `data_emprestimo` + `prazo_devolucao_dias` da aba `Config`.

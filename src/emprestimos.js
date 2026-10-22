@@ -18,8 +18,9 @@
 /**
  * Empresta um exemplar a uma pessoa.
  *
- * Regras 1, 2, 3 e 5: exemplar ativo, sem empréstimo aberto, pessoa ativa, e
- * data prevista calculada a partir do prazo da aba `Config`.
+ * Regras 1, 2, 3 e 5: exemplar ativo, que pode sair da casa e sem empréstimo
+ * aberto, pessoa ativa, e data prevista calculada a partir do prazo da aba
+ * `Config`.
  */
 function registrarEmprestimo(sessao, tombo, idPessoa, observacao) {
   var quemRegistrou = exigir_(sessao, 'emprestar').nome;
@@ -62,6 +63,12 @@ function registrarEmprestimo(sessao, tombo, idPessoa, observacao) {
       throw new Error(
         'O exemplar ' + alvo + ' já está emprestado, com devolução prevista ' +
         'para ' + formatarData_(aberto.data_prevista) + '.'
+      );
+    }
+    // A tela já esconde o botão, mas `google.script.run` é chamável do console.
+    if (situacao === SITUACAO_SO_NA_CASA) {
+      throw new Error(
+        'O exemplar ' + alvo + ' é só para ler na casa e não pode ser emprestado.'
       );
     }
 
@@ -245,6 +252,10 @@ function emprestadosAgora_(somenteAtrasados) {
 /**
  * Ficha de um tombo para a tela de empréstimo, depois de digitado o número.
  * Diz o que o atendente precisa saber antes de confirmar.
+ *
+ * É também o que carrega a tela "Alterar exemplar", por isso traz os campos
+ * que ela edita (`estado`, `so_na_casa`, `observacao`) além do resumo para
+ * leitura.
  */
 function verExemplar(sessao, tombo) {
   exigir_(sessao, 'ver_com_quem');
@@ -268,6 +279,8 @@ function verExemplar(sessao, tombo) {
       .filter(function (parte) { return limparCampo_(parte) !== ''; })
       .join(' · '),
     estado: exemplar.estado,
+    so_na_casa: soParaLerNaCasa(exemplar),
+    observacao: limparCampo_(exemplar.observacao),
     situacao: situacao,
     com_quem: aberto ? (lerPessoa_(aberto.id_pessoa) || {}).nome || '' : '',
     data_prevista: aberto ? formatarData_(aberto.data_prevista) : '',

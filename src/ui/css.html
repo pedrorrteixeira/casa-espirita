@@ -31,6 +31,7 @@
     --disponivel: #1a7f4b;
     --emprestado: #a35200;
     --ausente: #6b7580;
+    --so-na-casa: #6a4c93;  /* violeta: está na casa, mas não sai */
     --erro: #b3261e;
 
     --aviso-borda: #a8860a;
@@ -58,6 +59,7 @@
       --disponivel: #6ec99a;
       --emprestado: #e0a765;
       --ausente: #99a3ad;
+      --so-na-casa: #bfa8e6;
       --erro: #f0938c;
       --sobre-acento: #10171d;
     }
@@ -174,6 +176,7 @@
   .selo.disponivel   { color: var(--disponivel); }
   .selo.emprestado   { color: var(--emprestado); }
   .selo.sem_exemplar { color: var(--ausente); }
+  .selo.so_na_casa   { color: var(--so-na-casa); }
 
   .estado { margin-top: .9rem; color: var(--tinta-fraca); }
   .estado.erro { color: var(--erro); }
@@ -216,6 +219,9 @@
     text-align: right;
   }
   .etiqueta-obra { color: var(--tinta-fraca); font-size: .9rem; }
+  /* Vai escrito na etiqueta física: é o aviso que o livro dá sozinho, antes
+     de alguém digitar o tombo. */
+  .etiqueta-marca { color: var(--so-na-casa); font-size: .85rem; font-weight: 600; }
 
   .etiquetas .discreto { margin-top: .6rem; }
 
@@ -423,9 +429,9 @@
   .manual-indice { display: block; margin-top: .5rem; }
 
 
-  /* Os dois grupos da busca: o que está na estante e o que só existe no
-     catálogo. A separação é a resposta à pergunta do balcão — "vocês têm?" —
-     e por isso precisa se ler antes de qualquer título.
+  /* Os grupos da busca: o que dá para levar, o que só se lê na casa, e o que
+     só existe no catálogo. A separação é a resposta à pergunta do balcão —
+     "vocês têm?" — e por isso precisa se ler antes de qualquer título.
 
      Classe própria e não `.grupo`, que já é dos assuntos do manual: as duas
      coisas são <details> em <li> e as regras se atropelariam. */
@@ -435,7 +441,8 @@
   }
   .divisor:first-child { margin-top: .4rem; }
 
-  .divisor-na-casa h2 {
+  .divisor-na-casa h2,
+  .divisor-so-na-casa h2 {
     margin: 0;
     font-size: .78rem;
     font-weight: 700;
@@ -444,6 +451,10 @@
     color: var(--disponivel);
     padding-bottom: .3rem;
     border-bottom: 2px solid var(--disponivel);
+  }
+  .divisor-so-na-casa h2 {
+    color: var(--so-na-casa);
+    border-bottom-color: var(--so-na-casa);
   }
 
   .divisor-ausente > details > summary {

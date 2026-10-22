@@ -572,6 +572,9 @@ function dentroDaJanela_(data, janela) {
 var SITUACAO_DISPONIVEL = 'disponível';
 var SITUACAO_EMPRESTADO = 'emprestado';
 var SITUACAO_BAIXADO = 'baixado';
+// Livro raro ou frágil: pode ser lido na casa, mas não sai por empréstimo.
+// Não é "consulta" porque esse já é o nome de um perfil.
+var SITUACAO_SO_NA_CASA = 'só para ler na casa';
 
 /**
  * Situação de um exemplar, calculada a partir dos empréstimos.
@@ -580,14 +583,29 @@ var SITUACAO_BAIXADO = 'baixado';
  * planilha; para decidir se pode emprestar, ela não serve: dentro de uma
  * gravação a fórmula pode ainda não ter recalculado, e a decisão sairia de um
  * valor velho. A verdade é a aba `Emprestimos` (D7), e é o que isto lê.
+ *
+ * "Emprestado" vem antes de "só para ler na casa": um livro marcado enquanto
+ * está fora continua emprestado até voltar, e a ficha do balcão tem que
+ * continuar oferecendo a devolução.
  */
 function calcularSituacao(exemplar, emprestimos) {
   if (!exemplar) return null;
   if (String(exemplar.ativo).trim() !== 'SIM') return SITUACAO_BAIXADO;
 
-  return acharEmprestimoAberto(emprestimos, exemplar.tombo)
-    ? SITUACAO_EMPRESTADO
-    : SITUACAO_DISPONIVEL;
+  if (acharEmprestimoAberto(emprestimos, exemplar.tombo)) return SITUACAO_EMPRESTADO;
+  return soParaLerNaCasa(exemplar) ? SITUACAO_SO_NA_CASA : SITUACAO_DISPONIVEL;
+}
+
+/**
+ * O exemplar está marcado como só para ler na casa?
+ *
+ * Só `NÃO` em `emprestavel` restringe. Vazio é linha cadastrada antes de a
+ * coluna existir, e esses livros sempre puderam sair — tratar vazio como
+ * restrição trancaria o acervo inteiro no dia da mudança. Maiúscula não
+ * importa, como no `=` da planilha, que a fórmula de `situacao` usa.
+ */
+function soParaLerNaCasa(exemplar) {
+  return !!exemplar && String(exemplar.emprestavel).trim().toUpperCase() === 'NÃO';
 }
 
 /**
@@ -669,15 +687,24 @@ function diasDeAtraso(emprestimo, hoje) {
  *
  * `previsao` é a devolução mais próxima entre os emprestados — é a data que
  * responde "quando posso pegar?".
+ *
+ * `so_na_casa` conta os exemplares que não saem. Eles entram em `total`,
+ * porque estão na estante, mas nunca em `disponiveis`. O estado do título só
+ * vira `so_na_casa` quando nenhum exemplar pode sair: se um sai, a resposta
+ * para "posso levar?" é a dele.
  */
 function resumirDisponibilidade(exemplares) {
   var ativos = (exemplares || []).filter(function (exemplar) {
     return String(exemplar.ativo).trim() === 'SIM';
   });
 
-  var disponiveis = ativos.filter(function (exemplar) {
-    return normalizarTexto(exemplar.situacao) === normalizarTexto(SITUACAO_DISPONIVEL);
-  });
+  var comSituacao = function (situacao) {
+    return ativos.filter(function (exemplar) {
+      return normalizarTexto(exemplar.situacao) === normalizarTexto(situacao);
+    });
+  };
+  var disponiveis = comSituacao(SITUACAO_DISPONIVEL);
+  var soNaCasa = comSituacao(SITUACAO_SO_NA_CASA);
 
   var previsao = null;
   ativos.forEach(function (exemplar) {
@@ -688,12 +715,14 @@ function resumirDisponibilidade(exemplares) {
   var estado;
   if (ativos.length === 0) estado = 'sem_exemplar';
   else if (disponiveis.length > 0) estado = 'disponivel';
+  else if (soNaCasa.length === ativos.length) estado = 'so_na_casa';
   else estado = 'emprestado';
 
   return {
     estado: estado,
     total: ativos.length,
     disponiveis: disponiveis.length,
+    so_na_casa: soNaCasa.length,
     previsao: previsao
   };
 }
@@ -847,6 +876,7 @@ if (typeof module !== 'undefined') {
     resumirEdicoes: resumirEdicoes,
     acharTituloEquivalente: acharTituloEquivalente,
     calcularSituacao: calcularSituacao,
+    soParaLerNaCasa: soParaLerNaCasa,
     acharEmprestimoAberto: acharEmprestimoAberto,
     calcularDataPrevista: calcularDataPrevista,
     estaAtrasado: estaAtrasado,
@@ -865,6 +895,7 @@ if (typeof module !== 'undefined') {
     escolherReuniaoSemTema: escolherReuniaoSemTema,
     SITUACAO_DISPONIVEL: SITUACAO_DISPONIVEL,
     SITUACAO_EMPRESTADO: SITUACAO_EMPRESTADO,
-    SITUACAO_BAIXADO: SITUACAO_BAIXADO
+    SITUACAO_BAIXADO: SITUACAO_BAIXADO,
+    SITUACAO_SO_NA_CASA: SITUACAO_SO_NA_CASA
   };
 }

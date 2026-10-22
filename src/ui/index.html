@@ -85,6 +85,9 @@
       <h2 id="ficha-titulo"></h2>
       <p id="ficha-autoria" class="autoria"></p>
       <p id="ficha-meta" class="meta"></p>
+      <!-- O que distingue este exemplar: "de bolso", "falta a pág. 40". É
+           aqui que o atendente precisa ler, antes de entregar o livro. -->
+      <p id="ficha-observacao" class="dica oculta"></p>
       <p><span id="ficha-selo" class="selo"></span></p>
 
       <!-- disponível: escolher a pessoa e emprestar -->
@@ -201,6 +204,7 @@
     <div class="abas-internas">
       <button type="button" class="aba-interna ativa" data-bloco="obra">Obra nova</button>
       <button type="button" class="aba-interna" data-bloco="exemplar">Mais um exemplar</button>
+      <button type="button" class="aba-interna" data-bloco="alterar-exemplar">Alterar exemplar</button>
       <button type="button" class="aba-interna" data-bloco="pessoa">Pessoa nova</button>
       <button type="button" class="aba-interna" data-bloco="editar">Alterar pessoa</button>
     </div>
@@ -280,10 +284,74 @@
             <input name="doado_por" list="lista-doado-por">
           </label>
 
+          <label class="caixa">
+            <input type="checkbox" name="so_na_casa">
+            Só para ler na casa — não sai por empréstimo
+          </label>
+          <p class="dica">
+            Para livro raro ou frágil: pode ser lido aqui, mas não sai. A busca
+            avisa quem procura, e o balcão não deixa emprestar.
+          </p>
+
+          <label>
+            Observação deste exemplar
+            <input name="observacao_exemplar"
+                   placeholder="de bolso, capa dura, dedicatória, páginas soltas…">
+          </label>
+
           <button type="submit" id="btn-salvar-exemplar">Salvar exemplar</button>
         </div>
       </fieldset>
       <div id="estado-exemplar-novo" class="estado" role="status" aria-live="polite"></div>
+    </form>
+
+    <!-- Alterar um exemplar que já existe. Nasceu para os livros antigos e
+         frágeis, que já estavam no acervo quando a marca "só para ler na
+         casa" passou a existir.
+
+         Só o que muda com o tempo: conservação, a marca e a observação.
+         Editora, ano e edição erram uma vez, no cadastro, e se corrigem na
+         planilha. Procura pelo tombo porque é o que está na etiqueta, com o
+         livro na mão. -->
+    <form id="form-alterar-exemplar" class="bloco-cadastro oculta" autocomplete="off">
+      <fieldset>
+        <legend>Alterar exemplar</legend>
+
+        <label>
+          Tombo do livro
+          <input id="tombo-alterar" inputmode="numeric" data-so-digitos
+                 placeholder="o número da etiqueta" enterkeyhint="search">
+        </label>
+        <div id="estado-busca-alterar" class="estado" role="status" aria-live="polite"></div>
+
+        <div id="campos-alterar-exemplar" class="oculta">
+          <p id="alterando-exemplar" class="escolhida"></p>
+
+          <label>
+            Estado
+            <select name="estado" id="estado-exemplar-alterar"></select>
+          </label>
+
+          <label class="caixa">
+            <input type="checkbox" name="so_na_casa">
+            Só para ler na casa — não sai por empréstimo
+          </label>
+          <p class="dica">
+            Para livro raro ou frágil: pode ser lido aqui, mas não sai. Se ele
+            estiver emprestado agora, continua até a devolução, e daí em diante
+            fica na casa.
+          </p>
+
+          <label>
+            Observação deste exemplar
+            <input name="observacao_exemplar"
+                   placeholder="de bolso, capa dura, dedicatória, páginas soltas…">
+          </label>
+
+          <button type="submit" id="btn-salvar-alterar-exemplar">Salvar alteração</button>
+        </div>
+      </fieldset>
+      <div id="estado-alterar-exemplar" class="estado" role="status" aria-live="polite"></div>
     </form>
 
     <!-- Cadastro de frequentador. Sem ele não há a quem emprestar. -->
@@ -527,7 +595,7 @@
         </p>
 
         <label>
-          Observação
+          Observação sobre a obra
           <input name="observacao">
         </label>
       </fieldset>
@@ -575,6 +643,20 @@
           <label>
             Doado por
             <input name="doado_por" list="lista-doado-por">
+          </label>
+          <label class="caixa">
+            <input type="checkbox" name="so_na_casa">
+            Só para ler na casa — não sai por empréstimo
+          </label>
+          <p class="dica">
+            Para livro raro ou frágil: pode ser lido aqui, mas não sai. A busca
+            avisa quem procura, e o balcão não deixa emprestar.
+          </p>
+          <!-- `observacao` puro já é o da obra, no fieldset de cima. -->
+          <label>
+            Observação deste exemplar
+            <input name="observacao_exemplar"
+                   placeholder="de bolso, capa dura, dedicatória, páginas soltas…">
           </label>
         </div>
       </fieldset>

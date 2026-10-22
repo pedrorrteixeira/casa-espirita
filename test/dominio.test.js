@@ -12,11 +12,11 @@ const assert = require('node:assert/strict');
 
 const {
   normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria, resumirEdicoes, acharTituloEquivalente,
-  calcularSituacao, acharEmprestimoAberto, calcularDataPrevista,
+  calcularSituacao, soParaLerNaCasa, acharEmprestimoAberto, calcularDataPrevista,
   estaAtrasado, diasDeAtraso, planejarSincronizacao,
   montarAvisoDeAtrasos, escolherReuniaoSemTema,
   podeFazer, perfilValido, sobraOutroAdmin, normalizarContato, mesmoContato, ehEmailValido, formatarTelefone,
-  SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO
+  SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO, SITUACAO_SO_NA_CASA
 } = require('../src/dominio.js');
 
 // Segue a convenção de catalogação da ESPECIFICACAO.md: nome formal com o
@@ -281,7 +281,45 @@ test('resumo não devolve nada sobre quem está com o livro', () => {
   ]);
   const serializado = JSON.stringify(resumo);
   assert.equal(serializado.indexOf('Maria'), -1, 'vazou nome de frequentador');
-  assert.equal(Object.keys(resumo).sort().join(','), 'disponiveis,estado,previsao,total');
+  assert.equal(Object.keys(resumo).sort().join(','),
+    'disponiveis,estado,previsao,so_na_casa,total');
+});
+
+test('título só com exemplar para ler na casa tem estado próprio', () => {
+  // Não é "emprestado": ninguém está com o livro, e "previsão" não existe.
+  // A resposta para "vocês têm?" é "tem, para ler aqui".
+  const resumo = resumirDisponibilidade([
+    exemplar({ tombo: 1, situacao: SITUACAO_SO_NA_CASA })
+  ]);
+  assert.equal(resumo.estado, 'so_na_casa');
+  assert.equal(resumo.total, 1);
+  assert.equal(resumo.disponiveis, 0);
+  assert.equal(resumo.so_na_casa, 1);
+});
+
+test('exemplar para ler na casa não conta como disponível', () => {
+  // Se contasse, a busca diria "disponível" de um livro que não sai, e a
+  // pessoa viria buscar à toa.
+  const resumo = resumirDisponibilidade([
+    exemplar({ tombo: 1 }),
+    exemplar({ tombo: 2, situacao: SITUACAO_SO_NA_CASA })
+  ]);
+  assert.equal(resumo.estado, 'disponivel');
+  assert.equal(resumo.disponiveis, 1);
+  assert.equal(resumo.so_na_casa, 1);
+  assert.equal(resumo.total, 2);
+});
+
+test('emprestado com outro só para ler na casa: o título está emprestado', () => {
+  // Quem quer levar precisa da previsão do que saiu; o que fica na casa
+  // não responde "quando posso pegar?".
+  const resumo = resumirDisponibilidade([
+    exemplar({ tombo: 1, situacao: 'emprestado', previsao_devolucao: new Date(2026, 8, 12) }),
+    exemplar({ tombo: 2, situacao: SITUACAO_SO_NA_CASA })
+  ]);
+  assert.equal(resumo.estado, 'emprestado');
+  assert.equal(resumo.so_na_casa, 1);
+  assert.ok(resumo.previsao instanceof Date);
 });
 
 test('o vocabulário de situacao é o mesmo em dominio.js e setup.js', () => {
@@ -292,7 +330,8 @@ test('o vocabulário de situacao é o mesmo em dominio.js e setup.js', () => {
   const path = require('node:path');
   const setup = fs.readFileSync(path.join(__dirname, '..', 'src', 'setup.js'), 'utf8');
 
-  for (const palavra of [SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO]) {
+  for (const palavra of [SITUACAO_DISPONIVEL, SITUACAO_EMPRESTADO, SITUACAO_BAIXADO,
+    SITUACAO_SO_NA_CASA]) {
     assert.ok(setup.includes('"' + palavra + '"'),
       `setup.js não produz mais a situação "${palavra}"`);
   }
@@ -496,6 +535,41 @@ test('empréstimo de outro tombo não interfere', () => {
 test('exemplar baixado está baixado, tenha empréstimo ou não — regra 10', () => {
   assert.equal(
     calcularSituacao(exemplar({ tombo: 1, ativo: 'NÃO' }), []),
+    SITUACAO_BAIXADO
+  );
+});
+
+test('exemplar marcado NÃO em emprestavel é só para ler na casa', () => {
+  assert.equal(
+    calcularSituacao(exemplar({ tombo: 1, emprestavel: 'NÃO' }), []),
+    SITUACAO_SO_NA_CASA
+  );
+});
+
+test('emprestavel vazio pode sair — são as linhas de antes da coluna', () => {
+  // Tratar vazio como restrição trancaria o acervo inteiro no dia em que a
+  // coluna nasceu, porque nenhuma linha antiga tem o campo preenchido.
+  assert.equal(calcularSituacao(exemplar({ tombo: 1, emprestavel: '' }), []),
+    SITUACAO_DISPONIVEL);
+  assert.equal(calcularSituacao(exemplar({ tombo: 1 }), []), SITUACAO_DISPONIVEL);
+  assert.equal(soParaLerNaCasa(exemplar({ emprestavel: 'SIM' })), false);
+  assert.equal(soParaLerNaCasa(exemplar({ emprestavel: 'não' })), true,
+    'maiúscula não importa, como no "=" da planilha');
+});
+
+test('marcado enquanto estava fora: continua emprestado até voltar', () => {
+  // Se virasse "só para ler na casa" na hora, a ficha do balcão esconderia o
+  // botão de devolução — que só aparece para "emprestado" — com o livro na
+  // mão do atendente.
+  assert.equal(
+    calcularSituacao(exemplar({ tombo: 1, emprestavel: 'NÃO' }), [emprestimo({ tombo: 1 })]),
+    SITUACAO_EMPRESTADO
+  );
+});
+
+test('exemplar baixado continua baixado, mesmo marcado', () => {
+  assert.equal(
+    calcularSituacao(exemplar({ tombo: 1, ativo: 'NÃO', emprestavel: 'NÃO' }), []),
     SITUACAO_BAIXADO
   );
 });

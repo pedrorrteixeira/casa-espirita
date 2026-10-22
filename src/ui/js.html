@@ -198,15 +198,21 @@
   }
 
   /**
-   * Desenha o resultado em dois grupos: o que está na estante e o que o
-   * catálogo conhece mas a casa não tem.
+   * Desenha o resultado em grupos, pelo que a pessoa pode fazer com o livro:
+   * levar emprestado, ler na casa, ou nada — o catálogo conhece mas a casa
+   * não tem.
    *
    * O catálogo tem centenas de obras pré-cadastradas sem exemplar (D5). Numa
    * lista só, buscar "emmanuel" enterrava os quatro livros que dá para levar
    * hoje debaixo de setenta que a casa não tem. A pergunta do balcão é "vocês
    * têm?", e a resposta tem que caber na primeira tela.
    *
-   * O segundo grupo não some — ele é a lista de doações desejadas, e é o
+   * "Só para ler na casa" é grupo próprio e aberto: é resposta ("tem, para ler
+   * aqui"), e misturado aos outros faria quem quer levar abrir livro por livro
+   * para descobrir que não sai. Cada obra aparece uma vez só, no melhor grupo:
+   * se um exemplar sai, ela está em "Para levar", e o selo avisa do que fica.
+   *
+   * O grupo do que falta não some — ele é a lista de doações desejadas, e é o
    * motivo de o título sem exemplar existir. Só fica recolhido. Quando não há
    * nada na casa, abre sozinho: senão a tela ficaria vazia com a resposta
    * escondida atrás de um clique.
@@ -219,37 +225,43 @@
       return;
     }
 
-    var naCasa = achados.filter(function (obra) {
-      return obra.estado !== 'sem_exemplar';
-    });
-    var faltando = achados.filter(function (obra) {
-      return obra.estado === 'sem_exemplar';
-    });
+    var comEstado = function (estados) {
+      return achados.filter(function (obra) { return estados.indexOf(obra.estado) !== -1; });
+    };
+    var paraLevar = comEstado(['disponivel', 'emprestado']);
+    var soNaCasa = comEstado(['so_na_casa']);
+    var faltando = comEstado(['sem_exemplar']);
 
-    dizer(estadoBusca, resumoDaBusca(naCasa.length, faltando.length));
+    dizer(estadoBusca, resumoDaBusca(paraLevar.length, soNaCasa.length, faltando.length));
 
-    if (naCasa.length) {
-      if (faltando.length) {
-        resultados.appendChild(
-          tituloDeGrupo('Na casa', naCasa.length, 'divisor-na-casa'));
-      }
-      naCasa.forEach(function (obra) {
-        resultados.appendChild(itemDeObra(obra));
-      });
+    // Título de grupo só quando há mais de um: com um grupo só, o selo de
+    // cada obra já diz tudo.
+    var variosGrupos = [paraLevar, soNaCasa, faltando]
+      .filter(function (grupo) { return grupo.length; }).length > 1;
+
+    desenharGrupo(paraLevar, 'Para levar emprestado', 'divisor-na-casa', variosGrupos);
+    desenharGrupo(soNaCasa, 'Só para ler na casa', 'divisor-so-na-casa', variosGrupos);
+
+    if (faltando.length) {
+      resultados.appendChild(grupoRecolhido(faltando, !paraLevar.length && !soNaCasa.length));
     }
-
-    if (faltando.length) resultados.appendChild(grupoRecolhido(faltando, !naCasa.length));
   }
 
-  function resumoDaBusca(quantasNaCasa, quantasFaltando) {
-    if (!quantasFaltando) {
-      return quantasNaCasa === 1 ? '1 obra' : quantasNaCasa + ' obras';
-    }
-    if (!quantasNaCasa) {
-      return 'nenhuma na casa · ' + quantasFaltando + ' no catálogo';
-    }
-    return quantasNaCasa + (quantasNaCasa === 1 ? ' na casa' : ' na casa') +
-      ' · ' + quantasFaltando + ' só no catálogo';
+  function desenharGrupo(obras, texto, classe, comTitulo) {
+    if (!obras.length) return;
+    if (comTitulo) resultados.appendChild(tituloDeGrupo(texto, obras.length, classe));
+    obras.forEach(function (obra) { resultados.appendChild(itemDeObra(obra)); });
+  }
+
+  function resumoDaBusca(paraLevar, soNaCasa, faltando) {
+    if (!soNaCasa && !faltando) return paraLevar === 1 ? '1 obra' : paraLevar + ' obras';
+    if (!paraLevar && !soNaCasa) return 'nenhuma na casa · ' + faltando + ' no catálogo';
+
+    var partes = [];
+    if (paraLevar) partes.push(paraLevar + ' para levar');
+    if (soNaCasa) partes.push(soNaCasa + ' só para ler na casa');
+    if (faltando) partes.push(faltando + ' só no catálogo');
+    return partes.join(' · ');
   }
 
   function tituloDeGrupo(texto, quantas, classe) {
@@ -314,16 +326,27 @@
    */
   function textoDeDisponibilidade(obra) {
     if (obra.estado === 'sem_exemplar') return 'a casa não tem exemplar';
+    if (obra.estado === 'so_na_casa') return 'só para ler na casa';
+
+    // Os que ficam na casa não entram no "de N": "1 de 2" faria pensar que o
+    // outro está emprestado, e a pessoa voltaria para buscar um livro que
+    // nunca sai.
+    var ficam = obra.so_na_casa || 0;
+    var saem = obra.total - ficam;
+    var texto;
 
     if (obra.estado === 'disponivel') {
-      return obra.total > 1
-        ? 'disponível (' + obra.disponiveis + ' de ' + obra.total + ')'
+      texto = saem > 1
+        ? 'disponível (' + obra.disponiveis + ' de ' + saem + ')'
         : 'disponível';
+    } else {
+      texto = obra.previsao
+        ? 'emprestado — previsão ' + obra.previsao
+        : 'emprestado';
     }
 
-    return obra.previsao
-      ? 'emprestado — previsão ' + obra.previsao
-      : 'emprestado';
+    if (ficam) texto += ' · ' + ficam + ' só para ler na casa';
+    return texto;
   }
 
   // ---------------------------------------------------------------- cadastro
@@ -337,6 +360,7 @@
       preencherSelect($('#categoria'), listas.categorias, 'doutrinário');
       preencherSelect($('#estado-exemplar'), listas.estados, 'bom');
       preencherSelect($('#estado-exemplar-avulso'), listas.estados, 'bom');
+      preencherSelect($('#estado-exemplar-alterar'), listas.estados, 'bom');
       // A lista de perfis vem do servidor, da mesma constante que a escada
       // de permissões usa — escrita à mão no HTML, sairia de sincronia.
       preencherSelect($('#perfil-pessoa'), listas.perfis, 'consulta');
@@ -564,6 +588,9 @@
         dizer(estadoCadastro,
           'Exemplar acrescentado à obra ' + id + '. Etiquete o livro com o ' +
           'tombo ' + tombo + '.', 'ok');
+        // Este caminho também gera tombo, e ficava fora da lista: o número
+        // só aparecia na linha de status, que a gravação seguinte apaga.
+        anotarEtiqueta(tombo, pacote.dados.titulo, pacote.dados.so_na_casa === true);
         limparFormulario();
       })
       .withFailureHandler(function (erro) {
@@ -609,7 +636,8 @@
         var recado = 'Título ' + resposta.id_titulo + ' cadastrado.';
         if (resposta.tombo) {
           recado += ' Etiquete o livro com o tombo ' + resposta.tombo + '.';
-          anotarEtiqueta(resposta.tombo, formulario.elements.titulo.value.trim());
+          anotarEtiqueta(resposta.tombo, formulario.elements.titulo.value.trim(),
+            dados.so_na_casa === true);
         }
         dizer(estadoCadastro, recado, 'ok');
         limparFormulario();
@@ -695,9 +723,14 @@
     if (dados.estado) meta.push('estado: ' + dados.estado);
     $('#ficha-meta').textContent = meta.join(' · ');
 
+    var observacao = $('#ficha-observacao');
+    observacao.textContent = dados.observacao ? 'Observação: ' + dados.observacao : '';
+    observacao.classList.toggle('oculta', !dados.observacao);
+
     var selo = $('#ficha-selo');
     var emprestado = dados.situacao === 'emprestado';
     var baixado = dados.situacao === 'baixado';
+    var soNaCasa = dados.situacao === 'só para ler na casa';
 
     // Aqui PODE aparecer o nome de quem está com o livro: é tela de balcão,
     // não a busca pública. A distinção é a seção 6 da especificação.
@@ -710,9 +743,13 @@
     } else {
       selo.textContent = dados.situacao;
     }
-    selo.className = 'selo ' +
-      (emprestado ? 'emprestado' : baixado ? 'sem_exemplar' : 'disponivel');
+    selo.className = 'selo ' + (emprestado ? 'emprestado'
+      : baixado ? 'sem_exemplar'
+      : soNaCasa ? 'so_na_casa'
+      : 'disponivel');
 
+    // Só "disponível" oferece emprestar — o que deixa de fora, sem regra a
+    // mais, o livro só para ler na casa. O servidor recusa de novo.
     $('#acao-emprestar').classList.toggle('oculta', dados.situacao !== 'disponível');
     $('#acao-devolver').classList.toggle('oculta', !emprestado);
     ficha.classList.remove('oculta');
@@ -909,6 +946,8 @@
       });
       $('#form-cadastro').classList.toggle('oculta', aba.dataset.bloco !== 'obra');
       $('#form-exemplar').classList.toggle('oculta', aba.dataset.bloco !== 'exemplar');
+      $('#form-alterar-exemplar').classList.toggle('oculta',
+        aba.dataset.bloco !== 'alterar-exemplar');
       $('#form-pessoa').classList.toggle('oculta', aba.dataset.bloco !== 'pessoa');
       $('#form-editar-pessoa').classList.toggle('oculta', aba.dataset.bloco !== 'editar');
     });
@@ -956,7 +995,7 @@
   var caixaEtiquetas = $('#etiquetas');
   var listaEtiquetas = $('#lista-etiquetas');
 
-  function anotarEtiqueta(tombo, titulo) {
+  function anotarEtiqueta(tombo, titulo, soNaCasa) {
     if (!tombo) return;
 
     var item = document.createElement('li');
@@ -964,6 +1003,9 @@
     var numero = elemento('span', String(tombo), 'etiqueta-tombo');
     item.appendChild(numero);
     item.appendChild(elemento('span', titulo || '', 'etiqueta-obra'));
+    // Vai escrito na etiqueta: o livro avisa sozinho que não sai, antes de
+    // alguém digitar o tombo.
+    if (soNaCasa) item.appendChild(elemento('span', 'só para ler na casa', 'etiqueta-marca'));
 
     // O mais novo em cima: é o livro que ainda está na mão.
     listaEtiquetas.insertBefore(item, listaEtiquetas.firstChild);
@@ -1486,7 +1528,9 @@
       ano: formExemplar.elements.ano.value.trim(),
       edicao: formExemplar.elements.edicao.value.trim(),
       estado_exemplar: formExemplar.elements.estado_exemplar.value,
-      doado_por: formExemplar.elements.doado_por.value.trim()
+      doado_por: formExemplar.elements.doado_por.value.trim(),
+      so_na_casa: formExemplar.elements.so_na_casa.checked,
+      observacao_exemplar: formExemplar.elements.observacao_exemplar.value.trim()
     };
 
     botao.disabled = true;
@@ -1497,12 +1541,16 @@
         botao.disabled = false;
         dizer(estadoExemplar,
           'Exemplar criado. Etiquete o livro com o tombo ' + tombo + '.', 'ok');
-        anotarEtiqueta(tombo, obraEscolhida.titulo);
+        anotarEtiqueta(tombo, obraEscolhida.titulo, dados.so_na_casa);
 
         // A obra continua escolhida: numa doação de três cópias, salva-se as
         // três seguidas sem procurar de novo. Editora e doador também ficam,
         // porque a pilha costuma ser da mesma edição e da mesma pessoa.
+        // A marca e a observação não: descrevem ESTE livro, e o frágil é
+        // justamente a exceção da pilha.
         formExemplar.elements.edicao.value = '';
+        formExemplar.elements.so_na_casa.checked = false;
+        formExemplar.elements.observacao_exemplar.value = '';
         formExemplar.elements.editora.focus();
       })
       .withFailureHandler(function (erro) {
@@ -1510,6 +1558,105 @@
         dizer(estadoExemplar, erro.message || 'Não consegui salvar.', 'erro');
       })
       .acrescentarExemplar(EU.sessao, obraEscolhida.id_titulo, dados);
+  });
+
+  // ----------------------------------------------- cadastro: alterar exemplar
+  // Para o que muda com o tempo: o livro envelhece, as páginas soltam, e um
+  // exemplar que saía passa a ser só para ler na casa. Procura pelo tombo,
+  // que é o número da etiqueta — quem altera está com o livro na mão.
+
+  var formAlterarExemplar = $('#form-alterar-exemplar');
+  var tomboAlterar = $('#tombo-alterar');
+  var camposAlterarExemplar = $('#campos-alterar-exemplar');
+  var estadoBuscaAlterar = $('#estado-busca-alterar');
+  var estadoAlterarExemplar = $('#estado-alterar-exemplar');
+  var exemplarEmEdicao = null;
+  var alterarEmVoo = 0;
+  var temporizadorAlterar = null;
+
+  tomboAlterar.addEventListener('input', function () {
+    exemplarEmEdicao = null;
+    camposAlterarExemplar.classList.add('oculta');
+    dizer(estadoAlterarExemplar, '');
+    clearTimeout(temporizadorAlterar);
+    temporizadorAlterar = setTimeout(carregarExemplarParaAlterar, 350);
+  });
+
+  function carregarExemplarParaAlterar() {
+    var valor = tomboAlterar.value.trim();
+    if (!valor) { dizer(estadoBuscaAlterar, ''); return; }
+
+    var esta = ++alterarEmVoo;
+    dizer(estadoBuscaAlterar, 'Procurando o tombo…');
+
+    google.script.run
+      .withSuccessHandler(function (dados) {
+        if (esta !== alterarEmVoo) return;
+        dizer(estadoBuscaAlterar, '');
+        exemplarEmEdicao = dados;
+
+        // A situação vai junto porque muda o que a marca faz: num livro que
+        // está fora, ela só vale depois da devolução.
+        var partes = [dados.titulo];
+        if (dados.edicao) partes.push(dados.edicao);
+        partes.push(dados.situacao);
+        $('#alterando-exemplar').textContent =
+          'Tombo ' + dados.tombo + ': ' + partes.join(' · ');
+
+        $('#estado-exemplar-alterar').value = dados.estado || 'bom';
+        formAlterarExemplar.elements.so_na_casa.checked = dados.so_na_casa;
+        formAlterarExemplar.elements.observacao_exemplar.value = dados.observacao || '';
+        camposAlterarExemplar.classList.remove('oculta');
+      })
+      .withFailureHandler(function (erro) {
+        if (esta !== alterarEmVoo) return;
+        dizer(estadoBuscaAlterar, erro.message || 'Não consegui achar esse tombo.', 'erro');
+      })
+      .verExemplar(EU.sessao, valor);
+  }
+
+  formAlterarExemplar.addEventListener('submit', function (evento) {
+    evento.preventDefault();
+    if (!exemplarEmEdicao) return;
+
+    var botao = $('#btn-salvar-alterar-exemplar');
+    var tombo = exemplarEmEdicao.tombo;
+    var soNaCasa = formAlterarExemplar.elements.so_na_casa.checked;
+    var marcouAgora = soNaCasa && !exemplarEmEdicao.so_na_casa;
+    var estaFora = exemplarEmEdicao.situacao === 'emprestado';
+
+    var mudancas = {
+      estado: $('#estado-exemplar-alterar').value,
+      so_na_casa: soNaCasa,
+      observacao: formAlterarExemplar.elements.observacao_exemplar.value.trim()
+    };
+
+    botao.disabled = true;
+    dizer(estadoAlterarExemplar, 'Salvando…');
+
+    google.script.run
+      .withSuccessHandler(function () {
+        botao.disabled = false;
+
+        var recado = 'Tombo ' + tombo + ' alterado.';
+        if (marcouAgora && estaFora) {
+          recado += ' Ele está emprestado: continua até a devolução, e daí em ' +
+            'diante fica na casa.';
+        }
+        // A etiqueta é o aviso que o livro dá sozinho, sem ninguém digitar.
+        if (marcouAgora) recado += ' Escreva "só para ler na casa" na etiqueta.';
+        dizer(estadoAlterarExemplar, recado, 'ok');
+
+        camposAlterarExemplar.classList.add('oculta');
+        exemplarEmEdicao = null;
+        tomboAlterar.value = '';
+        tomboAlterar.focus();
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer(estadoAlterarExemplar, erro.message || 'Não consegui salvar.', 'erro');
+      })
+      .atualizarExemplar(EU.sessao, tombo, mudancas);
   });
 
 

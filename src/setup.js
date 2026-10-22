@@ -60,15 +60,19 @@ var LISTA_CATEGORIA = [
 // ARRAYFORMULA: somar a coluna devolve o valor daquela única linha.
 
 // ATENÇÃO às letras de coluna: elas seguem a ordem dos cabeçalhos logo abaixo.
-// Em `Exemplares`, `ativo` é a coluna I e `situacao` a J. Mexer na ordem dos
-// cabeçalhos sem mexer aqui quebra tudo em silêncio — o teste
-// "as fórmulas apontam para as colunas certas" existe para pegar isso.
+// Em `Exemplares`, `ativo` é a coluna I, `situacao` a J e `emprestavel` a M.
+// Mexer na ordem dos cabeçalhos sem mexer aqui quebra tudo em silêncio — o
+// teste "as fórmulas apontam para as colunas certas" existe para pegar isso.
+//
+// "emprestado" é testado antes de `emprestavel`: livro marcado enquanto está
+// fora continua emprestado até voltar. E só "NÃO" restringe — vazio é linha
+// de antes de a coluna existir, e esses livros sempre puderam sair.
 var F_SITUACAO =
   '=ARRAYFORMULA(IF(A2:A="","",' +
   'IF(I2:I="","(preencher ativo)",' +
   'IF(I2:I<>"SIM","baixado",' +
-  'IF(COUNTIFS(Emprestimos!$B$2:$B,A2:A,Emprestimos!$F$2:$F,"")>0,' +
-  '"emprestado","disponível")))))';
+  'IF(COUNTIFS(Emprestimos!$B$2:$B,A2:A,Emprestimos!$F$2:$F,"")>0,"emprestado",' +
+  'IF(M2:M="NÃO","só para ler na casa","disponível"))))))';
 
 var F_COM_QUEM =
   '=ARRAYFORMULA(IF(A2:A="","",IFERROR(VLOOKUP(' +
@@ -164,10 +168,16 @@ var ESTRUTURA_ABAS = [
     // Edição, editora e ano moram aqui porque descrevem o exemplar físico:
     // um Nosso Lar da FEB de 1978 e outro da Petit de 2015 são o mesmo
     // título com objetos diferentes na estante.
+    //
+    // `emprestavel` e `observacao` vieram depois e ficam no FIM, depois das
+    // derivadas, de propósito. Este arquivo reescreve cabeçalho, não move
+    // dado: inserir no meio desalinharia as linhas que já existem, como
+    // aconteceu quando `edicao` entrou na C.
     nome: 'Exemplares',
     cabecalhos: [
       'tombo', 'id_titulo', 'edicao', 'editora', 'ano', 'estado', 'doado_por',
-      'data_entrada', 'ativo', 'situacao', 'com_quem', 'previsao_devolucao'
+      'data_entrada', 'ativo', 'situacao', 'com_quem', 'previsao_devolucao',
+      'emprestavel', 'observacao'
     ],
     formatos: [
       { colunas: [1, 2, 5], formato: '0' },
@@ -175,11 +185,12 @@ var ESTRUTURA_ABAS = [
     ],
     validacoes: [
       { coluna: 6, lista: LISTA_ESTADO, bloqueia: true },
-      { coluna: 9, lista: LISTA_SIM_NAO, bloqueia: true }
+      { coluna: 9, lista: LISTA_SIM_NAO, bloqueia: true },
+      { coluna: 13, lista: LISTA_SIM_NAO, bloqueia: true }
     ],
     formulas: { 10: F_SITUACAO, 11: F_COM_QUEM, 12: F_PREVISAO },
     colunasProtegidas: [[10, 12]],
-    larguras: { 3: 170, 4: 190, 7: 200, 10: 150, 11: 220, 12: 160 }
+    larguras: { 3: 170, 4: 190, 7: 200, 10: 150, 11: 220, 12: 160, 14: 320 }
   },
   {
     nome: 'Pessoas',

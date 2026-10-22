@@ -32,9 +32,10 @@
     </details>
 
     <details class="grupo">
-      <summary>Cuidar do acervo<small>5 assuntos</small></summary>
+      <summary>Cuidar do acervo<small>6 assuntos</small></summary>
       <a href="#m-doacao">Chegaram livros novos</a>
       <a href="#m-maisum">Já temos esse livro, chegou outra cópia</a>
+      <a href="#m-alterar">Um livro ficou frágil e não pode mais sair</a>
       <a href="#m-sumiu">Um livro sumiu ou estragou</a>
       <a href="#m-catalogo">Aparecem livros que a casa não tem</a>
       <a href="#m-pessoas">Gente nova, e gente que mudou</a>
@@ -137,6 +138,19 @@
 
       <dt>A ficha diz “baixado”</dt>
       <dd>Esse exemplar saiu do acervo — perdido, danificado ou doado.</dd>
+
+      <dt>A ficha diz “só para ler na casa”</dt>
+      <dd>
+        É um livro raro ou frágil: a pessoa pode ler aqui, mas ele não sai. O
+        botão <kbd>Emprestar</kbd> nem aparece. Se a casa tiver outra cópia, a
+        busca mostra.
+      </dd>
+
+      <dt>A ficha mostra uma observação</dt>
+      <dd>
+        Leia antes de entregar: é o que distingue aquele livro — “de bolso”,
+        “falta a pág. 40”. Quem escreve é a bibliotecária.
+      </dd>
 
       <dt>Diz que o tombo não existe</dt>
       <dd>
@@ -288,6 +302,21 @@
         Pode: desmarque <kbd>Criar exemplar</kbd>. A obra fica no catálogo como
         não disponível, e vira lista de doação desejada.
       </dd>
+
+      <dt>O livro é raro ou frágil e não pode sair</dt>
+      <dd>
+        Marque <kbd>Só para ler na casa</kbd>. A busca mostra isso a quem
+        procura, e o balcão não deixa emprestar. Na lista de etiquetas, o tombo
+        vem com o aviso: escreva-o na etiqueta também.
+      </dd>
+
+      <dt>Este livro tem alguma coisa a anotar</dt>
+      <dd>
+        Use <kbd>Observação deste exemplar</kbd>: “de bolso”, “capa dura”,
+        “dedicatória do autor”, “falta a pág. 40”. O atendente lê na ficha do
+        balcão. Não escreva nome de quem doou ali — para isso existe
+        <kbd>Doado por</kbd>.
+      </dd>
     </dl>
   </article>
 
@@ -311,7 +340,9 @@
       </li>
       <li>
         Preencha editora, ano, edição e estado <strong>deste</strong> livro.
-        Ano e edição aceitam só números.
+        Ano e edição aceitam só números. Se ele for raro ou frágil, marque
+        <kbd>Só para ler na casa</kbd>; se tiver algo a anotar, use
+        <kbd>Observação deste exemplar</kbd>.
       </li>
       <li>
         <kbd>Salvar exemplar</kbd>. O número aparece em
@@ -361,6 +392,48 @@
     </dl>
   </article>
 
+  <!-- ------------------------------------------------------------- alterar -->
+  <article class="verbete" id="m-alterar">
+    <p class="onde-fica">Cadastrar</p>
+    <h2 tabindex="-1">Um livro ficou frágil e não pode mais sair</h2>
+
+    <p>
+      Livro antigo, com páginas soltando, pode continuar no acervo para ser lido
+      aqui — só não sai por empréstimo. Isso se marca no próprio exemplar.
+    </p>
+
+    <ol class="passos">
+      <li>Aba <kbd>Cadastrar</kbd>, bloco <kbd>Alterar exemplar</kbd>.</li>
+      <li>Digite o <strong>tombo</strong> da etiqueta. O livro aparece.</li>
+      <li>
+        Marque <kbd>Só para ler na casa</kbd>. Aproveite para acertar o estado
+        de conservação e escrever a <kbd>Observação deste exemplar</kbd>.
+      </li>
+      <li><kbd>Salvar alteração</kbd>.</li>
+      <li>Escreva “só para ler na casa” na etiqueta do livro.</li>
+    </ol>
+
+    <p>
+      Daí em diante, a busca mostra o livro no grupo
+      <strong>Só para ler na casa</strong>, e o balcão não oferece
+      <kbd>Emprestar</kbd>. Desmarcar desfaz: ele volta a sair normalmente.
+    </p>
+
+    <dl class="e-se">
+      <dt>O livro está emprestado agora</dt>
+      <dd>
+        Pode marcar assim mesmo. Ele continua emprestado até a devolução, e daí
+        em diante fica na casa.
+      </dd>
+
+      <dt>Quero corrigir editora, ano ou edição</dt>
+      <dd>
+        Isso não muda com o tempo, então não está nesta tela. Peça a quem tem
+        acesso à planilha.
+      </dd>
+    </dl>
+  </article>
+
   <!-- -------------------------------------------------------------- sumiu -->
   <article class="verbete" id="m-sumiu">
     <p class="onde-fica">Cadastrar</p>
@@ -398,12 +471,18 @@
       que vale pedir de doação.
     </p>
 
-    <p>A busca separa as duas coisas:</p>
+    <p>A busca separa pelo que dá para fazer com o livro:</p>
 
     <ul>
       <li>
-        <strong>Na casa</strong> — o que está na estante. Vem primeiro, sempre.
-        É a resposta para "vocês têm?".
+        <strong>Para levar emprestado</strong> — o que está na estante e pode
+        sair. Vem primeiro, sempre. É a resposta para "vocês têm?". Se o livro
+        estiver com alguém, mostra quando volta.
+      </li>
+      <li>
+        <strong>Só para ler na casa</strong> — livros raros ou frágeis, que não
+        saem. A pessoa pode ler aqui. Se a casa tem uma cópia que sai e outra
+        que não, a obra aparece só no primeiro grupo, com o aviso ao lado.
       </li>
       <li>
         <strong>A casa não tem</strong> — vem recolhido embaixo. Clique em
@@ -706,6 +785,12 @@
 
       <dt>Baixa</dt>
       <dd>Tirar um exemplar do acervo: perdido, danificado ou doado.</dd>
+
+      <dt>Só para ler na casa</dt>
+      <dd>
+        Exemplar raro ou frágil que continua no acervo, mas não sai por
+        empréstimo. Pode ser lido aqui.
+      </dd>
 
       <dt>Autor espiritual e médium</dt>
       <dd>

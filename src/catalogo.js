@@ -147,6 +147,11 @@ function criarExemplar(sessao, dados) {
       );
     }
 
+    // `so_na_casa` chega da caixa da tela; na planilha vira `emprestavel`,
+    // no mesmo SIM/NÃO de `ativo`. Só `true` marca: um valor estranho vindo
+    // de outro caminho não pode trancar um livro sem ninguém pedir.
+    var soNaCasa = dados.so_na_casa === true;
+
     var registro = {
       tombo: proximoId_(ABA_EXEMPLARES, 'tombo'),
       id_titulo: idTitulo,
@@ -156,14 +161,60 @@ function criarExemplar(sessao, dados) {
       estado: estado,
       doado_por: limparCampo_(dados.doado_por),
       data_entrada: dados.data_entrada instanceof Date ? dados.data_entrada : new Date(),
-      ativo: 'SIM'
+      ativo: 'SIM',
+      emprestavel: soNaCasa ? 'NÃO' : 'SIM',
+      observacao: limparCampo_(dados.observacao)
     };
 
     escreverLinha_(ABA_EXEMPLARES, registro);
     invalidarCacheTitulos_();
     registrarLog_(quemRegistrou, 'criar', 'exemplar', registro.tombo,
-      'titulo ' + idTitulo);
+      'titulo ' + idTitulo + (soNaCasa ? ' · só para ler na casa' : ''));
     return registro.tombo;
+  });
+}
+
+/**
+ * Altera o que descreve um exemplar já cadastrado: a conservação, se ele pode
+ * sair da casa, e a observação.
+ *
+ * Só esses três, porque são os que mudam com o tempo — o livro envelhece, as
+ * páginas começam a soltar. Editora, ano e edição erram uma vez, no cadastro,
+ * e se corrigem na planilha.
+ *
+ * Marcar um livro que está emprestado é permitido: ele continua emprestado
+ * até voltar (ver `calcularSituacao`), e daí em diante não sai mais.
+ */
+function atualizarExemplar(sessao, tombo, dados) {
+  var quemRegistrou = exigir_(sessao, 'editar_obra').nome;
+
+  var alvo = Number(tombo);
+  if (!isFinite(alvo)) throw new Error('Tombo inválido.');
+
+  return comTrava_(function () {
+    var exemplar = acharExemplar_(alvo);
+    if (!exemplar) throw new Error('Tombo ' + alvo + ' não existe.');
+
+    var estado = limparCampo_(dados && dados.estado) || limparCampo_(exemplar.estado) || 'bom';
+    if (LISTA_ESTADO.indexOf(estado) === -1) {
+      throw new Error(
+        'Estado "' + estado + '" inválido. Use: ' + LISTA_ESTADO.join(', ') + '.'
+      );
+    }
+
+    var soNaCasa = !!dados && dados.so_na_casa === true;
+    atualizarCelulas_(ABA_EXEMPLARES, exemplar._linha, {
+      estado: estado,
+      emprestavel: soNaCasa ? 'NÃO' : 'SIM',
+      observacao: limparCampo_(dados && dados.observacao)
+    });
+    invalidarCacheTitulos_();
+
+    // A observação não vai para o Log: é texto livre, e pode acabar tendo
+    // nome de pessoa ("doado pela família de…").
+    registrarLog_(quemRegistrou, 'alterar', 'exemplar', alvo,
+      'estado ' + estado + (soNaCasa ? ' · só para ler na casa' : ' · pode sair'));
+    return alvo;
   });
 }
 
@@ -206,9 +257,10 @@ function darBaixaExemplar(sessao, tombo, motivo) {
       );
     }
 
-    // O motivo da baixa vive só na aba Log: `Exemplares` não tem coluna de
-    // observação, e acrescentar uma mudaria o modelo de dados da
-    // especificação sem necessidade — o Log já responde "por que sumiu?".
+    // O motivo da baixa vive só na aba Log, e não na `observacao` do
+    // exemplar. Aquela descreve o livro para quem vai emprestá-lo ("de
+    // bolso", "falta a pág. 40"); misturar as duas faria uma apagar a outra.
+    // O Log já responde "por que sumiu?".
     atualizarCelulas_(ABA_EXEMPLARES, exemplar._linha, { ativo: 'NÃO' });
     invalidarCacheTitulos_();
     registrarLog_(quemRegistrou, 'baixa', 'exemplar', alvo, razao);
@@ -267,6 +319,7 @@ function buscarNoAcervo(termo) {
       estado: resumo.estado,
       total: resumo.total,
       disponiveis: resumo.disponiveis,
+      so_na_casa: resumo.so_na_casa,
       previsao: resumo.previsao ? formatarData_(resumo.previsao) : ''
     };
   });
@@ -300,6 +353,7 @@ function verTitulo(idTitulo) {
     estado: resumo.estado,
     total: resumo.total,
     disponiveis: resumo.disponiveis,
+    so_na_casa: resumo.so_na_casa,
     previsao: resumo.previsao ? formatarData_(resumo.previsao) : ''
   };
 }
@@ -343,7 +397,9 @@ function acrescentarExemplar(sessao, idTitulo, dados) {
     editora: dados && dados.editora,
     ano: dados && dados.ano,
     estado: dados && dados.estado_exemplar,
-    doado_por: dados && dados.doado_por
+    doado_por: dados && dados.doado_por,
+    so_na_casa: dados && dados.so_na_casa,
+    observacao: dados && dados.observacao_exemplar
   });
 }
 
@@ -424,7 +480,11 @@ function cadastrarTituloComExemplar(sessao, dados, permitirDuplicata) {
       editora: dados.editora,
       ano: dados.ano,
       estado: dados.estado_exemplar,
-      doado_por: dados.doado_por
+      doado_por: dados.doado_por,
+      so_na_casa: dados.so_na_casa,
+      // `observacao` puro é o da obra, no mesmo formulário. O do exemplar
+      // vem com sufixo, como `estado_exemplar`, senão um copiaria o outro.
+      observacao: dados.observacao_exemplar
     });
   }
   return resposta;
