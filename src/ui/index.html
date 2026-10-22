@@ -201,12 +201,26 @@
 
   <!-- ------------------------------------------------------------- cadastro -->
   <section id="visao-cadastro" class="visao oculta">
+    <!-- Em dois grupos, pelo que se cadastra: livro ou pessoa. Eram cinco
+         botões numa linha só, e no celular eles se espremiam em rótulos de
+         duas linhas.
+
+         Os dois grupos ficam à vista, e não atrás de um botão "Livros" /
+         "Pessoas" que abriria um submenu. O submenu organizaria igual, mas
+         cobraria um toque a mais a cada troca e esconderia as opções do outro
+         grupo — e "o que dá para fazer aqui?" tem que se responder olhando. -->
     <div class="abas-internas">
-      <button type="button" class="aba-interna ativa" data-bloco="obra">Obra nova</button>
-      <button type="button" class="aba-interna" data-bloco="exemplar">Mais um exemplar</button>
-      <button type="button" class="aba-interna" data-bloco="alterar-exemplar">Alterar exemplar</button>
-      <button type="button" class="aba-interna" data-bloco="pessoa">Pessoa nova</button>
-      <button type="button" class="aba-interna" data-bloco="editar">Alterar pessoa</button>
+      <div class="grupo-abas" role="group" aria-labelledby="grupo-abas-livros">
+        <span id="grupo-abas-livros" class="grupo-abas-titulo">Livros</span>
+        <button type="button" class="aba-interna ativa" data-bloco="obra">Obra nova</button>
+        <button type="button" class="aba-interna" data-bloco="exemplar">Mais um exemplar</button>
+        <button type="button" class="aba-interna" data-bloco="alterar-exemplar">Alterar exemplar</button>
+      </div>
+      <div class="grupo-abas" role="group" aria-labelledby="grupo-abas-pessoas">
+        <span id="grupo-abas-pessoas" class="grupo-abas-titulo">Pessoas</span>
+        <button type="button" class="aba-interna" data-bloco="pessoa">Pessoa nova</button>
+        <button type="button" class="aba-interna" data-bloco="editar">Alterar pessoa</button>
+      </div>
     </div>
 
     <!-- Os tombos gerados agora, para etiquetar depois.

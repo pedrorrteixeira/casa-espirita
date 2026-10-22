@@ -314,14 +314,40 @@
   .escolhas { display: flex; flex-direction: column; gap: .5rem; }
   .escolhas button { width: 100%; }
   /* Abas de segundo nível, dentro do Cadastrar. Menores que as do topo, para
-     a hierarquia ficar óbvia sem precisar de explicação. */
-  .abas-internas { display: flex; gap: .25rem; margin-bottom: 1rem; }
+     a hierarquia ficar óbvia sem precisar de explicação.
+
+     Em dois grupos com título — Livros, Pessoas —, como o índice do manual.
+     O título não é botão: é o nome do grupo, e os botões ficam todos à vista. */
+  .abas-internas {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    margin-bottom: 1rem;
+  }
+  .grupo-abas { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; }
+  .grupo-abas-titulo {
+    /* Mesma largura nos dois grupos: os primeiros botões ficam alinhados. */
+    flex: 0 0 5.5rem;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--tinta-fraca);
+  }
   .aba-interna {
     background: var(--fundo-suave);
     color: var(--tinta-fraca);
     border: 1px solid var(--borda);
     font-weight: 400;
     padding: .4rem .9rem;
+    white-space: nowrap;
+  }
+  /* No celular o título sobe para a própria linha, e os botões esticam para
+     preencher a deles: o que quebrar para baixo fica com cara de proposital,
+     e não de sobra. */
+  @media (max-width: 30rem) {
+    .grupo-abas-titulo { flex-basis: 100%; }
+    .grupo-abas .aba-interna { flex: 1 1 auto; }
   }
   .aba-interna.ativa {
     background: var(--acento);
