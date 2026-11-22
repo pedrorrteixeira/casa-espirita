@@ -865,6 +865,28 @@
   .parecida small { display: block; color: var(--tinta-fraca); }
   .parecida button { margin-top: .45rem; width: 100%; }
 
+  /* Obras repetidas: cada par num bloco, as duas fichas uma sobre a outra —
+     no celular não cabem lado a lado, e comparar exige ler as duas inteiras. */
+  .pares-repetidos { list-style: none; padding: 0; margin: .8rem 0 0; }
+  .par-repetido {
+    padding: .8rem 0 1rem;
+    border-bottom: 1px solid var(--borda);
+  }
+  .par-repetido .parecida + .parecida { margin-top: .4rem; }
+  .par-repetido > button.discreto { margin-top: .5rem; width: 100%; }
+  .par-repetido .aviso { margin: .6rem 0 0; }
+  .par-motivo {
+    margin: 0 0 .4rem;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--tinta-fraca);
+  }
+  .juntar-pelo-numero { margin-top: 1.2rem; }
+  .juntar-pelo-numero > summary { cursor: pointer; color: var(--acento); min-height: 44px; }
+  .juntar-pelo-numero .aviso { margin-top: .8rem; }
+
   /* Na busca, qual número casou: "Tombo 142" e "Obra nº 142" podem ser
      livros diferentes. */
   .achado-por {

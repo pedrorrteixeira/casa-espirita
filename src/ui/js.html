@@ -324,9 +324,12 @@
     var numero = obra.por_numero;
     var exemplar = numero && numero.exemplar;
     if (numero) {
+      // Obra unida a outra: o número antigo leva à que ficou, e diz isso.
+      var unida = numero.tipo === 'obra' && Number(obra.id_titulo) !== Number(numero.numero);
       item.appendChild(elemento('p', numero.tipo === 'tombo'
         ? 'Tombo ' + numero.numero
-        : 'Obra nº ' + numero.numero, 'achado-por'));
+        : 'Obra nº ' + numero.numero + (unida ? ' — unida à nº ' + obra.id_titulo : ''),
+        'achado-por'));
     }
 
     item.appendChild(elemento('h2', nomeDaObra(obra)));
@@ -1157,9 +1160,12 @@
     $('#form-alterar-obra').classList.toggle('oculta', bloco !== 'alterar-obra');
     $('#form-alterar-exemplar').classList.toggle('oculta', bloco !== 'alterar-exemplar');
     $('#relatorio-acervo').classList.toggle('oculta', bloco !== 'relatorio');
+    $('#bloco-repetidas').classList.toggle('oculta', bloco !== 'repetidas');
     // Monta de novo a cada abertura: relatório guardado da última vez
-    // mostraria como disponível o livro que saiu há cinco minutos.
+    // mostraria como disponível o livro que saiu há cinco minutos. A lista de
+    // repetidas, pela mesma razão, mostraria o par que acabou de ser juntado.
     if (bloco === 'relatorio') carregarRelatorio();
+    if (bloco === 'repetidas') carregarRepetidas();
     $('#form-pessoa').classList.toggle('oculta', bloco !== 'pessoa');
     $('#form-editar-pessoa').classList.toggle('oculta', bloco !== 'editar');
   }
@@ -2128,6 +2134,209 @@
         dizer(estadoAlterarExemplar, erro.message || 'Não consegui salvar.', 'erro');
       })
       .atualizarExemplar(EU.sessao, tombo, mudancas);
+  });
+
+  // ------------------------------------------------- cadastro: obras repetidas
+  // O mesmo livro com duas fichas. Escolhe-se a que FICA; os exemplares da
+  // outra passam para ela, e a outra some da busca sem sair da planilha.
+  // Juntar se desfaz só pela planilha, então há sempre uma confirmação que
+  // diz o que vai mudar.
+
+  var listaRepetidas = $('#lista-repetidas');
+  var estadoRepetidas = $('#estado-repetidas');
+  var confirmarUniao = $('#confirmar-uniao');
+  var uniaoPendente = null;
+  var repetidasEmVoo = 0;
+  var faltaColunaUnida = false;
+
+  // O que a ficha que fica pode ganhar, na língua de quem lê. Autoria e série
+  // vêm em bloco: o segundo campo de cada par não precisa de nome próprio.
+  var NOMES_DOS_CAMPOS = {
+    autor_ou_medium: 'autoria', serie: 'série', tradutor: 'tradutor', isbn: 'ISBN',
+    categoria: 'categoria', sinopse: 'sinopse', link_online: 'link on-line',
+    observacao: 'observação'
+  };
+  var MOTIVOS = {
+    mesmo_titulo: 'Mesmo título e subtítulo',
+    comeca_igual: 'Um título é o começo do outro',
+    quase_igual: 'Título quase igual'
+  };
+
+  /** `recado` é o que acabou de ser feito; sai junto com a contagem nova. */
+  function carregarRepetidas(recado) {
+    var este = ++repetidasEmVoo;
+    esconderConfirmacao();
+    listaRepetidas.innerHTML = '';
+    dizer(estadoRepetidas, 'Procurando obras repetidas…');
+
+    google.script.run
+      .withSuccessHandler(function (resposta) {
+        if (este !== repetidasEmVoo) return;
+        faltaColunaUnida = resposta.falta_coluna;
+        desenharRepetidas(resposta.pares, typeof recado === 'string' ? recado : '');
+      })
+      .withFailureHandler(function (erro) {
+        if (este !== repetidasEmVoo) return;
+        dizer(estadoRepetidas, erro.message || 'Não consegui procurar.', 'erro');
+      })
+      .listarObrasRepetidas(EU.sessao);
+  }
+
+  function desenharRepetidas(pares, recado) {
+    listaRepetidas.innerHTML = '';
+
+    if (faltaColunaUnida) {
+      dizer(estadoRepetidas, 'Para juntar, quem tem a planilha precisa antes rodar ' +
+        'Biblioteca → Criar / atualizar estrutura da planilha. A lista já dá para conferir.', 'erro');
+    } else {
+      var contagem = pares.length
+        ? plural(pares.length, 'par de obras pode ser o mesmo livro.',
+            'pares de obras podem ser o mesmo livro.')
+        : 'Nenhuma obra parece repetida.';
+      dizer(estadoRepetidas, recado ? recado + ' ' + contagem : contagem, recado ? 'ok' : '');
+    }
+
+    pares.forEach(function (par) {
+      var item = document.createElement('li');
+      item.className = 'par-repetido';
+      item.appendChild(elemento('p', MOTIVOS[par.motivo] || '', 'par-motivo'));
+      item.appendChild(cartaoDoPar(par.a, par.b, item));
+      item.appendChild(cartaoDoPar(par.b, par.a, item));
+
+      var diferentes = document.createElement('button');
+      diferentes.type = 'button';
+      diferentes.className = 'discreto';
+      diferentes.textContent = 'São livros diferentes — tirar da lista';
+      diferentes.addEventListener('click', function () {
+        marcarDiferentes(par, item, diferentes);
+      });
+      item.appendChild(diferentes);
+
+      listaRepetidas.appendChild(item);
+    });
+  }
+
+  /** Uma das duas fichas do par, com o botão de ficar com ela. */
+  function cartaoDoPar(obra, outra, item) {
+    var cartao = document.createElement('div');
+    cartao.className = 'parecida';
+    cartao.appendChild(elemento('strong', nomeDaObra(obra)));
+    cartao.appendChild(elemento('small', detalhesDaObra(obra)));
+
+    var botao = document.createElement('button');
+    botao.type = 'button';
+    botao.textContent = 'Ficar com esta';
+    botao.disabled = faltaColunaUnida;
+    botao.addEventListener('click', function () {
+      prepararUniao(obra.id_titulo, outra.id_titulo, item);
+    });
+    cartao.appendChild(botao);
+    return cartao;
+  }
+
+  /** Pergunta ao servidor o que juntar vai fazer, e mostra antes de fazer. */
+  function prepararUniao(idFica, idSai, lugar) {
+    esconderConfirmacao();
+    dizer(estadoRepetidas, 'Conferindo…');
+
+    google.script.run
+      .withSuccessHandler(function (plano) {
+        dizer(estadoRepetidas, '');
+        uniaoPendente = plano;
+        desenharConfirmacao(plano);
+        lugar.appendChild(confirmarUniao);
+        confirmarUniao.classList.remove('oculta');
+        confirmarUniao.scrollIntoView({ block: 'nearest' });
+      })
+      .withFailureHandler(function (erro) {
+        dizer(estadoRepetidas, erro.message || 'Não consegui conferir.', 'erro');
+      })
+      .prepararUniao(EU.sessao, idFica, idSai);
+  }
+
+  function desenharConfirmacao(plano) {
+    var detalhe = $('#uniao-detalhe');
+    detalhe.innerHTML = '';
+
+    detalhe.appendChild(elemento('p', 'Fica: ' + nomeDaObra(plano.fica) +
+      ' (obra nº ' + plano.fica.id_titulo + ').'));
+    detalhe.appendChild(elemento('p', 'Sai: ' + nomeDaObra(plano.sai) +
+      ' (obra nº ' + plano.sai.id_titulo + '). Some da busca e continua guardada na planilha.'));
+
+    detalhe.appendChild(elemento('p', plano.tombos.length
+      ? (plano.tombos.length === 1 ? 'Passa 1 exemplar' : 'Passam ' + plano.tombos.length +
+          ' exemplares') + ': ' + (plano.tombos.length === 1 ? 'tombo ' : 'tombos ') +
+        plano.tombos.join(', ') +
+        '. As etiquetas não mudam.'
+      : 'A ficha que sai não tem exemplares.'));
+
+    var ganha = plano.completar
+      .map(function (campo) { return NOMES_DOS_CAMPOS[campo]; })
+      .filter(function (nome) { return nome; });
+    if (ganha.length) {
+      detalhe.appendChild(elemento('p', 'A ficha que fica estava sem ' + ganha.join(', ') +
+        ', e recebe da outra.', 'dica'));
+    }
+  }
+
+  function esconderConfirmacao() {
+    uniaoPendente = null;
+    confirmarUniao.classList.add('oculta');
+    // Volta para o lugar de origem: o par onde estava pode ser redesenhado.
+    $('#bloco-repetidas').appendChild(confirmarUniao);
+  }
+
+  $('#btn-cancelar-uniao').addEventListener('click', esconderConfirmacao);
+
+  $('#btn-juntar').addEventListener('click', function () {
+    if (!uniaoPendente) return;
+    var plano = uniaoPendente;
+    var botao = this;
+    botao.disabled = true;
+    dizer(estadoRepetidas, 'Juntando…');
+
+    google.script.run
+      .withSuccessHandler(function (feito) {
+        botao.disabled = false;
+        $('#uniao-fica').value = '';
+        $('#uniao-sai').value = '';
+        carregarRepetidas('Pronto: a obra nº ' + feito.sai + ' foi unida à nº ' +
+          feito.fica + ' (' + feito.nome + ')' +
+          (feito.tombos.length ? ', com ' + plural(feito.tombos.length, 'exemplar', 'exemplares') : '') +
+          '.');
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer(estadoRepetidas, erro.message || 'Não consegui juntar.', 'erro');
+      })
+      .juntarObras(EU.sessao, plano.fica.id_titulo, plano.sai.id_titulo);
+  });
+
+  function marcarDiferentes(par, item, botao) {
+    botao.disabled = true;
+    google.script.run
+      .withSuccessHandler(function () {
+        if (confirmarUniao.parentNode === item) esconderConfirmacao();
+        listaRepetidas.removeChild(item);
+        dizer(estadoRepetidas, 'Certo: “' + nomeDaObra(par.a) + '” e “' + nomeDaObra(par.b) +
+          '” saíram da lista como livros diferentes.', 'ok');
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer(estadoRepetidas, erro.message || 'Não consegui marcar.', 'erro');
+      })
+      .marcarObrasDiferentes(EU.sessao, par.a.id_titulo, par.b.id_titulo);
+  }
+
+  // Pelo número: para o par que a lista não pegou.
+  $('#btn-conferir-uniao').addEventListener('click', function () {
+    var fica = $('#uniao-fica').value.trim();
+    var sai = $('#uniao-sai').value.trim();
+    if (!fica || !sai) {
+      dizer(estadoRepetidas, 'Escreva o número das duas obras.', 'erro');
+      return;
+    }
+    prepararUniao(Number(fica), Number(sai), $('#lugar-confirmar-numero'));
   });
 
   // ------------------------------------------------ cadastro: relatório do acervo

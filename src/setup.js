@@ -128,7 +128,10 @@ var CONFIG_PADRAO = [
     'automaticos, para o palestrante saber onde escrever o tema.'],
   ['chave_api_livros', '', 'OPCIONAL: chave da API de livros do Google. Sem ' +
     'ela a busca por ISBN quase sempre falha, porque a cota é compartilhada ' +
-    'com todo mundo. É gratuita e não pede cartão. Ver PLANO.md.']
+    'com todo mundo. É gratuita e não pede cartão. Ver PLANO.md.'],
+  ['obras_diferentes', '', 'Pares de obras de título parecido que são livros ' +
+    'DIFERENTES, marcados em Cadastrar → Obras repetidas: "12 e 345, 7 e 89". ' +
+    'Saem daquela lista. Apague um par daqui para ele voltar a aparecer.']
 ];
 
 // --- Estrutura das sete abas -------------------------------------------------
@@ -149,14 +152,19 @@ var ESTRUTURA_ABAS = [
     // pode ter o mesmo livro em três edições. Vivem em `Exemplares`.
     // `isbn` fica, como chave da consulta ao Google — é atalho de cadastro,
     // não afirmação sobre cada exemplar.
+    //
+    // `unida_a` veio depois e fica no FIM, pelo mesmo motivo de `emprestavel`
+    // em Exemplares: este arquivo reescreve cabeçalho, não move dado. É o
+    // número da obra que ficou quando duas fichas do mesmo livro foram
+    // juntadas; preenchida, a linha some da busca e continua aqui (regra 15).
     nome: 'Titulos',
     cabecalhos: [
       'id_titulo', 'titulo', 'subtitulo', 'autor_ou_medium', 'autor_espiritual',
       'tradutor', 'isbn', 'categoria', 'serie', 'ordem_na_serie', 'sinopse',
-      'link_online', 'qtd_exemplares', 'qtd_disponiveis', 'observacao'
+      'link_online', 'qtd_exemplares', 'qtd_disponiveis', 'observacao', 'unida_a'
     ],
     formatos: [
-      { colunas: [1, 10, 13, 14], formato: '0' },
+      { colunas: [1, 10, 13, 14, 16], formato: '0' },
       { colunas: [7], formato: '@' }
     ],
     validacoes: [{ coluna: 8, lista: LISTA_CATEGORIA, bloqueia: false }],

@@ -33,10 +33,11 @@
     </details>
 
     <details class="grupo">
-      <summary>Cuidar do acervo<small>9 assuntos</small></summary>
+      <summary>Cuidar do acervo<small>10 assuntos</small></summary>
       <a href="#m-doacao">Chegaram livros novos</a>
       <a href="#m-maisum">Já temos esse livro, chegou outra cópia</a>
       <a href="#m-corrigir">A ficha de um livro está errada</a>
+      <a href="#m-repetidas">O mesmo livro aparece duas vezes</a>
       <a href="#m-alterar">Um livro ficou frágil e não pode mais sair</a>
       <a href="#m-sumiu">Um livro sumiu ou estragou</a>
       <a href="#m-catalogo">Aparecem livros que a casa não tem</a>
@@ -506,7 +507,9 @@
       Se você mudar o título para um que já existe em outra ficha, aparece o
       aviso amarelo de obra parecida. Confira antes de salvar: duas fichas para
       o mesmo livro dividem os exemplares entre elas, e a busca passa a mostrar
-      o livro duas vezes.
+      o livro duas vezes. Se já forem duas fichas, não renomeie uma para ficar
+      igual à outra — junte as duas: veja
+      <a href="#m-repetidas">O mesmo livro aparece duas vezes</a>.
     </p>
 
     <dl class="e-se">
@@ -523,6 +526,88 @@
         <kbd>Médium</kbd> e aparece o <kbd>Autor espiritual</kbd>.
       </dd>
     </dl>
+  </article>
+
+  <!-- ----------------------------------------------------------- repetidas -->
+  <article class="verbete" id="m-repetidas">
+    <p class="onde-fica">Cadastrar</p>
+    <h2 tabindex="-1">O mesmo livro aparece duas vezes</h2>
+
+    <p>
+      Acontece quando o livro ganhou duas fichas — digitado de dois jeitos,
+      com hífen e sem hífen, no singular e no plural. Os exemplares ficam
+      divididos entre elas, e a busca mostra o livro duas vezes. A solução é
+      <strong>juntar</strong> as duas fichas numa só.
+    </p>
+
+    <ol class="passos">
+      <li>Aba <kbd>Cadastrar</kbd>, no grupo <strong>Livros</strong>: <kbd>Obras repetidas</kbd>.</li>
+      <li>
+        O sistema lista sozinho os pares de obras que podem ser o mesmo livro.
+        Confira cada par: título, autoria, quantos exemplares tem cada um.
+      </li>
+      <li>
+        Se for o mesmo livro, toque em <kbd>Ficar com esta</kbd> na ficha que
+        está mais certa — a de título bem escrito.
+      </li>
+      <li>
+        Leia a confirmação: ela diz quais exemplares passam e o que a ficha
+        que fica ganha da outra. Toque em <kbd>Juntar</kbd>.
+      </li>
+    </ol>
+
+    <p>
+      Os exemplares da outra ficha passam para a que ficou, com o mesmo tombo —
+      <strong>as etiquetas não mudam</strong>. O que estiver vazio na ficha que
+      fica (autoria, categoria, sinopse…) é completado com a outra; o que já
+      estiver preenchido não é tocado. A ficha que sai some da busca, mas não é
+      apagada: continua na planilha, marcada como unida.
+    </p>
+
+    <dl class="e-se">
+      <dt>O par da lista são livros diferentes</dt>
+      <dd>
+        Toque em <kbd>São livros diferentes — tirar da lista</kbd>. É o caso de
+        <em>Pai Nosso</em> e <em>Pão Nosso</em>: títulos parecidos, livros
+        distintos. O par não volta mais.
+      </dd>
+
+      <dt>O livro repetido não está na lista</dt>
+      <dd>
+        Abra <kbd>Juntar duas obras que não estão na lista</kbd> e escreva o
+        número das duas — a que fica e a que sai. O número da obra aparece na
+        busca, como “obra nº 142”.
+      </dd>
+
+      <dt>Aparece um aviso pedindo para rodar a estrutura da planilha</dt>
+      <dd>
+        Falta uma coluna nova na planilha. Quem tem acesso a ela roda
+        <kbd>Biblioteca → Criar / atualizar estrutura da planilha</kbd> uma
+        vez, e o botão <kbd>Ficar com esta</kbd> passa a funcionar.
+      </dd>
+
+      <dt>Juntei as fichas erradas</dt>
+      <dd>
+        Não dá para desfazer pelo sistema. Quem tem a planilha desfaz: na aba
+        <kbd>Titulos</kbd>, apaga o número na coluna <kbd>unida_a</kbd> da
+        ficha que saiu; na aba <kbd>Exemplares</kbd>, devolve o número da obra
+        aos tombos que passaram. Quais tombos foram está na aba
+        <kbd>Log</kbd>, na linha “juntar”.
+      </dd>
+
+      <dt>Marquei como diferentes por engano</dt>
+      <dd>
+        Quem tem a planilha apaga o par da chave
+        <kbd>obras_diferentes</kbd>, na aba <kbd>Config</kbd>, e ele volta à
+        lista.
+      </dd>
+    </dl>
+
+    <p>
+      Quem tem a planilha também vê a mesma lista pelo menu
+      <kbd>Biblioteca → Obras possivelmente repetidas</kbd>. Juntar, porém, é
+      só pelo sistema, onde fica registrado quem juntou.
+    </p>
   </article>
 
   <!-- ------------------------------------------------------------- alterar -->

@@ -262,6 +262,7 @@
         <button type="button" class="aba-interna" data-bloco="exemplar">Novo exemplar</button>
         <button type="button" class="aba-interna" data-bloco="alterar-obra">Alterar obra</button>
         <button type="button" class="aba-interna" data-bloco="alterar-exemplar">Alterar exemplar</button>
+        <button type="button" class="aba-interna" data-bloco="repetidas">Obras repetidas</button>
         <button type="button" class="aba-interna" data-bloco="relatorio">Relatório do acervo</button>
         <!-- Abre o cartaz numa aba nova, onde se imprime. Link de verdade, e
              não botão: é outra página. Some se faltar `url_sistema`. -->
@@ -369,6 +370,56 @@
       </fieldset>
       <div id="estado-exemplar-novo" class="estado" role="status" aria-live="polite"></div>
     </form>
+
+    <!-- Obras repetidas: o mesmo livro com duas fichas. Juntar passa os
+         exemplares para a ficha escolhida; a outra some da busca e continua
+         na planilha, com `unida_a` apontando para a que ficou (regra 15: nada
+         se apaga).
+
+         A lista se monta sozinha, pela regra do aviso de obra repetida. O que
+         ela não pega se junta pelo número das duas obras. E o par que não é o
+         mesmo livro sai da lista com "São livros diferentes" — senão ela
+         nunca esvazia e para de ser lida. -->
+    <div id="bloco-repetidas" class="bloco-cadastro oculta">
+      <p class="dica">
+        Quando o mesmo livro tem duas fichas, os exemplares se dividem entre
+        elas e a busca mostra o livro duas vezes. Escolha a ficha que
+        <strong>fica</strong>: os exemplares da outra passam para ela, e a
+        outra some da busca — mas continua guardada na planilha.
+      </p>
+      <div id="estado-repetidas" class="estado" role="status" aria-live="polite"></div>
+      <ul id="lista-repetidas" class="pares-repetidos"></ul>
+
+      <details class="juntar-pelo-numero">
+        <summary>Juntar duas obras que não estão na lista</summary>
+        <p class="dica">
+          O número da obra aparece na busca, como “obra nº 142”.
+        </p>
+        <div class="par">
+          <label>
+            Fica a obra nº
+            <input id="uniao-fica" inputmode="numeric" data-so-digitos>
+          </label>
+          <label>
+            Sai a obra nº
+            <input id="uniao-sai" inputmode="numeric" data-so-digitos>
+          </label>
+        </div>
+        <button type="button" id="btn-conferir-uniao">Conferir</button>
+        <div id="lugar-confirmar-numero"></div>
+      </details>
+
+      <!-- Uma confirmação só, levada para junto do par escolhido. Juntar se
+           desfaz só pela planilha: ninguém junta sem ver antes o que muda. -->
+      <div id="confirmar-uniao" class="aviso oculta" role="alert">
+        <p><strong>Juntar estas duas fichas?</strong></p>
+        <div id="uniao-detalhe"></div>
+        <div class="escolhas">
+          <button type="button" id="btn-juntar">Juntar</button>
+          <button type="button" id="btn-cancelar-uniao" class="discreto">Cancelar</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Relatório do acervo: tudo o que a casa tem, obra por obra, com os
          exemplares embaixo. Monta de novo cada vez que se abre, então nunca

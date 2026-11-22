@@ -25,6 +25,7 @@ function onOpen() {
     // não tem mais entrada própria no menu.
     .addItem('Criar / atualizar estrutura da planilha', 'criarEstruturaPlanilha')
     .addItem('Pré-cadastrar obras espíritas conhecidas', 'preCadastrarAcervo')
+    .addItem('Obras possivelmente repetidas', 'relatorioDeObrasRepetidas')
     .addSeparator()
     .addItem('Sincronizar reuniões com o Google Agenda', 'sincronizarAgora')
     .addItem('Instalar gatilhos automáticos', 'instalarGatilhos')

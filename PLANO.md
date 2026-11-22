@@ -229,6 +229,31 @@ pela estante; o empréstimo aparece em `Emprestimos` com `quem_registrou` =
 
 ---
 
+## Fase 7 — Catálogo sem repetição
+
+Objetivo: cada livro com uma ficha só. Pedido do Weldson, depois de achar o
+"Estudo Sistematizado" cortado e obras do pré-cadastro em dobro.
+
+- [x] 🤖 A obra é título + subtítulo (D15). Toda lista mostra os dois.
+- [x] 🤖 "Alterar obra" e editora, ano e edição em "Alterar exemplar".
+- [x] 🤖 Aviso de obra repetida ao cadastrar, sem bloquear (regra 9a).
+- [x] 🤖 Busca pelo número da obra e pelo tombo.
+- [x] 🤖 Acervo base: saem 18 obras que as duas fontes grafavam diferente
+      (666 → 648), e um teste impede a próxima.
+- [x] 🤖 "Obras repetidas": juntar duas fichas numa (regra 9b, D16), e o
+      mesmo levantamento no menu da planilha.
+- [ ] 👤 Rodar *Biblioteca → Criar / atualizar estrutura da planilha*: cria a
+      coluna `unida_a` em `Titulos` e a chave `obras_diferentes` no Config.
+      Sem isso a tela lista os pares mas não junta.
+- [ ] 👤 Percorrer Cadastrar → Obras repetidas: juntar os pares do
+      pré-cadastro e marcar como diferentes os que não são.
+
+**Aceite:** juntar um par passa os exemplares sem mudar tombo, a ficha que
+sai some da busca e continua na planilha com `unida_a`, e o par não volta à
+lista.
+
+---
+
 ## Estrutura de pastas
 
 ```

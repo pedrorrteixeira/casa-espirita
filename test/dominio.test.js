@@ -13,6 +13,7 @@ const assert = require('node:assert/strict');
 const {
   normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria, resumirEdicoes,
   acharTitulosParecidos, nomeDaObra, lerNumeroDaBusca, buscarPorNumero, resumirExemplarParaBusca,
+  obraUnida, semObrasUnidas, chaveDoPar, listarParesRepetidos, planejarUniao,
   montarRelatorioDoAcervo, descreverEdicao,
   calcularSituacao, soParaLerNaCasa, acharEmprestimoAberto, calcularDataPrevista,
   estaAtrasado, diasDeAtraso, planejarSincronizacao,
@@ -665,6 +666,111 @@ test('entrada vazia ou curta demais não avisa nada', () => {
   assert.deepEqual(parecidos('Os'), []);
   assert.deepEqual(acharTitulosParecidos(null, { titulo: 'Nosso Lar' }), []);
   assert.deepEqual(acharTitulosParecidos(ACERVO, null), []);
+});
+
+test('o acervo base não traz a mesma obra duas vezes', () => {
+  // As fontes 1 e 3 grafam diferente ("Além Túmulo" e "Além-Túmulo"), e a
+  // comparação letra por letra deixou 18 obras entrarem em dobro. Este teste
+  // usa a regra do aviso de obra repetida, que não liga para hífen, acento
+  // nem plural de uma letra.
+  const { montarAcervoBase_ } = require('../src/acervo-base.js');
+  const obras = montarAcervoBase_().map((obra, i) => Object.assign({ id_titulo: i + 1 }, obra));
+
+  // Pares parecidos que são livros DIFERENTES, conferidos à mão. Acrescentar
+  // aqui é afirmar isso — com o motivo ao lado.
+  const DIFERENTES = new Set([
+    '...E o amor continua|… E o amor continua',          // Divaldo (2016) e Chico (1983)
+    'Momentos de Saúde|Momentos de saúde e de consciência', // Joanna de Ângelis, 1992 e 2003
+    'Temas da Vida|Temas da Vida e da Morte',            // Chico e Divaldo
+    'Pai Nosso|Pão Nosso',                               // Meimei e Emmanuel
+    'Recados da vida|Relatos da Vida',                   // espíritos diferentes
+    'Relatos da Vida|Retratos da Vida',                  // Irmão X e Cornélio Pires
+    'Sementeira de luz|Sementeira de paz'                // dois livros de Neio Lúcio
+  ]);
+
+  const repetidas = [];
+  for (const obra of obras) {
+    for (const achado of acharTitulosParecidos(obras, obra, obra.id_titulo, 50)) {
+      const par = [obra.titulo, achado.titulo.titulo].sort().join('|');
+      if (!DIFERENTES.has(par) && !repetidas.includes(par)) repetidas.push(par);
+    }
+  }
+  assert.deepEqual(repetidas, [], 'obras repetidas no acervo base:\n' + repetidas.join('\n'));
+});
+
+// --- juntar obras repetidas --------------------------------------------------
+
+const PARNASO = [
+  { id_titulo: 10, titulo: 'Parnaso de Além-Túmulo', autor_ou_medium: '', autor_espiritual: '',
+    categoria: 'poesia', observacao: 'O Caminho' },
+  { id_titulo: 11, titulo: 'Parnaso de Além Túmulo', autor_ou_medium: 'Chico Xavier',
+    autor_espiritual: 'Espíritos Diversos', categoria: 'mensagens', serie: '', isbn: 978,
+    sinopse: 'Poesia mediúnica.', observacao: 'Bauru' },
+  { id_titulo: 12, titulo: 'Pai Nosso' },
+  { id_titulo: 13, titulo: 'Pão Nosso' }
+];
+
+test('semObrasUnidas tira a ficha que foi unida a outra', () => {
+  const acervo = [{ id_titulo: 1, unida_a: '' }, { id_titulo: 2, unida_a: 1 }, { id_titulo: 3 }];
+  assert.deepEqual(semObrasUnidas(acervo).map((t) => t.id_titulo), [1, 3]);
+  assert.equal(obraUnida({ unida_a: 1 }), true);
+  assert.equal(obraUnida({ unida_a: '' }), false);
+  assert.deepEqual(semObrasUnidas(null), []);
+});
+
+test('listarParesRepetidos acha cada par uma vez, o de número menor em cima', () => {
+  const pares = listarParesRepetidos(PARNASO, []);
+  assert.deepEqual(pares.map((p) => [p.chave, p.a.id_titulo, p.b.id_titulo, p.motivo]),
+    [['10-11', 10, 11, 'mesmo_titulo'], ['12-13', 12, 13, 'quase_igual']]);
+});
+
+test('listarParesRepetidos esquece o par marcado como livros diferentes', () => {
+  assert.deepEqual(listarParesRepetidos(PARNASO, ['12-13']).map((p) => p.chave), ['10-11']);
+  assert.equal(chaveDoPar(13, 12), '12-13');
+});
+
+test('listarParesRepetidos não mostra o que já foi unido', () => {
+  const unido = PARNASO.map((t) => (t.id_titulo === 11 ? Object.assign({}, t, { unida_a: 10 }) : t));
+  assert.deepEqual(listarParesRepetidos(unido, []).map((p) => p.chave), ['12-13']);
+});
+
+test('planejarUniao completa só o vazio da ficha que fica, em blocos', () => {
+  const plano = planejarUniao(PARNASO[0], PARNASO[1], []);
+  // Autoria inteira (os dois campos), sinopse e ISBN: estavam vazios na que fica.
+  // Categoria e observação não: a que fica já tinha.
+  assert.deepEqual(plano.completar, {
+    autor_ou_medium: 'Chico Xavier', autor_espiritual: 'Espíritos Diversos',
+    isbn: '978', sinopse: 'Poesia mediúnica.'
+  });
+});
+
+test('planejarUniao não mistura autoria: obra de autor não vira psicografia', () => {
+  const fica = { id_titulo: 1, titulo: 'X', autor_ou_medium: 'Allan Kardec', autor_espiritual: '' };
+  const sai = { id_titulo: 2, titulo: 'X', autor_ou_medium: '', autor_espiritual: 'Emmanuel' };
+  assert.deepEqual(planejarUniao(fica, sai, []).completar, {});
+});
+
+test('planejarUniao lista os tombos que passam de uma obra para a outra', () => {
+  const exemplares = [
+    { tombo: 9, id_titulo: 11 }, { tombo: 3, id_titulo: 11 }, { tombo: 4, id_titulo: 10 }
+  ];
+  assert.deepEqual(planejarUniao(PARNASO[0], PARNASO[1], exemplares).tombos, [3, 9]);
+});
+
+test('planejarUniao recusa a mesma obra, obra sumida e obra já unida', () => {
+  assert.throws(() => planejarUniao(PARNASO[0], PARNASO[0], []), /duas obras diferentes/);
+  assert.throws(() => planejarUniao(PARNASO[0], null, []), /não encontrada/);
+  assert.throws(() => planejarUniao(PARNASO[0], Object.assign({}, PARNASO[1], { unida_a: 10 }), []),
+    /já foi unida à nº 10/);
+});
+
+test('buscarPorNumero leva da obra unida à que ficou', () => {
+  const acervo = [{ id_titulo: 10, titulo: 'Fica' }, { id_titulo: 11, titulo: 'Sai', unida_a: 10 }];
+  const achados = buscarPorNumero(acervo, [], 'obra 11');
+  assert.deepEqual(achados.map((a) => [a.tipo, a.numero, a.titulo.id_titulo]), [['obra', 11, 10]]);
+  // Ciclo digitado à mão na planilha não trava a busca.
+  const ciclo = [{ id_titulo: 1, unida_a: 2 }, { id_titulo: 2, unida_a: 1 }];
+  assert.deepEqual(buscarPorNumero(ciclo, [], 'obra 1'), []);
 });
 
 // --- nomeDaObra --------------------------------------------------------------

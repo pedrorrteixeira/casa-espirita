@@ -45,7 +45,7 @@ function criarTitulo(sessao, dados, permitirDuplicata) {
     // caso do programa complementar do ESDE, recusado por ter o mesmo título
     // e a mesma organizadora do fundamental.
     if (!permitirDuplicata) {
-      var iguais = acharTitulosParecidos(lerTitulos(true), dados).filter(function (achado) {
+      var iguais = acharTitulosParecidos(semObrasUnidas(lerTitulos(true)), dados).filter(function (achado) {
         return achado.motivo === 'mesmo_titulo';
       });
       if (iguais.length) {
@@ -102,6 +102,7 @@ function atualizarTitulo(sessao, idTitulo, mudancas) {
   return comTrava_(function () {
     var titulo = lerTitulo(idTitulo);
     if (!titulo) throw new Error('Título ' + idTitulo + ' não existe.');
+    recusarObraUnida_(titulo);
 
     var aplicar = {};
     Object.keys(mudancas || {}).forEach(function (campo) {
@@ -142,11 +143,13 @@ function criarExemplar(sessao, dados) {
   }
 
   return comTrava_(function () {
-    if (!lerTitulo(idTitulo)) {
+    var obra = lerTitulo(idTitulo);
+    if (!obra) {
       throw new Error(
         'Título ' + idTitulo + ' não existe. Cadastre o título antes do exemplar.'
       );
     }
+    recusarObraUnida_(obra);
 
     // A validação de dados da planilha também barra `setValues`, mas não dá
     // para contar com ela: a mensagem não diz qual campo está errado, e a
@@ -329,7 +332,7 @@ function buscarNoAcervo(termo) {
   // fica de fora: "t 12" casaria com qualquer título que tivesse um 12.
   var pedido = lerNumeroDaBusca(termo);
   var soNumero = pedido && !(pedido.obra && pedido.tombo);
-  var porTexto = soNumero ? [] : buscarTitulos(titulos, termo);
+  var porTexto = soNumero ? [] : buscarTitulos(semObrasUnidas(titulos), termo);
   if (!pedido && !porTexto.length) return [];
 
   var exemplares = lerExemplares();
@@ -447,7 +450,8 @@ function verTitulo(idTitulo) {
 function relatorioDoAcervo(sessao) {
   exigir_(sessao, 'cadastrar_obra');
 
-  var relatorio = montarRelatorioDoAcervo(lerTitulos(), lerExemplares(), lerEmprestimos());
+  var relatorio = montarRelatorioDoAcervo(semObrasUnidas(lerTitulos()), lerExemplares(),
+    lerEmprestimos());
   relatorio.obras.forEach(function (obra) {
     obra.exemplares.forEach(function (exemplar) {
       exemplar.previsao = exemplar.previsao ? formatarData_(exemplar.previsao) : '';
@@ -476,7 +480,7 @@ function relatorioDoAcervo(sessao) {
 function procurarTitulosParecidos(sessao, dados, ignorarId) {
   exigir_(sessao, 'cadastrar_obra');
 
-  var parecidos = acharTitulosParecidos(lerTitulos(), dados, ignorarId);
+  var parecidos = acharTitulosParecidos(semObrasUnidas(lerTitulos()), dados, ignorarId);
   if (!parecidos.length) return [];
 
   var porTitulo = exemplaresPorTitulo_(lerExemplares());
@@ -497,6 +501,7 @@ function verTituloParaEditar(sessao, idTitulo) {
 
   var titulo = lerTitulo(idTitulo);
   if (!titulo) throw new Error('A obra nº ' + idTitulo + ' não existe.');
+  recusarObraUnida_(titulo);
 
   var exemplares = exemplaresPorTitulo_(lerExemplares())[Number(titulo.id_titulo)] || [];
 
@@ -770,6 +775,219 @@ function formatarData_(data) {
     SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(),
     'dd/MM/yyyy'
   );
+}
+
+// --- Obras repetidas ---------------------------------------------------------
+// Quando o mesmo livro tem duas fichas, os exemplares se dividem entre elas e
+// a busca mostra o livro duas vezes. Juntar passa tudo para uma ficha só.
+//
+// A que sai NÃO é apagada (regra 15): fica na planilha com `unida_a`
+// apontando para a que ficou, e some de tudo o que se procura. Ficar na
+// planilha guarda o histórico e impede o pré-cadastro de recriá-la.
+
+/** Obra unida a outra não recebe exemplar nem alteração: tudo vai na que ficou. */
+function recusarObraUnida_(titulo) {
+  if (obraUnida(titulo)) {
+    throw new Error('A obra nº ' + titulo.id_titulo + ' foi unida à nº ' +
+      limparCampo_(titulo.unida_a) + '. Use a nº ' + limparCampo_(titulo.unida_a) + '.');
+  }
+}
+
+/**
+ * Os pares de obras que podem ser o mesmo livro, para a tela "Obras
+ * repetidas". Sem cache: logo depois de juntar, a lista tem que mostrar que o
+ * par sumiu.
+ */
+function listarObrasRepetidas(sessao) {
+  exigir_(sessao, 'editar_obra');
+
+  var titulos = lerTitulos(true);
+  var porTitulo = exemplaresPorTitulo_(lerExemplares());
+
+  return {
+    // A coluna nasce no setup. Sem ela não dá para marcar a ficha que sai, e
+    // a tela avisa antes de alguém escolher, e não depois.
+    falta_coluna: titulos.length > 0 && !('unida_a' in titulos[0]),
+    pares: listarParesRepetidos(titulos, lerObrasDiferentes_()).map(function (par) {
+      return {
+        chave: par.chave,
+        motivo: par.motivo,
+        a: resumirObra_(par.a, porTitulo),
+        b: resumirObra_(par.b, porTitulo)
+      };
+    })
+  };
+}
+
+/**
+ * O que juntar vai fazer, antes de fazer: quantos exemplares passam e o que a
+ * ficha que fica ganha. A tela mostra isto e pede confirmação — juntar se
+ * desfaz só pela planilha.
+ */
+function prepararUniao(sessao, idFica, idSai) {
+  exigir_(sessao, 'editar_obra');
+
+  var fica = lerTitulo(idFica);
+  var sai = lerTitulo(idSai);
+  if (!fica) throw new Error('A obra nº ' + idFica + ' não existe.');
+  if (!sai) throw new Error('A obra nº ' + idSai + ' não existe.');
+
+  var exemplares = lerExemplares();
+  var plano = planejarUniao(fica, sai, exemplares);
+  var porTitulo = exemplaresPorTitulo_(exemplares);
+
+  return {
+    fica: resumirObra_(fica, porTitulo),
+    sai: resumirObra_(sai, porTitulo),
+    tombos: plano.tombos,
+    completar: Object.keys(plano.completar)
+  };
+}
+
+/**
+ * Junta a obra `idSai` na `idFica`. Dentro da trava, e refaz o plano lendo de
+ * novo: entre a confirmação e o clique, alguém pode ter cadastrado mais um
+ * exemplar na que sai.
+ *
+ * A ordem das gravações é de propósito. A ficha que sai é marcada por ÚLTIMO:
+ * se algo falhar no meio, ela continua visível e com menos exemplares, e
+ * juntar de novo termina o serviço. Marcada primeiro, sumiria da busca com
+ * exemplares ainda presos a ela.
+ *
+ * O Log guarda os tombos que passaram — é o que permite desfazer à mão.
+ */
+function juntarObras(sessao, idFica, idSai) {
+  var quemRegistrou = exigir_(sessao, 'editar_obra').nome;
+
+  return comTrava_(function () {
+    var fica = lerTitulo(idFica);
+    var sai = lerTitulo(idSai);
+    if (!fica) throw new Error('A obra nº ' + idFica + ' não existe.');
+    if (!sai) throw new Error('A obra nº ' + idSai + ' não existe.');
+    if (!('unida_a' in sai)) {
+      throw new Error(
+        'Falta a coluna "unida_a" na aba Titulos. Peça a quem tem a planilha ' +
+        'para rodar Biblioteca → Criar / atualizar estrutura da planilha.'
+      );
+    }
+
+    var exemplares = lerExemplares();
+    var plano = planejarUniao(fica, sai, exemplares);
+    var idQueFica = Number(fica.id_titulo);
+
+    if (Object.keys(plano.completar).length) {
+      atualizarCelulas_(ABA_TITULOS, fica._linha, plano.completar);
+    }
+
+    exemplares.forEach(function (exemplar) {
+      if (Number(exemplar.id_titulo) !== Number(sai.id_titulo)) return;
+      atualizarCelulas_(ABA_EXEMPLARES, exemplar._linha, { id_titulo: idQueFica });
+    });
+
+    lerSugestoes().forEach(function (sugestao) {
+      if (Number(sugestao.id_titulo) !== Number(sai.id_titulo)) return;
+      atualizarCelulas_(ABA_SUGESTOES, sugestao._linha, { id_titulo: idQueFica });
+    });
+
+    atualizarCelulas_(ABA_TITULOS, sai._linha, { unida_a: idQueFica });
+    invalidarCacheTitulos_();
+
+    registrarLog_(quemRegistrou, 'juntar', 'titulo', idQueFica,
+      'obra ' + sai.id_titulo + ' unida a esta' +
+      (plano.tombos.length ? ' · tombos ' + plano.tombos.join(', ') : ' · sem exemplares') +
+      (Object.keys(plano.completar).length
+        ? ' · completou ' + Object.keys(plano.completar).join(', ')
+        : ''));
+
+    return {
+      fica: idQueFica,
+      sai: Number(sai.id_titulo),
+      nome: nomeDaObra(fica),
+      tombos: plano.tombos,
+      completou: Object.keys(plano.completar)
+    };
+  });
+}
+
+/**
+ * "São livros diferentes": o par sai da lista de repetidas. Fica no `Config`,
+ * e não escondido no código, para quem tem a planilha ver e desfazer — basta
+ * apagar o par da célula.
+ */
+function marcarObrasDiferentes(sessao, idA, idB) {
+  var quemRegistrou = exigir_(sessao, 'editar_obra').nome;
+
+  return comTrava_(function () {
+    var pares = lerObrasDiferentes_();
+    var chave = chaveDoPar(idA, idB);
+    if (pares.indexOf(chave) === -1) pares.push(chave);
+
+    gravarConfig_('obras_diferentes', escreverParesDiferentes_(pares),
+      'Pares de obras de título parecido que são livros DIFERENTES. Apague um ' +
+      'par daqui para ele voltar à lista de Obras repetidas.');
+    registrarLog_(quemRegistrou, 'marcar', 'titulo', Number(idA),
+      'livro diferente da obra ' + Number(idB));
+    return chave;
+  });
+}
+
+/**
+ * Os pares do `Config`, como chaves "12-345". Gravados como "12 e 345":
+ * "1-12" numa célula o Sheets lê como data, e o par viraria 1º de dezembro.
+ * Lê com tolerância — quem desfaz é gente, editando a célula à mão.
+ */
+function lerObrasDiferentes_() {
+  var texto = limparCampo_(lerConfig('obras_diferentes', ''));
+  var pares = [];
+  var achado;
+  var padrao = /(\d+)\s*(?:e|-|–|\/)\s*(\d+)/g;
+  while ((achado = padrao.exec(texto)) !== null) {
+    var chave = chaveDoPar(achado[1], achado[2]);
+    if (pares.indexOf(chave) === -1) pares.push(chave);
+  }
+  return pares;
+}
+
+function escreverParesDiferentes_(pares) {
+  return pares.map(function (chave) { return chave.replace('-', ' e '); }).join(', ');
+}
+
+/**
+ * O mesmo levantamento da tela, numa janela da planilha, para quem a abre.
+ * Só lê: juntar é pela tela do sistema, onde fica registrado quem juntou.
+ */
+function relatorioDeObrasRepetidas() {
+  var titulos = lerTitulos(true);
+  var porTitulo = exemplaresPorTitulo_(lerExemplares());
+  var pares = listarParesRepetidos(titulos, lerObrasDiferentes_());
+
+  var motivos = {
+    mesmo_titulo: 'mesmo título e subtítulo',
+    comeca_igual: 'um título é o começo do outro',
+    quase_igual: 'quase o mesmo título'
+  };
+  var descrever = function (obra) {
+    var total = resumirDisponibilidade(porTitulo[Number(obra.id_titulo)] || []).total;
+    return 'nº ' + obra.id_titulo + '  ' + nomeDaObra(obra) +
+      '\n      ' + (montarAutoria(obra) || '(sem autoria)') + ' · ' +
+      (total === 1 ? '1 exemplar' : total + ' exemplares');
+  };
+
+  var linhas = [
+    pares.length
+      ? pares.length + ' par(es) de obras que podem ser o mesmo livro.'
+      : 'Nenhuma obra parece repetida.',
+    'Para juntar: no sistema, Cadastrar → Obras repetidas.',
+    ''
+  ];
+  pares.forEach(function (par) {
+    linhas.push('— ' + motivos[par.motivo]);
+    linhas.push('   ' + descrever(par.a));
+    linhas.push('   ' + descrever(par.b));
+    linhas.push('');
+  });
+
+  mostrarRelatorio_('Obras possivelmente repetidas', linhas.join('\n'));
 }
 
 // --- Diagnóstico -------------------------------------------------------------

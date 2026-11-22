@@ -256,6 +256,122 @@ function distanciaDeEdicao_(a, b, teto) {
   return anterior[b.length];
 }
 
+// --- Obras repetidas: juntar duas fichas numa ---------------------------------
+
+/**
+ * A obra foi unida a outra?
+ *
+ * Juntar duas fichas do mesmo livro NÃO apaga a que sai (regra 15): ela fica
+ * na planilha com `unida_a` apontando para a que ficou, e some de tudo o que
+ * se procura. Ficar na planilha é o que mantém o histórico e o que impede o
+ * pré-cadastro de recriá-la — ele pula título que já existe.
+ */
+function obraUnida(titulo) {
+  return !!titulo && limpar_(titulo.unida_a) !== '';
+}
+
+/** As obras que contam: sem as que foram unidas a outra. */
+function semObrasUnidas(titulos) {
+  return (titulos || []).filter(function (titulo) { return !obraUnida(titulo); });
+}
+
+/** A chave de um par de obras, a mesma em qualquer ordem: "12-345". */
+function chaveDoPar(idA, idB) {
+  var a = Number(idA);
+  var b = Number(idB);
+  return Math.min(a, b) + '-' + Math.max(a, b);
+}
+
+/**
+ * Os pares de obras que podem ser o mesmo livro, para a tela de juntar.
+ *
+ * A regra é a do aviso de obra repetida (`acharTitulosParecidos`). Fica de
+ * fora o que já foi unido e o par que alguém já marcou como livros diferentes
+ * — `diferentes` é a lista de chaves do `Config`. Sem isso, "Pai Nosso" e "Pão
+ * Nosso" voltariam toda vez, e uma lista que nunca esvazia para de ser lida.
+ *
+ * Cada par sai uma vez só, com a obra de número menor em `a`.
+ */
+function listarParesRepetidos(titulos, diferentes) {
+  var vivas = semObrasUnidas(titulos);
+  var ignorar = {};
+  (diferentes || []).forEach(function (chave) { ignorar[limpar_(chave)] = true; });
+
+  var vistos = {};
+  var pares = [];
+  vivas.forEach(function (obra) {
+    acharTitulosParecidos(vivas, obra, obra.id_titulo, 20).forEach(function (achado) {
+      var chave = chaveDoPar(obra.id_titulo, achado.titulo.id_titulo);
+      if (vistos[chave] || ignorar[chave]) return;
+      vistos[chave] = true;
+
+      var menorPrimeiro = Number(obra.id_titulo) < Number(achado.titulo.id_titulo);
+      pares.push({
+        chave: chave,
+        motivo: achado.motivo,
+        a: menorPrimeiro ? obra : achado.titulo,
+        b: menorPrimeiro ? achado.titulo : obra
+      });
+    });
+  });
+
+  var peso = { mesmo_titulo: 0, comeca_igual: 1, quase_igual: 2 };
+  return pares.sort(function (x, y) {
+    return peso[x.motivo] - peso[y.motivo] ||
+      normalizarTexto(nomeDaObra(x.a)).localeCompare(normalizarTexto(nomeDaObra(x.b)));
+  });
+}
+
+/**
+ * O que a ficha que fica herda da que sai, em blocos. Um bloco só é copiado
+ * quando está INTEIRO vazio na que fica: autoria vai com os dois campos ou
+ * não vai, porque copiar só o autor espiritual numa obra de autor a tornaria
+ * psicografia; série vai com o número na série, pelo mesmo motivo.
+ *
+ * Título e subtítulo nunca: o nome da obra é o da ficha que a bibliotecária
+ * escolheu manter.
+ */
+var BLOCOS_QUE_A_UNIAO_COMPLETA = [
+  ['autor_ou_medium', 'autor_espiritual'],
+  ['serie', 'ordem_na_serie'],
+  ['tradutor'], ['isbn'], ['categoria'], ['sinopse'], ['link_online'], ['observacao']
+];
+
+/**
+ * Planeja juntar a obra `sai` na obra `fica`: quais exemplares passam e o que
+ * a ficha que fica ganha. Não grava nada — quem grava é `juntarObras`, e a
+ * tela mostra este plano antes, para a bibliotecária confirmar.
+ *
+ * Nada da ficha que fica é sobrescrito: só o vazio é completado.
+ */
+function planejarUniao(fica, sai, exemplares) {
+  if (!fica || !sai) throw new Error('Obra não encontrada.');
+  if (Number(fica.id_titulo) === Number(sai.id_titulo)) {
+    throw new Error('Escolha duas obras diferentes.');
+  }
+  [fica, sai].forEach(function (obra) {
+    if (obraUnida(obra)) {
+      throw new Error('A obra nº ' + obra.id_titulo + ' já foi unida à nº ' +
+        limpar_(obra.unida_a) + '. Use a nº ' + limpar_(obra.unida_a) + '.');
+    }
+  });
+
+  var completar = {};
+  BLOCOS_QUE_A_UNIAO_COMPLETA.forEach(function (bloco) {
+    var vazioNaQueFica = bloco.every(function (campo) { return !limpar_(fica[campo]); });
+    var cheioNaQueSai = bloco.some(function (campo) { return limpar_(sai[campo]); });
+    if (!vazioNaQueFica || !cheioNaQueSai) return;
+    bloco.forEach(function (campo) { completar[campo] = limpar_(sai[campo]); });
+  });
+
+  var tombos = (exemplares || [])
+    .filter(function (exemplar) { return Number(exemplar.id_titulo) === Number(sai.id_titulo); })
+    .map(function (exemplar) { return Number(exemplar.tombo); })
+    .sort(function (a, b) { return a - b; });
+
+  return { completar: completar, tombos: tombos };
+}
+
 /**
  * O nome da obra como quem está com o livro na mão o reconhece: título e
  * subtítulo juntos.
@@ -307,6 +423,9 @@ function lerNumeroDaBusca(termo) {
  * aparece uma vez só.
  *
  * Exemplar cuja obra não existe não aparece — não há o que mostrar dele.
+ *
+ * Obra unida a outra leva à que ficou: o número antigo pode estar anotado em
+ * algum lugar, e ele continua achando o livro.
  */
 function buscarPorNumero(titulos, exemplares, termo) {
   var pedido = lerNumeroDaBusca(termo);
@@ -323,18 +442,31 @@ function buscarPorNumero(titulos, exemplares, termo) {
   if (pedido.tombo) {
     (exemplares || []).forEach(function (exemplar) {
       if (Number(exemplar.tombo) !== pedido.numero) return;
-      var titulo = porId[Number(exemplar.id_titulo)];
+      var titulo = obraQueFicou_(porId, porId[Number(exemplar.id_titulo)]);
       if (!titulo) return;
       vistas[Number(titulo.id_titulo)] = true;
       achados.push({ tipo: 'tombo', numero: pedido.numero, titulo: titulo, exemplar: exemplar });
     });
   }
 
-  if (pedido.obra && porId[pedido.numero] && !vistas[pedido.numero]) {
-    achados.push({ tipo: 'obra', numero: pedido.numero, titulo: porId[pedido.numero] });
+  var obra = pedido.obra ? obraQueFicou_(porId, porId[pedido.numero]) : null;
+  if (obra && !vistas[Number(obra.id_titulo)]) {
+    achados.push({ tipo: 'obra', numero: pedido.numero, titulo: obra });
   }
 
   return achados;
+}
+
+/** Segue `unida_a` até a obra que ficou. Para em ciclo, que só um erro de
+ *  digitação na planilha produziria. */
+function obraQueFicou_(porId, titulo) {
+  var passou = {};
+  while (titulo && obraUnida(titulo)) {
+    if (passou[titulo.id_titulo]) return null;
+    passou[titulo.id_titulo] = true;
+    titulo = porId[Number(titulo.unida_a)];
+  }
+  return titulo || null;
 }
 
 /**
@@ -1204,6 +1336,11 @@ if (typeof module !== 'undefined') {
     descreverEdicao: descreverEdicao,
     resumirEdicoes: resumirEdicoes,
     acharTitulosParecidos: acharTitulosParecidos,
+    obraUnida: obraUnida,
+    semObrasUnidas: semObrasUnidas,
+    chaveDoPar: chaveDoPar,
+    listarParesRepetidos: listarParesRepetidos,
+    planejarUniao: planejarUniao,
     nomeDaObra: nomeDaObra,
     lerNumeroDaBusca: lerNumeroDaBusca,
     buscarPorNumero: buscarPorNumero,

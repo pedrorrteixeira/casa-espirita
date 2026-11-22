@@ -132,6 +132,23 @@ function lerConfig(chave, padrao) {
   return padrao;
 }
 
+/**
+ * Grava o valor de uma chave do `Config`. Se a chave ainda não existe — o
+ * setup não rodou desde que ela nasceu —, acrescenta a linha, com a
+ * descrição, em vez de falhar: quem chama está no meio de um gesto do
+ * voluntário, e "rode o setup antes" não é resposta para ele.
+ */
+function gravarConfig_(chave, valor, descricao) {
+  var pares = lerAba_(ABA_CONFIG);
+  for (var i = 0; i < pares.length; i++) {
+    if (String(pares[i].chave).trim() === chave) {
+      atualizarCelulas_(ABA_CONFIG, pares[i]._linha, { valor: valor });
+      return;
+    }
+  }
+  escreverLinha_(ABA_CONFIG, { chave: chave, valor: valor, descricao: descricao || '' });
+}
+
 function lerConfigNumero(chave, padrao) {
   var valor = Number(lerConfig(chave, padrao));
   if (!isFinite(valor)) {
@@ -186,6 +203,10 @@ function lerExemplares() {
 
 function lerPessoas() {
   return lerAba_(ABA_PESSOAS);
+}
+
+function lerSugestoes() {
+  return lerAba_(ABA_SUGESTOES);
 }
 
 function lerEmprestimos() {

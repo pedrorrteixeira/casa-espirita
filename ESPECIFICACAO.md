@@ -40,6 +40,7 @@ títulos. Os demais voluntários apenas registram empréstimo e devolução.
 | D12 | Link do sistema publicado atrás de encurtador ou Google Sites | A URL do Web App muda na migração para Workspace; assim não se reensina 40 pessoas |
 | D13 | Identificadores **numéricos sequenciais** (`id_titulo`, `id_pessoa`, `id_emprestimo`, `tombo`) | Etiqueta fica "Tombo 142" e a tela de empréstimo pede 3 toques em vez de 8. E `SUMIFS` só resolve `com_quem` se `id_pessoa` for número |
 | D14 | Colunas derivadas são **uma `ARRAYFORMULA` na linha 2**, não fórmula por linha | Linha nova recebe o valor sozinha. Nenhum código precisa escrever em coluna derivada, o que torna D7 verificável em vez de ser só disciplina |
+| D16 | Juntar fichas repetidas **marca** a que sai (`unida_a`) em vez de apagá-la | Regra 15. E é o que impede o pré-cadastro de recriá-la: ele pula título que já existe na aba |
 | D15 | A obra é identificada por **título + subtítulo**. A autoria não entra | Decisão do Weldson. O *Estudo Sistematizado da Doutrina Espírita* tem programa fundamental e complementar: mesmo título, mesma organizadora, livros diferentes. E a autoria do mesmo livro chega grafada de dois jeitos ("Francisco Cândido Xavier" do Google, "(Chico Xavier)" do pré-cadastro), então compará-la deixava duplicar calado |
 
 ### Decisões adiadas
@@ -68,12 +69,13 @@ Pares chave/valor. Nada de configuração no código.
 | `id_calendario` | `...@group.calendar.google.com` | agenda das reuniões |
 | `horario_reuniao` | `19:30` | horário fixo das segundas |
 | `nome_casa` | | cabeçalho da interface |
+| `obras_diferentes` | `12 e 345, 7 e 89` | pares de título parecido que são livros diferentes; saem da lista de obras repetidas |
 
 ### Aba `Titulos` — a obra
 `id_titulo` (PK) · `titulo` · `subtitulo` · `autor` · `autor_espiritual` ·
 `medium` · `tradutor` · `editora` · `ano` · `isbn` · `categoria` · `serie` ·
 `ordem_na_serie` · `sinopse` · `link_online` · `qtd_exemplares` (fórmula) ·
-`qtd_disponiveis` (fórmula) · `observacao`
+`qtd_disponiveis` (fórmula) · `observacao` · `unida_a`
 
 - `categoria`: doutrinário, romance, infantil, estudo, mediunidade, biografia…
   (validação de dados por lista, não texto livre).
@@ -186,6 +188,12 @@ Toda escrita do Web App grava aqui. Sem dado pessoal sensível no `detalhe`.
 9a. Cadastrar obra de título e subtítulo iguais aos de outra **avisa e pede
     confirmação, mas não impede** (D15). Título parecido — subtítulo colado
     ao título, erro de digitação — só avisa, enquanto se digita.
+9b. Duas fichas do mesmo livro se **juntam**: os exemplares (e as sugestões)
+    da que sai passam para a que fica, o vazio da que fica é completado com
+    a outra, e a que sai ganha `unida_a` = número da que ficou. Ela não é
+    apagada (regra 15): some da busca, do aviso de repetida e do relatório,
+    e o número antigo, buscado, leva à que ficou. Não recebe mais exemplar
+    nem alteração. O `Log` guarda os tombos que passaram, para desfazer à mão.
 10. Baixa de exemplar = `ativo` = NÃO. Nunca `deleteRow`.
 
 **Agenda**
