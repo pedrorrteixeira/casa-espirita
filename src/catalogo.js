@@ -188,12 +188,16 @@ function criarExemplar(sessao, dados) {
 }
 
 /**
- * Altera o que descreve um exemplar já cadastrado: a conservação, se ele pode
- * sair da casa, e a observação.
+ * Altera o que descreve um exemplar já cadastrado: editora, ano e edição, a
+ * conservação, se ele pode sair da casa, e a observação.
  *
- * Só esses três, porque são os que mudam com o tempo — o livro envelhece, as
- * páginas começam a soltar. Editora, ano e edição erram uma vez, no cadastro,
- * e se corrigem na planilha.
+ * Editora, ano e edição eram só pela planilha, com o argumento de que erram
+ * uma vez, no cadastro. Erram — e a planilha só duas pessoas abrem, então o
+ * erro ficava esperando por elas. Pedido do Weldson.
+ *
+ * Os três só mudam se vierem em `dados`: quem chamar sem eles não apaga a
+ * edição de ninguém. Não há validação de formato aqui, como não há em
+ * `criarExemplar` — quem a faz é a tela, que só aceita dígito.
  *
  * Marcar um livro que está emprestado é permitido: ele continua emprestado
  * até voltar (ver `calcularSituacao`), e daí em diante não sai mais.
@@ -216,17 +220,31 @@ function atualizarExemplar(sessao, tombo, dados) {
     }
 
     var soNaCasa = !!dados && dados.so_na_casa === true;
-    atualizarCelulas_(ABA_EXEMPLARES, exemplar._linha, {
+    var aplicar = {
       estado: estado,
       emprestavel: soNaCasa ? 'NÃO' : 'SIM',
       observacao: limparCampo_(dados && dados.observacao)
+    };
+
+    // O Log diz quais destes mudaram, e não o valor: editora e ano não são
+    // dado pessoal, mas "o que mudou" é o que alguém procura ali depois.
+    var edicaoMudou = [];
+    ['editora', 'ano', 'edicao'].forEach(function (campo) {
+      if (!dados || dados[campo] === undefined) return;
+      var valor = limparCampo_(dados[campo]);
+      if (valor === limparCampo_(exemplar[campo])) return;
+      aplicar[campo] = valor;
+      edicaoMudou.push(campo === 'edicao' ? 'edição' : campo);
     });
+
+    atualizarCelulas_(ABA_EXEMPLARES, exemplar._linha, aplicar);
     invalidarCacheTitulos_();
 
     // A observação não vai para o Log: é texto livre, e pode acabar tendo
     // nome de pessoa ("doado pela família de…").
     registrarLog_(quemRegistrou, 'alterar', 'exemplar', alvo,
-      'estado ' + estado + (soNaCasa ? ' · só para ler na casa' : ' · pode sair'));
+      'estado ' + estado + (soNaCasa ? ' · só para ler na casa' : ' · pode sair') +
+      (edicaoMudou.length ? ' · corrigiu ' + edicaoMudou.join(', ') : ''));
     return alvo;
   });
 }

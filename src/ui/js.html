@@ -2025,9 +2025,10 @@
   });
 
   // ----------------------------------------------- cadastro: alterar exemplar
-  // Para o que muda com o tempo: o livro envelhece, as páginas soltam, e um
-  // exemplar que saía passa a ser só para ler na casa. Procura pelo tombo,
-  // que é o número da etiqueta — quem altera está com o livro na mão.
+  // Tudo o que descreve este volume: editora, ano e edição digitados errado no
+  // cadastro, e o que muda com o tempo — o livro envelhece, as páginas soltam,
+  // e um exemplar que saía passa a ser só para ler na casa. Procura pelo
+  // tombo, que é o número da etiqueta — quem altera está com o livro na mão.
 
   var formAlterarExemplar = $('#form-alterar-exemplar');
   var tomboAlterar = $('#tombo-alterar');
@@ -2067,6 +2068,9 @@
         $('#alterando-exemplar').textContent =
           'Tombo ' + dados.tombo + ': ' + partes.join(' · ');
 
+        formAlterarExemplar.elements.editora.value = dados.editora || '';
+        formAlterarExemplar.elements.ano.value = dados.ano || '';
+        formAlterarExemplar.elements.edicao.value = dados.numero_edicao || '';
         $('#estado-exemplar-alterar').value = dados.estado || 'bom';
         formAlterarExemplar.elements.so_na_casa.checked = dados.so_na_casa;
         formAlterarExemplar.elements.observacao_exemplar.value = dados.observacao || '';
@@ -2090,6 +2094,9 @@
     var estaFora = exemplarEmEdicao.situacao === 'emprestado';
 
     var mudancas = {
+      editora: formAlterarExemplar.elements.editora.value.trim(),
+      ano: formAlterarExemplar.elements.ano.value.trim(),
+      edicao: formAlterarExemplar.elements.edicao.value.trim(),
       estado: $('#estado-exemplar-alterar').value,
       so_na_casa: soNaCasa,
       observacao: formAlterarExemplar.elements.observacao_exemplar.value.trim()

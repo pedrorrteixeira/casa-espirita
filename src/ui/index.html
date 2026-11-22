@@ -484,7 +484,8 @@
 
           <p class="dica">
             Editora, ano e edição não estão aqui: são de cada exemplar, e a casa
-            pode ter a mesma obra em edições diferentes.
+            pode ter a mesma obra em edições diferentes. Corrija em
+            <strong>Alterar exemplar</strong>, pelo tombo.
           </p>
 
           <button type="submit" id="btn-salvar-alterar-obra">Salvar alteração</button>
@@ -497,10 +498,11 @@
          frágeis, que já estavam no acervo quando a marca "só para ler na
          casa" passou a existir.
 
-         Só o que muda com o tempo: conservação, a marca e a observação.
-         Editora, ano e edição erram uma vez, no cadastro, e se corrigem na
-         planilha. Procura pelo tombo porque é o que está na etiqueta, com o
-         livro na mão. -->
+         Tudo o que descreve ESTE volume: editora, ano, edição, conservação, a
+         marca e a observação — os mesmos campos de "Novo exemplar", na mesma
+         ordem. Editora, ano e edição eram só pela planilha, que só duas
+         pessoas abrem. Procura pelo tombo porque é o que está na etiqueta,
+         com o livro na mão. -->
     <form id="form-alterar-exemplar" class="bloco-cadastro oculta" autocomplete="off">
       <fieldset>
         <legend>Alterar exemplar</legend>
@@ -515,10 +517,31 @@
         <div id="campos-alterar-exemplar" class="oculta">
           <p id="alterando-exemplar" class="escolhida"></p>
 
-          <label>
-            Estado
-            <select name="estado" id="estado-exemplar-alterar"></select>
-          </label>
+          <div class="par">
+            <label>
+              Editora
+              <input name="editora" list="lista-editora" placeholder="FEB Editora">
+            </label>
+            <label>
+              Ano
+              <input name="ano" inputmode="numeric" maxlength="4" pattern="[0-9]{4}"
+                   data-so-digitos placeholder="1978"
+                   title="Quatro dígitos, como 1978">
+            </label>
+          </div>
+
+          <div class="par">
+            <label>
+              Edição
+              <input name="edicao" inputmode="numeric" maxlength="3" pattern="[0-9]{1,3}"
+                   data-so-digitos placeholder="3"
+                   title="Só o número da edição">
+            </label>
+            <label>
+              Estado
+              <select name="estado" id="estado-exemplar-alterar"></select>
+            </label>
+          </div>
 
           <label class="caixa">
             <input type="checkbox" name="so_na_casa">

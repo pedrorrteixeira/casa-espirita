@@ -427,8 +427,10 @@ function emprestadosAgora_(somenteAtrasados) {
  * Diz o que o atendente precisa saber antes de confirmar.
  *
  * É também o que carrega a tela "Alterar exemplar", por isso traz os campos
- * que ela edita (`estado`, `so_na_casa`, `observacao`) além do resumo para
- * leitura.
+ * que ela edita (`editora`, `ano`, `numero_edicao`, `estado`, `so_na_casa`,
+ * `observacao`) além do resumo para leitura. A edição vem duas vezes:
+ * `edicao` é a frase para ler ("FEB · 1978 · 3ª ed."), `numero_edicao` é o
+ * que está gravado, para o campo da tela.
  */
 function verExemplar(sessao, tombo) {
   exigir_(sessao, 'ver_com_quem');
@@ -451,6 +453,9 @@ function verExemplar(sessao, tombo) {
     // "FEB · 2022 · 34ª ed.", e não "FEB · 2022 · 34": o número solto não
     // diz que é a edição. A mesma redação do relatório do acervo.
     edicao: descreverEdicao(exemplar),
+    editora: limparCampo_(exemplar.editora),
+    ano: limparCampo_(exemplar.ano),
+    numero_edicao: limparCampo_(exemplar.edicao),
     estado: exemplar.estado,
     so_na_casa: soParaLerNaCasa(exemplar),
     observacao: limparCampo_(exemplar.observacao),
