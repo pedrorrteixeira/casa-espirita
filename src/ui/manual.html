@@ -33,9 +33,10 @@
     </details>
 
     <details class="grupo">
-      <summary>Cuidar do acervo<small>8 assuntos</small></summary>
+      <summary>Cuidar do acervo<small>9 assuntos</small></summary>
       <a href="#m-doacao">Chegaram livros novos</a>
       <a href="#m-maisum">Já temos esse livro, chegou outra cópia</a>
+      <a href="#m-corrigir">A ficha de um livro está errada</a>
       <a href="#m-alterar">Um livro ficou frágil e não pode mais sair</a>
       <a href="#m-sumiu">Um livro sumiu ou estragou</a>
       <a href="#m-catalogo">Aparecem livros que a casa não tem</a>
@@ -320,13 +321,31 @@
 
     <div class="cuidado">
       <p>
-        <strong>Se aparecer “Esta obra já está no acervo”</strong>, quase sempre
-        você quer <kbd>Acrescentar este exemplar à obra existente</kbd> — é o
-        caso de a casa ter ganhado a segunda cópia do mesmo livro.
+        <strong>O sistema avisa quando o livro parece já estar no
+        acervo.</strong> Enquanto você digita o título, aparece uma caixa
+        amarela com as obras de título igual ou parecido. Se uma delas for o
+        livro que está na sua mão, toque em
+        <kbd>É esta — cadastrar só o exemplar</kbd>: o sistema leva você ao
+        <kbd>Novo exemplar</kbd> com a obra já escolhida. Se não for, siga
+        normalmente — o aviso não impede nada.
       </p>
       <p>
-        Só use <kbd>cadastrar separado</kbd> se for mesmo outra obra com o mesmo
-        nome.
+        <strong>Se ao salvar aparecer “Esta obra já está no acervo”</strong>, é
+        porque já existe obra com o mesmo título e subtítulo. Quase sempre você
+        quer <kbd>Acrescentar este exemplar a esta obra</kbd> — é o caso de a
+        casa ter ganhado a segunda cópia do mesmo livro. Só use
+        <kbd>cadastrar separado</kbd> se for mesmo outra obra com o mesmo nome.
+      </p>
+    </div>
+
+    <div class="cuidado">
+      <p>
+        <strong>Livros com o mesmo título e subtítulo diferente são livros
+        diferentes.</strong> O <em>Estudo Sistematizado da Doutrina
+        Espírita</em> tem o programa fundamental e o complementar; obras em
+        tomos ou volumes, o mesmo. Escreva o que separa um do outro no campo
+        <kbd>Subtítulo</kbd> — “Programa fundamental”, “Tomo II”. É ele que
+        aparece nas listas para você escolher o volume certo.
       </p>
     </div>
 
@@ -398,10 +417,15 @@
 
     <ol class="passos">
       <li>Aba <kbd>Cadastrar</kbd>, no grupo <strong>Livros</strong>: <kbd>Novo exemplar</kbd>.</li>
-      <li>Escreva parte do título, do autor ou do médium.</li>
       <li>
-        Escolha a obra na lista. Cada linha mostra quantos exemplares a casa já
-        tem e de quais edições — vale conferir antes.
+        Escreva parte do título, do autor ou do médium. Se tiver à mão outra
+        cópia já etiquetada, o <strong>tombo</strong> dela também acha a obra.
+      </li>
+      <li>
+        Escolha a obra na lista. Cada linha mostra o título com o subtítulo, o
+        número da obra, quantos exemplares a casa já tem e de quais edições —
+        vale conferir antes. Obras com o mesmo título, como os volumes de uma
+        coleção, se distinguem pelo subtítulo.
       </li>
       <li>
         Preencha editora, ano, edição e estado <strong>deste</strong> livro.
@@ -457,6 +481,49 @@
     </dl>
   </article>
 
+  <!-- ------------------------------------------------------------ corrigir -->
+  <article class="verbete" id="m-corrigir">
+    <p class="onde-fica">Cadastrar</p>
+    <h2 tabindex="-1">A ficha de um livro está errada</h2>
+
+    <p>
+      Título digitado errado, autor no campo errado, categoria faltando, o
+      volume sem subtítulo: tudo isso se corrige na ficha da obra. A correção
+      vale para todos os exemplares dela de uma vez.
+    </p>
+
+    <ol class="passos">
+      <li>Aba <kbd>Cadastrar</kbd>, no grupo <strong>Livros</strong>: <kbd>Alterar obra</kbd>.</li>
+      <li>
+        Procure a obra pelo título, autor ou médium — ou pelo número dela, ou
+        pelo tombo de qualquer exemplar.
+      </li>
+      <li>Escolha na lista. A ficha abre com tudo o que está gravado.</li>
+      <li>Corrija o que precisar e toque em <kbd>Salvar alteração</kbd>.</li>
+    </ol>
+
+    <p>
+      Se você mudar o título para um que já existe em outra ficha, aparece o
+      aviso amarelo de obra parecida. Confira antes de salvar: duas fichas para
+      o mesmo livro dividem os exemplares entre elas, e a busca passa a mostrar
+      o livro duas vezes.
+    </p>
+
+    <dl class="e-se">
+      <dt>Quero corrigir editora, ano ou edição</dt>
+      <dd>
+        Não estão aqui: são de cada exemplar, e a casa pode ter a mesma obra em
+        edições diferentes. Peça a quem tem acesso à planilha.
+      </dd>
+
+      <dt>O livro é psicografado e está como se não fosse</dt>
+      <dd>
+        Marque <kbd>Obra psicografada</kbd>. O campo <kbd>Autor</kbd> vira
+        <kbd>Médium</kbd> e aparece o <kbd>Autor espiritual</kbd>.
+      </dd>
+    </dl>
+  </article>
+
   <!-- ------------------------------------------------------------- alterar -->
   <article class="verbete" id="m-alterar">
     <p class="onde-fica">Cadastrar</p>
@@ -495,6 +562,12 @@
       <dd>
         Isso não muda com o tempo, então não está nesta tela. Peça a quem tem
         acesso à planilha.
+      </dd>
+
+      <dt>Quero corrigir o título, o autor ou a categoria</dt>
+      <dd>
+        Isso é da obra, não do exemplar. Veja
+        <a href="#m-corrigir">A ficha de um livro está errada</a>.
       </dd>
     </dl>
   </article>
@@ -883,8 +956,9 @@
       <dt>A busca não acha um livro que existe</dt>
       <dd>
         Tente parte do título, ou o nome do autor. A busca não liga para
-        acentos: “andre luiz” acha “André Luiz”. Se ainda assim não achar, o
-        livro pode não ter sido catalogado.
+        acentos: “andre luiz” acha “André Luiz”. Com o livro na mão, digite o
+        <strong>tombo</strong> da etiqueta — só o número. Se ainda assim não
+        achar, o livro pode não ter sido catalogado.
       </dd>
 
       <dt>Salvei e não apareceu</dt>
@@ -928,7 +1002,24 @@
       <dt>Tombo</dt>
       <dd>
         O número da etiqueta colada no exemplar. É por ele que se empresta e se
-        devolve, nunca pelo título.
+        devolve, nunca pelo título. Digitado em <kbd>Buscar</kbd>, acha o livro
+        e diz se aquele exemplar está disponível.
+      </dd>
+
+      <dt>Número da obra</dt>
+      <dd>
+        O número da ficha do título, que aparece como <em>obra nº 142</em> na
+        busca de quem entrou no sistema. Não vai em etiqueta. Serve para achar
+        a ficha de novo: digite o número em <kbd>Buscar</kbd>. Um número puro
+        procura o tombo e a obra ao mesmo tempo; para só um deles, escreva
+        <kbd>tombo 142</kbd> ou <kbd>obra 142</kbd>.
+      </dd>
+
+      <dt>Subtítulo</dt>
+      <dd>
+        O que vem depois do título e, muitas vezes, o que separa um livro de
+        outro: o programa fundamental do complementar, o tomo I do tomo II.
+        Para o sistema, título igual com subtítulo diferente é outro livro.
       </dd>
 
       <dt>Frequentador</dt>

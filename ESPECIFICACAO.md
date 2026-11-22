@@ -40,6 +40,7 @@ títulos. Os demais voluntários apenas registram empréstimo e devolução.
 | D12 | Link do sistema publicado atrás de encurtador ou Google Sites | A URL do Web App muda na migração para Workspace; assim não se reensina 40 pessoas |
 | D13 | Identificadores **numéricos sequenciais** (`id_titulo`, `id_pessoa`, `id_emprestimo`, `tombo`) | Etiqueta fica "Tombo 142" e a tela de empréstimo pede 3 toques em vez de 8. E `SUMIFS` só resolve `com_quem` se `id_pessoa` for número |
 | D14 | Colunas derivadas são **uma `ARRAYFORMULA` na linha 2**, não fórmula por linha | Linha nova recebe o valor sozinha. Nenhum código precisa escrever em coluna derivada, o que torna D7 verificável em vez de ser só disciplina |
+| D15 | A obra é identificada por **título + subtítulo**. A autoria não entra | Decisão do Weldson. O *Estudo Sistematizado da Doutrina Espírita* tem programa fundamental e complementar: mesmo título, mesma organizadora, livros diferentes. E a autoria do mesmo livro chega grafada de dois jeitos ("Francisco Cândido Xavier" do Google, "(Chico Xavier)" do pré-cadastro), então compará-la deixava duplicar calado |
 
 ### Decisões adiadas
 
@@ -78,8 +79,13 @@ Pares chave/valor. Nada de configuração no código.
   (validação de dados por lista, não texto livre).
 - `autor` é para obras não psicografadas. Em psicografia, preencha
   `autor_espiritual` + `medium` e deixe `autor` vazio.
-- A busca deve procurar em `titulo`, `autor`, `autor_espiritual`, `medium` e
-  `serie` simultaneamente.
+- A busca deve procurar em `titulo`, `subtitulo`, `autor`, `autor_espiritual`,
+  `medium` e `serie` simultaneamente. Um número procura também a obra pelo
+  `id_titulo` e o exemplar pelo `tombo` ("tombo 142" e "obra 142" restringem
+  a um dos dois). Achado pelo tombo, mostra a situação daquele exemplar —
+  nunca com quem está.
+- Toda tela que lista obras mostra **título e subtítulo** juntos: é o
+  subtítulo que separa volumes de mesmo título (D15).
 - **Convenção de catalogação de nomes.** Grave o nome pelo qual a pessoa é
   conhecida. Quando o nome formal for diferente do popular, grave os dois:
   `Francisco Cândido Xavier (Chico Xavier)`. O frequentador pede "um do Chico",
@@ -177,6 +183,9 @@ Toda escrita do Web App grava aqui. Sem dado pessoal sensível no `detalhe`.
 8. Criar exemplar exige `id_titulo` existente. Se o título não existe, o fluxo
    cria o título primeiro.
 9. Excluir título com exemplares vinculados é proibido.
+9a. Cadastrar obra de título e subtítulo iguais aos de outra **avisa e pede
+    confirmação, mas não impede** (D15). Título parecido — subtítulo colado
+    ao título, erro de digitação — só avisa, enquanto se digita.
 10. Baixa de exemplar = `ativo` = NÃO. Nunca `deleteRow`.
 
 **Agenda**

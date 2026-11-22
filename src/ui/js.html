@@ -190,7 +190,7 @@
     google.script.run
       .withSuccessHandler(function (achados) {
         if (estaBusca !== buscaEmVoo) return;
-        mostrarResultados(achados);
+        mostrarResultados(achados, texto);
       })
       .withFailureHandler(function (erro) {
         if (estaBusca !== buscaEmVoo) return;
@@ -220,28 +220,43 @@
    * nada na casa, abre sozinho: senão a tela ficaria vazia com a resposta
    * escondida atrás de um clique.
    */
-  function mostrarResultados(achados) {
+  function mostrarResultados(achados, texto) {
     resultados.innerHTML = '';
 
     if (!achados.length) {
-      dizer(estadoBusca, 'Nada encontrado. Tente outra palavra, ou parte dela.');
+      dizer(estadoBusca, /^\s*\d+\s*$/.test(texto || '')
+        ? 'Nenhum tombo nem obra com o número ' + texto.trim() + '.'
+        : 'Nada encontrado. Tente outra palavra, ou parte dela.');
       return;
     }
 
+    // O que casou pelo número (tombo ou nº da obra) vem à parte e primeiro:
+    // quem digita um número sabe qual livro quer. O resto segue os grupos.
+    var peloNumero = achados.filter(function (obra) { return obra.por_numero; });
+    var porTexto = achados.filter(function (obra) { return !obra.por_numero; });
+
     var comEstado = function (estados) {
-      return achados.filter(function (obra) { return estados.indexOf(obra.estado) !== -1; });
+      return porTexto.filter(function (obra) { return estados.indexOf(obra.estado) !== -1; });
     };
     var paraLevar = comEstado(['disponivel', 'emprestado']);
     var soNaCasa = comEstado(['so_na_casa']);
     var faltando = comEstado(['sem_exemplar']);
 
-    dizer(estadoBusca, resumoDaBusca(paraLevar.length, soNaCasa.length, faltando.length));
+    var resumo = porTexto.length
+      ? resumoDaBusca(paraLevar.length, soNaCasa.length, faltando.length)
+      : '';
+    if (peloNumero.length) {
+      resumo = plural(peloNumero.length, 'achado pelo número', 'achados pelo número') +
+        (resumo ? ' · ' + resumo : '');
+    }
+    dizer(estadoBusca, resumo);
 
     // Título de grupo só quando há mais de um: com um grupo só, o selo de
     // cada obra já diz tudo.
-    var variosGrupos = [paraLevar, soNaCasa, faltando]
+    var variosGrupos = [peloNumero, paraLevar, soNaCasa, faltando]
       .filter(function (grupo) { return grupo.length; }).length > 1;
 
+    desenharGrupo(peloNumero, 'Pelo número', 'divisor-numero', variosGrupos);
     desenharGrupo(paraLevar, 'Para levar emprestado', 'divisor-na-casa', variosGrupos);
     desenharGrupo(soNaCasa, 'Só para ler na casa', 'divisor-so-na-casa', variosGrupos);
 
@@ -303,8 +318,18 @@
     var item = document.createElement('li');
     item.className = 'resultado';
 
-    item.appendChild(elemento('h2', obra.titulo +
-      (obra.subtitulo ? ' — ' + obra.subtitulo : '')));
+    // Achado pelo número: diz QUAL número casou. "Tombo 142" e "obra nº 142"
+    // podem ser livros diferentes, e quem digitou "142" precisa saber qual é
+    // qual.
+    var numero = obra.por_numero;
+    var exemplar = numero && numero.exemplar;
+    if (numero) {
+      item.appendChild(elemento('p', numero.tipo === 'tombo'
+        ? 'Tombo ' + numero.numero
+        : 'Obra nº ' + numero.numero, 'achado-por'));
+    }
+
+    item.appendChild(elemento('h2', nomeDaObra(obra)));
 
     if (obra.autoria) item.appendChild(elemento('p', obra.autoria, 'autoria'));
 
@@ -313,14 +338,50 @@
     if (obra.serie) {
       meta.push(obra.serie + (obra.ordem_na_serie ? ' nº ' + obra.ordem_na_serie : ''));
     }
-    // Editora e ano vêm dos exemplares e podem ser vários.
-    if (obra.edicoes && obra.edicoes.length) meta.push(obra.edicoes.join(' / '));
+    // Editora e ano vêm dos exemplares e podem ser vários. Achado pelo tombo,
+    // vale a edição daquele exemplar, que é o que está na mão.
+    if (exemplar) {
+      if (exemplar.edicao) meta.push(exemplar.edicao);
+    } else if (obra.edicoes && obra.edicoes.length) {
+      meta.push(obra.edicoes.join(' / '));
+    }
+    // O número da obra, para quem trabalha no acervo: é por ele que se acha a
+    // ficha de novo. O frequentador não precisa dele.
+    if (podeVer('emprestar')) meta.push('obra nº ' + obra.id_titulo);
     if (meta.length) item.appendChild(elemento('p', meta.join(' · '), 'meta'));
 
-    item.appendChild(
-      elemento('span', textoDeDisponibilidade(obra), 'selo ' + obra.estado));
+    item.appendChild(exemplar
+      ? elemento('span', textoDoExemplar(exemplar, obra), 'selo ' + classeDoExemplar(exemplar))
+      : elemento('span', textoDeDisponibilidade(obra), 'selo ' + obra.estado));
 
     return item;
+  }
+
+  /**
+   * A situação do exemplar daquele tombo — não da obra inteira. Nunca com
+   * quem ele está: o servidor sequer manda.
+   *
+   * Se este não está livre mas outro exemplar da mesma obra está, diz: quem
+   * veio perguntar pelo livro quer saber se leva algum.
+   */
+  function textoDoExemplar(exemplar, obra) {
+    var situacao = exemplar.situacao;
+    var texto = situacao === 'emprestado'
+      ? 'emprestado' + (exemplar.previsao ? ' — previsão ' + exemplar.previsao : '')
+      : situacao === 'baixado' ? 'não está mais no acervo'
+      : situacao;
+
+    if (situacao !== 'disponível' && obra.disponiveis > 0) {
+      texto += ' · há outro exemplar disponível';
+    }
+    return texto;
+  }
+
+  function classeDoExemplar(exemplar) {
+    return exemplar.situacao === 'emprestado' ? 'emprestado'
+      : exemplar.situacao === 'baixado' ? 'sem_exemplar'
+      : exemplar.situacao === 'só para ler na casa' ? 'so_na_casa'
+      : 'disponivel';
   }
 
   /**
@@ -364,6 +425,11 @@
       preencherSelect($('#estado-exemplar'), listas.estados, 'bom');
       preencherSelect($('#estado-exemplar-avulso'), listas.estados, 'bom');
       preencherSelect($('#estado-exemplar-alterar'), listas.estados, 'bom');
+      // Em "Alterar obra" a primeira opção é "sem categoria": o pré-cadastro
+      // entrou sem ela, e sem a opção o select mostraria a primeira da lista
+      // como se fosse a gravada.
+      preencherSelect($('#categoria-alterar'), [''].concat(listas.categorias), '');
+      $('#categoria-alterar').options[0].textContent = '(sem categoria)';
       // A lista de perfis vem do servidor, da mesma constante que a escada
       // de permissões usa — escrita à mão no HTML, sairia de sincronia.
       preencherSelect($('#perfil-pessoa'), listas.perfis, 'consulta');
@@ -387,23 +453,132 @@
    * e mostra ou esconde o campo do espírito.
    */
   var caixaPsicografada = $('#psicografada');
-  var campoEspiritual = $('#campo-espiritual');
-  var rotuloAutoria = $('#rotulo-autoria');
 
-  function ajustarAutoria() {
-    var psicografada = caixaPsicografada.checked;
-    campoEspiritual.classList.toggle('oculta', !psicografada);
-    rotuloAutoria.childNodes[0].nodeValue = psicografada ? '\n          Médium\n          ' : '\n          Autor\n          ';
-    formulario.elements.autor_ou_medium.placeholder = psicografada
-      ? 'Francisco Cândido Xavier (Chico Xavier)'
-      : 'Allan Kardec';
-    // Desmarcar significa "não é psicografia": o espírito tem que sair junto,
-    // senão fica um autor_espiritual órfão mudando o sentido da ficha.
-    if (!psicografada) formulario.elements.autor_espiritual.value = '';
+  /** Liga a caixa ao campo de autoria de um formulário — "Obra nova" e
+   *  "Alterar obra" têm o mesmo par. Devolve a função que reajusta. */
+  function ligarAutoria(form, caixa, campoEspiritual, rotulo) {
+    function ajustar() {
+      var psicografada = caixa.checked;
+      campoEspiritual.classList.toggle('oculta', !psicografada);
+      rotulo.childNodes[0].nodeValue = psicografada ? '\n          Médium\n          ' : '\n          Autor\n          ';
+      form.elements.autor_ou_medium.placeholder = psicografada
+        ? 'Francisco Cândido Xavier (Chico Xavier)'
+        : 'Allan Kardec';
+      // Desmarcar significa "não é psicografia": o espírito tem que sair
+      // junto, senão fica um autor_espiritual órfão mudando o sentido da ficha.
+      if (!psicografada) form.elements.autor_espiritual.value = '';
+    }
+    caixa.addEventListener('change', ajustar);
+    ajustar();
+    return ajustar;
   }
 
-  caixaPsicografada.addEventListener('change', ajustarAutoria);
-  ajustarAutoria();
+  var ajustarAutoria = ligarAutoria(formulario, caixaPsicografada,
+    $('#campo-espiritual'), $('#rotulo-autoria'));
+
+  // --- títulos parecidos, enquanto se digita ---------------------------------
+  /**
+   * Avisa cedo que o livro talvez já esteja no acervo — antes de alguém
+   * preencher a ficha inteira à toa. Pergunta ao servidor meio segundo depois
+   * da última tecla, no título e no subtítulo, porque é o par que identifica
+   * a obra: o programa fundamental e o complementar do ESDE têm o mesmo
+   * título e são livros diferentes.
+   *
+   * É aviso e nada mais. Falhar aqui não diz nada: sem aviso, o cadastro
+   * funciona igual, e o servidor confere de novo ao salvar.
+   */
+  function vigiarParecidas(form, caixa, opcoes) {
+    var temporizador = null;
+    var emVoo = 0;
+
+    function esconder() {
+      emVoo++;
+      caixa.innerHTML = '';
+      caixa.classList.add('oculta');
+    }
+
+    function conferir() {
+      var titulo = form.elements.titulo.value.trim();
+      if (titulo.length < 3 || !EU.sessao) { esconder(); return; }
+
+      var esta = ++emVoo;
+      google.script.run
+        .withSuccessHandler(function (obras) {
+          if (esta !== emVoo) return;
+          mostrarParecidas(caixa, obras, opcoes);
+        })
+        .withFailureHandler(function () {
+          if (esta === emVoo) esconder();
+        })
+        .procurarTitulosParecidos(EU.sessao,
+          { titulo: titulo, subtitulo: form.elements.subtitulo.value.trim() },
+          opcoes.ignorarId ? opcoes.ignorarId() : null);
+    }
+
+    ['titulo', 'subtitulo'].forEach(function (campo) {
+      form.elements[campo].addEventListener('input', function () {
+        clearTimeout(temporizador);
+        temporizador = setTimeout(conferir, 500);
+      });
+    });
+
+    return { conferir: conferir, esconder: esconder };
+  }
+
+  function mostrarParecidas(caixa, obras, opcoes) {
+    caixa.innerHTML = '';
+    if (!obras.length) { caixa.classList.add('oculta'); return; }
+
+    var iguais = obras.some(function (obra) { return obra.motivo === 'mesmo_titulo'; });
+    caixa.appendChild(elemento('p', iguais ? opcoes.seIgual : opcoes.seParecido,
+      'parecidas-titulo'));
+
+    var lista = document.createElement('ul');
+    lista.className = 'candidatos';
+    obras.forEach(function (obra) {
+      var item = document.createElement('li');
+      item.className = 'parecida';
+      item.appendChild(elemento('strong', nomeDaObra(obra)));
+      item.appendChild(elemento('small', detalhesDaObra(obra)));
+      if (opcoes.acao) {
+        var botao = document.createElement('button');
+        botao.type = 'button';
+        botao.className = 'discreto';
+        botao.textContent = opcoes.acao.rotulo;
+        botao.addEventListener('click', function () { opcoes.acao.fazer(obra); });
+        item.appendChild(botao);
+      }
+      lista.appendChild(item);
+    });
+    caixa.appendChild(lista);
+
+    if (opcoes.rodape) caixa.appendChild(elemento('p', opcoes.rodape, 'dica'));
+    caixa.classList.remove('oculta');
+  }
+
+  var parecidasObra = vigiarParecidas(formulario, $('#parecidas-obra'), {
+    seIgual: 'Esta obra já está no acervo. Se for o mesmo livro, não cadastre de novo:',
+    seParecido: 'Há no acervo obra com título parecido. Confira se não é o mesmo livro:',
+    acao: { rotulo: 'É esta — cadastrar só o exemplar', fazer: levarParaNovoExemplar },
+    rodape: 'Título e subtítulo diferentes são outro livro: nesse caso, siga com o cadastro.'
+  });
+
+  /**
+   * "É esta": a obra já existe, então o caminho certo é Novo exemplar. Leva
+   * junto o que já se digitou do exemplar — editora e ano costumam ter vindo
+   * do Google —, para ninguém digitar duas vezes.
+   */
+  function levarParaNovoExemplar(obra) {
+    ['editora', 'ano', 'edicao', 'doado_por', 'observacao_exemplar', 'estado_exemplar']
+      .forEach(function (campo) {
+        formExemplar.elements[campo].value = formulario.elements[campo].value;
+      });
+    formExemplar.elements.so_na_casa.checked = formulario.elements.so_na_casa.checked;
+
+    limparFormulario();
+    abrirBlocoDeCadastro('exemplar');
+    escolherObra(obra);
+  }
 
   // ISBN: atalho, não caminho principal. Não achar é normal e não é erro.
   $('#btn-isbn').addEventListener('click', function () {
@@ -446,6 +621,8 @@
 
         aviso.textContent = 'Preenchido com o ISBN ' + livro.isbn + ': "' +
           livro.titulo + '". ' + recadoDeAutoria(livro);
+        // O título mudou sem ninguém digitar: o aviso de repetida não viu.
+        parecidasObra.conferir();
       })
       .withFailureHandler(function (erro) {
         botao.disabled = false;
@@ -518,6 +695,7 @@
       });
       lista.innerHTML = '';
       aviso.textContent = recadoDeAutoria(livro);
+      parecidasObra.conferir();
       formulario.elements.categoria.focus();   // é o que o Google não traz
     });
 
@@ -546,61 +724,85 @@
     // Pergunta ANTES de salvar para poder oferecer a saída certa. O servidor
     // recusa de novo na hora de gravar, dentro da trava — este aviso é
     // conveniência, não a garantia.
+    //
+    // Só título e subtítulo IGUAIS param aqui. O parecido já foi avisado
+    // enquanto se digitava, e parar de novo por ele seria cobrar um clique a
+    // mais justamente de quem já decidiu que é outro livro.
     google.script.run
-      .withSuccessHandler(function (existente) {
-        if (!existente) {
+      .withSuccessHandler(function (parecidas) {
+        var iguais = parecidas.filter(function (obra) { return obra.motivo === 'mesmo_titulo'; });
+        if (!iguais.length) {
           salvar(false);
           return;
         }
         botao.disabled = false;
         dizer(estadoCadastro, '');
-        mostrarDuplicata(existente);
+        mostrarDuplicata(iguais);
       })
       .withFailureHandler(function (erro) {
         botao.disabled = false;
         dizer(estadoCadastro, erro.message || 'Não consegui conferir.', 'erro');
       })
-      .verificarTituloExistente(EU.sessao, dadosDoFormulario().dados);
+      .procurarTitulosParecidos(EU.sessao, dadosDoFormulario().dados, null);
   });
 
-  function mostrarDuplicata(existente) {
-    var partes = [existente.autoria];
-    if (existente.edicoes && existente.edicoes.length) {
-      partes.push(existente.edicoes.join(' / '));
-    }
-    partes.push(existente.total === 1
-      ? '1 exemplar no acervo'
-      : existente.total + ' exemplares no acervo');
+  /**
+   * Uma linha por obra igual, cada uma com o seu botão: pode haver mais de uma
+   * com o mesmo título e subtítulo, e acrescentar à errada põe o exemplar na
+   * ficha errada.
+   *
+   * Sem exemplar em mãos não há o que acrescentar. Aí a resposta é só "já
+   * está no catálogo" — oferecer o botão criaria um exemplar que não existe.
+   */
+  function mostrarDuplicata(iguais) {
+    var comExemplar = formulario.elements.criar_exemplar.checked;
+    var lista = $('#duplicatas');
+    lista.innerHTML = '';
 
-    duplicataDetalhe.textContent = '"' + existente.titulo + '" — ' +
-      partes.filter(function (p) { return p; }).join(' · ');
+    duplicataDetalhe.textContent = comExemplar
+      ? 'Se for o mesmo livro, acrescente este exemplar a ela — é o caso da segunda cópia.'
+      : 'Se for o mesmo livro, não precisa cadastrar: ele já está no catálogo.';
+
+    iguais.forEach(function (obra) {
+      var item = document.createElement('li');
+      item.className = 'parecida';
+      item.appendChild(elemento('strong', nomeDaObra(obra)));
+      item.appendChild(elemento('small', detalhesDaObra(obra)));
+      if (comExemplar) {
+        var botao = document.createElement('button');
+        botao.type = 'button';
+        botao.textContent = 'Acrescentar este exemplar a esta obra';
+        botao.addEventListener('click', function () { somarExemplar(obra); });
+        item.appendChild(botao);
+      }
+      lista.appendChild(item);
+    });
 
     painelDuplicata.classList.remove('oculta');
-    painelDuplicata.dataset.idTitulo = existente.id_titulo;
     painelDuplicata.scrollIntoView({ block: 'nearest' });
   }
 
-  $('#btn-somar-exemplar').addEventListener('click', function () {
+  function somarExemplar(obra) {
     var pacote = dadosDoFormulario();
-    var id = Number(painelDuplicata.dataset.idTitulo);
     esconderDuplicata();
     dizer(estadoCadastro, 'Acrescentando exemplar…');
 
     google.script.run
       .withSuccessHandler(function (tombo) {
         dizer(estadoCadastro,
-          'Exemplar acrescentado à obra ' + id + '. Etiquete o livro com o ' +
-          'tombo ' + tombo + '.', 'ok');
+          'Exemplar acrescentado à obra nº ' + obra.id_titulo + '. Etiquete o ' +
+          'livro com o tombo ' + tombo + '.', 'ok');
         // Este caminho também gera tombo, e ficava fora da lista: o número
         // só aparecia na linha de status, que a gravação seguinte apaga.
-        anotarEtiqueta(tombo, pacote.dados.titulo, pacote.dados.so_na_casa === true);
+        // O nome é o da obra que recebeu o exemplar, não o que foi digitado.
+        anotarEtiqueta(tombo, nomeDaObra(obra), pacote.dados.so_na_casa === true);
         limparFormulario();
       })
       .withFailureHandler(function (erro) {
         dizer(estadoCadastro, erro.message || 'Não consegui acrescentar.', 'erro');
       })
-      .acrescentarExemplar(EU.sessao, id, pacote.dados);
-  });
+      .acrescentarExemplar(EU.sessao, obra.id_titulo, pacote.dados);
+  }
 
   $('#btn-forcar').addEventListener('click', function () {
     esconderDuplicata();
@@ -636,11 +838,10 @@
     google.script.run
       .withSuccessHandler(function (resposta) {
         botao.disabled = false;
-        var recado = 'Título ' + resposta.id_titulo + ' cadastrado.';
+        var recado = 'Obra nº ' + resposta.id_titulo + ' cadastrada.';
         if (resposta.tombo) {
           recado += ' Etiquete o livro com o tombo ' + resposta.tombo + '.';
-          anotarEtiqueta(resposta.tombo, formulario.elements.titulo.value.trim(),
-            dados.so_na_casa === true);
+          anotarEtiqueta(resposta.tombo, nomeDaObra(dados), dados.so_na_casa === true);
         }
         dizer(estadoCadastro, recado, 'ok');
         limparFormulario();
@@ -670,6 +871,7 @@
     formulario.elements.editora.value = editora;
 
     ajustarAutoria();
+    parecidasObra.esconder();
     $('#aviso-isbn').textContent = '';
     $('#aviso-titulo').textContent = '';
     $('#candidatos').innerHTML = '';
@@ -944,22 +1146,26 @@
   // --------------------------------------------------- cadastro: abas internas
   // Só as que têm `data-bloco`: o "Cartaz da estante" tem a mesma cara, mas é
   // link para outra página — tratado como aba, ele esconderia todos os blocos.
-  document.querySelectorAll('.aba-interna[data-bloco]').forEach(function (aba) {
-    aba.addEventListener('click', function () {
-      document.querySelectorAll('.aba-interna[data-bloco]').forEach(function (outra) {
-        outra.classList.toggle('ativa', outra === aba);
-      });
-      $('#form-cadastro').classList.toggle('oculta', aba.dataset.bloco !== 'obra');
-      $('#form-exemplar').classList.toggle('oculta', aba.dataset.bloco !== 'exemplar');
-      $('#form-alterar-exemplar').classList.toggle('oculta',
-        aba.dataset.bloco !== 'alterar-exemplar');
-      $('#relatorio-acervo').classList.toggle('oculta', aba.dataset.bloco !== 'relatorio');
-      // Monta de novo a cada abertura: relatório guardado da última vez
-      // mostraria como disponível o livro que saiu há cinco minutos.
-      if (aba.dataset.bloco === 'relatorio') carregarRelatorio();
-      $('#form-pessoa').classList.toggle('oculta', aba.dataset.bloco !== 'pessoa');
-      $('#form-editar-pessoa').classList.toggle('oculta', aba.dataset.bloco !== 'editar');
+  // Por função, e não só no clique: "É esta — cadastrar só o exemplar" troca
+  // de bloco sem ninguém tocar na aba.
+  function abrirBlocoDeCadastro(bloco) {
+    document.querySelectorAll('.aba-interna[data-bloco]').forEach(function (aba) {
+      aba.classList.toggle('ativa', aba.dataset.bloco === bloco);
     });
+    $('#form-cadastro').classList.toggle('oculta', bloco !== 'obra');
+    $('#form-exemplar').classList.toggle('oculta', bloco !== 'exemplar');
+    $('#form-alterar-obra').classList.toggle('oculta', bloco !== 'alterar-obra');
+    $('#form-alterar-exemplar').classList.toggle('oculta', bloco !== 'alterar-exemplar');
+    $('#relatorio-acervo').classList.toggle('oculta', bloco !== 'relatorio');
+    // Monta de novo a cada abertura: relatório guardado da última vez
+    // mostraria como disponível o livro que saiu há cinco minutos.
+    if (bloco === 'relatorio') carregarRelatorio();
+    $('#form-pessoa').classList.toggle('oculta', bloco !== 'pessoa');
+    $('#form-editar-pessoa').classList.toggle('oculta', bloco !== 'editar');
+  }
+
+  document.querySelectorAll('.aba-interna[data-bloco]').forEach(function (aba) {
+    aba.addEventListener('click', function () { abrirBlocoDeCadastro(aba.dataset.bloco); });
   });
 
   // --------------------------------------------------------- cadastro: pessoa
@@ -1586,7 +1792,7 @@
         }
         dizer(estadoBuscaObra, '');
         achados.forEach(function (obra) {
-          obrasAchadas.appendChild(itemObra(obra));
+          obrasAchadas.appendChild(itemObra(obra, escolherObra));
         });
       })
       .withFailureHandler(function (erro) {
@@ -1595,24 +1801,19 @@
       .buscarNoAcervo(termo);
   }
 
-  function itemObra(obra) {
+  /** Uma obra na lista de escolha — de "Novo exemplar" e de "Alterar obra". */
+  function itemObra(obra, aoEscolher) {
     var item = document.createElement('li');
     var botao = document.createElement('button');
     botao.type = 'button';
     botao.className = 'candidato';
 
-    botao.appendChild(elemento('strong', obra.titulo));
+    // O nome inteiro, com o subtítulo: é ele que separa o programa
+    // fundamental do complementar, que têm o mesmo título.
+    botao.appendChild(elemento('strong', nomeDaObra(obra)));
+    botao.appendChild(elemento('small', detalhesDaObra(obra)));
 
-    // Mostra o que a casa JÁ tem daquela obra: quantos exemplares e quais
-    // edições. É o que evita cadastrar a mesma edição duas vezes achando que
-    // era outra, e é a informação que a pessoa tem na mão para comparar.
-    var detalhes = [];
-    if (obra.autoria) detalhes.push(obra.autoria);
-    detalhes.push(obra.total === 1 ? '1 exemplar' : obra.total + ' exemplares');
-    if (obra.edicoes && obra.edicoes.length) detalhes.push(obra.edicoes.join(' / '));
-    botao.appendChild(elemento('small', detalhes.join(' · ')));
-
-    botao.addEventListener('click', function () { escolherObra(obra); });
+    botao.addEventListener('click', function () { aoEscolher(obra); });
     item.appendChild(botao);
     return item;
   }
@@ -1620,11 +1821,10 @@
   function escolherObra(obra) {
     obraEscolhida = obra;
     obrasAchadas.innerHTML = '';
-    buscaObra.value = obra.titulo;
+    buscaObra.value = nomeDaObra(obra);
     dizer(estadoBuscaObra, '');
 
-    $('#obra-escolhida').textContent = 'Exemplar de: ' + obra.titulo +
-      (obra.autoria ? ' — ' + obra.autoria : '');
+    desenharEscolhida($('#obra-escolhida'), 'Exemplar de', obra);
 
     camposExemplarNovo.classList.remove('oculta');
     formExemplar.elements.editora.focus();
@@ -1653,7 +1853,7 @@
         botao.disabled = false;
         dizer(estadoExemplar,
           'Exemplar criado. Etiquete o livro com o tombo ' + tombo + '.', 'ok');
-        anotarEtiqueta(tombo, obraEscolhida.titulo, dados.so_na_casa);
+        anotarEtiqueta(tombo, nomeDaObra(obraEscolhida), dados.so_na_casa);
 
         // A obra continua escolhida: numa doação de três cópias, salva-se as
         // três seguidas sem procurar de novo. Editora e doador também ficam,
@@ -1670,6 +1870,158 @@
         dizer(estadoExemplar, erro.message || 'Não consegui salvar.', 'erro');
       })
       .acrescentarExemplar(EU.sessao, obraEscolhida.id_titulo, dados);
+  });
+
+  // --------------------------------------------------- cadastro: alterar obra
+  // Corrige a ficha de uma obra já cadastrada. Procura como em "Novo
+  // exemplar" — título, autor, nº da obra ou tombo de qualquer exemplar dela —
+  // e carrega a ficha inteira do servidor, porque a busca não traz sinopse,
+  // ISBN nem observação.
+
+  // Os campos da ficha, na mesma lista que o servidor aceita
+  // (CAMPOS_EDITAVEIS_DA_OBRA, em catalogo.js).
+  var CAMPOS_DA_FICHA = ['titulo', 'subtitulo', 'autor_ou_medium', 'autor_espiritual',
+    'tradutor', 'isbn', 'categoria', 'serie', 'ordem_na_serie', 'sinopse',
+    'link_online', 'observacao'];
+
+  var formAlterarObra = $('#form-alterar-obra');
+  var buscaObraAlterar = $('#busca-obra-alterar');
+  var obrasAlterar = $('#obras-alterar');
+  var estadoBuscaObraAlterar = $('#estado-busca-obra-alterar');
+  var camposAlterarObra = $('#campos-alterar-obra');
+  var estadoAlterarObra = $('#estado-alterar-obra');
+  var obraEmEdicao = null;
+  var procuraAlterarEmVoo = 0;
+  var temporizadorObraAlterar = null;
+
+  var ajustarAutoriaAlterar = ligarAutoria(formAlterarObra, $('#psicografada-alterar'),
+    $('#campo-espiritual-alterar'), $('#rotulo-autoria-alterar'));
+
+  // Renomear uma obra para o nome de outra cria a duplicata pelo outro lado.
+  // O aviso é o mesmo de "Obra nova", sem contar a própria obra.
+  var parecidasAlterar = vigiarParecidas(formAlterarObra, $('#parecidas-alterar'), {
+    seIgual: 'Já existe outra obra com este título e subtítulo. Confira se não está ' +
+      'fazendo uma segunda ficha para o mesmo livro:',
+    seParecido: 'Há outra obra com título parecido. Confira se não é o mesmo livro:',
+    ignorarId: function () { return obraEmEdicao && obraEmEdicao.id_titulo; }
+  });
+
+  buscaObraAlterar.addEventListener('input', function () {
+    esquecerObraEmEdicao();
+    clearTimeout(temporizadorObraAlterar);
+    temporizadorObraAlterar = setTimeout(procurarObraParaAlterar, 300);
+  });
+
+  function esquecerObraEmEdicao() {
+    obraEmEdicao = null;
+    camposAlterarObra.classList.add('oculta');
+    parecidasAlterar.esconder();
+  }
+
+  function procurarObraParaAlterar() {
+    var termo = buscaObraAlterar.value.trim();
+    obrasAlterar.innerHTML = '';
+    if (!termo) { dizer(estadoBuscaObraAlterar, ''); return; }
+
+    var esta = ++procuraAlterarEmVoo;
+    dizer(estadoBuscaObraAlterar, 'Procurando…');
+
+    google.script.run
+      .withSuccessHandler(function (achados) {
+        if (esta !== procuraAlterarEmVoo) return;
+        obrasAlterar.innerHTML = '';
+        if (!achados.length) {
+          dizer(estadoBuscaObraAlterar, 'Nada encontrado. Tente parte do título, ou o nº da obra.');
+          return;
+        }
+        dizer(estadoBuscaObraAlterar, '');
+        achados.forEach(function (obra) {
+          obrasAlterar.appendChild(itemObra(obra, carregarObraParaAlterar));
+        });
+      })
+      .withFailureHandler(function (erro) {
+        if (esta !== procuraAlterarEmVoo) return;
+        dizer(estadoBuscaObraAlterar, erro.message || 'Não consegui buscar.', 'erro');
+      })
+      .buscarNoAcervo(termo);
+  }
+
+  function carregarObraParaAlterar(obra) {
+    var esta = ++procuraAlterarEmVoo;
+    obrasAlterar.innerHTML = '';
+    dizer(estadoAlterarObra, '');
+    dizer(estadoBuscaObraAlterar, 'Abrindo a ficha…');
+
+    google.script.run
+      .withSuccessHandler(function (ficha) {
+        if (esta !== procuraAlterarEmVoo) return;
+        obraEmEdicao = ficha;
+        buscaObraAlterar.value = nomeDaObra(ficha);
+        dizer(estadoBuscaObraAlterar, '');
+        desenharEscolhida($('#alterando-obra'), 'Alterando', ficha);
+
+        // Categoria gravada fora da lista (digitada na planilha) vira opção,
+        // em vez de sumir: sem isso o select ficaria em branco, e salvar
+        // qualquer outra mudança apagaria a categoria sem ninguém pedir.
+        garantirOpcao($('#categoria-alterar'), ficha.categoria);
+
+        CAMPOS_DA_FICHA.forEach(function (campo) {
+          formAlterarObra.elements[campo].value = ficha[campo] || '';
+        });
+        $('#psicografada-alterar').checked = !!ficha.autor_espiritual;
+        ajustarAutoriaAlterar();
+
+        parecidasAlterar.esconder();
+        camposAlterarObra.classList.remove('oculta');
+        formAlterarObra.elements.titulo.focus();
+      })
+      .withFailureHandler(function (erro) {
+        if (esta !== procuraAlterarEmVoo) return;
+        dizer(estadoBuscaObraAlterar, erro.message || 'Não consegui abrir a ficha.', 'erro');
+      })
+      .verTituloParaEditar(EU.sessao, obra.id_titulo);
+  }
+
+  formAlterarObra.addEventListener('submit', function (evento) {
+    evento.preventDefault();
+    if (!obraEmEdicao) return;
+
+    // Só vai o que mudou. O Log registra QUAIS campos foram alterados, e
+    // "todos, sempre" não diria nada a quem for ler depois.
+    var mudancas = {};
+    CAMPOS_DA_FICHA.forEach(function (campo) {
+      var valor = formAlterarObra.elements[campo].value.trim();
+      if (valor !== (obraEmEdicao[campo] || '')) mudancas[campo] = valor;
+    });
+
+    if (!Object.keys(mudancas).length) {
+      dizer(estadoAlterarObra, 'Nada mudou na ficha.');
+      return;
+    }
+
+    var botao = $('#btn-salvar-alterar-obra');
+    var id = obraEmEdicao.id_titulo;
+    var nome = nomeDaObra({
+      titulo: formAlterarObra.elements.titulo.value.trim(),
+      subtitulo: formAlterarObra.elements.subtitulo.value.trim()
+    });
+
+    botao.disabled = true;
+    dizer(estadoAlterarObra, 'Salvando…');
+
+    google.script.run
+      .withSuccessHandler(function () {
+        botao.disabled = false;
+        dizer(estadoAlterarObra, 'Obra nº ' + id + ' alterada: ' + nome + '.', 'ok');
+        esquecerObraEmEdicao();
+        buscaObraAlterar.value = '';
+        buscaObraAlterar.focus();
+      })
+      .withFailureHandler(function (erro) {
+        botao.disabled = false;
+        dizer(estadoAlterarObra, erro.message || 'Não consegui salvar.', 'erro');
+      })
+      .atualizarTitulo(EU.sessao, id, mudancas);
   });
 
   // ----------------------------------------------- cadastro: alterar exemplar
@@ -1846,7 +2198,7 @@
     var bloco = document.createElement('article');
     bloco.className = 'rel-obra';
 
-    bloco.appendChild(elemento('h3', obra.titulo + (obra.subtitulo ? ' — ' + obra.subtitulo : '')));
+    bloco.appendChild(elemento('h3', nomeDaObra(obra)));
 
     var meta = [];
     if (obra.autoria) meta.push(obra.autoria);
@@ -2010,6 +2362,62 @@
     }
     return 'Confira a autoria — se esta obra for psicografada, o Google não ' +
       'marcou, e o nome no campo Autor precisa ir para Médium.';
+  }
+
+  /**
+   * Título e subtítulo juntos — o mesmo que `nomeDaObra` em dominio.js. É o
+   * subtítulo que separa livros de mesmo título, como o programa fundamental
+   * e o complementar do ESDE; mostrar só o título faz os dois parecerem um.
+   */
+  function nomeDaObra(obra) {
+    var titulo = String(obra.titulo || '').trim();
+    var subtitulo = String(obra.subtitulo || '').trim();
+    return subtitulo ? titulo + ' — ' + subtitulo : titulo;
+  }
+
+  /**
+   * A linha de baixo de uma obra numa lista de escolha: autoria, número da
+   * obra e o que a casa JÁ tem dela — quantos exemplares e de quais edições.
+   * É o que evita cadastrar a mesma edição duas vezes achando que era outra,
+   * e é a informação que a pessoa tem na mão para comparar.
+   */
+  function detalhesDaObra(obra) {
+    var partes = [];
+    if (obra.por_numero && obra.por_numero.tipo === 'tombo') {
+      partes.push('tem o tombo ' + obra.por_numero.numero);
+    }
+    if (obra.autoria) partes.push(obra.autoria);
+    partes.push('obra nº ' + obra.id_titulo);
+    partes.push(!obra.total ? 'a casa não tem exemplar'
+      : obra.total === 1 ? '1 exemplar'
+      : obra.total + ' exemplares');
+    if (obra.edicoes && obra.edicoes.length) partes.push(obra.edicoes.join(' / '));
+    return partes.join(' · ');
+  }
+
+  /**
+   * A caixa que diz de qual obra se trata, acima dos campos. O nome inteiro
+   * numa linha própria, em destaque, e os detalhes embaixo: era uma linha só,
+   * "título — autoria", e o subtítulo não aparecia.
+   */
+  function desenharEscolhida(caixa, rotulo, obra) {
+    caixa.innerHTML = '';
+    caixa.appendChild(elemento('span', rotulo, 'escolhida-rotulo'));
+    caixa.appendChild(elemento('strong', nomeDaObra(obra), 'escolhida-nome'));
+    caixa.appendChild(elemento('small', detalhesDaObra(obra), 'escolhida-detalhe'));
+  }
+
+  /** Acrescenta ao select uma opção que ele não tem, para o valor não sumir. */
+  function garantirOpcao(select, valor) {
+    if (!valor) return;
+    var existe = Array.prototype.some.call(select.options, function (opcao) {
+      return opcao.value === valor;
+    });
+    if (existe) return;
+    var opcao = document.createElement('option');
+    opcao.value = valor;
+    opcao.textContent = valor;
+    select.appendChild(opcao);
   }
 
   function elemento(marca, texto, classe) {

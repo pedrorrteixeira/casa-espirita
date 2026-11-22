@@ -11,7 +11,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-  normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria, resumirEdicoes, acharTituloEquivalente,
+  normalizarTexto, montarAutoria, buscarTitulos, resumirDisponibilidade, separarAutoria, resumirEdicoes,
+  acharTitulosParecidos, nomeDaObra, lerNumeroDaBusca, buscarPorNumero, resumirExemplarParaBusca,
   montarRelatorioDoAcervo, descreverEdicao,
   calcularSituacao, soParaLerNaCasa, acharEmprestimoAberto, calcularDataPrevista,
   estaAtrasado, diasDeAtraso, planejarSincronizacao,
@@ -185,6 +186,17 @@ test('dentro da mesma série, vale a ordem de leitura e não a alfabética', () 
 
 test('empate fora de série cai no alfabético, para a ordem não oscilar', () => {
   assert.deepEqual(idsDe(buscarTitulos(ACERVO, 'emmanuel')), [3, 5]);
+});
+
+test('a busca acha pelo subtítulo, que é o que separa volumes', () => {
+  const acervo = [
+    { id_titulo: 20, titulo: 'Estudo Sistematizado da Doutrina Espírita', subtitulo: 'Programa fundamental' },
+    { id_titulo: 21, titulo: 'Estudo Sistematizado da Doutrina Espírita', subtitulo: 'Programa complementar' }
+  ];
+  assert.deepEqual(idsDe(buscarTitulos(acervo, 'complementar')), [21]);
+  assert.deepEqual(idsDe(buscarTitulos(acervo, 'estudo sistematizado fundamental')), [20]);
+  // Mesmo título: o subtítulo decide a ordem, sempre a mesma.
+  assert.deepEqual(idsDe(buscarTitulos(acervo, 'estudo sistematizado')), [21, 20]);
 });
 
 // --- buscarTitulos: bordas ---------------------------------------------------
@@ -543,52 +555,205 @@ test('editora sem ano, e ano sem editora, ainda informam algo', () => {
   assert.deepEqual(resumirEdicoes([exemplar({ editora: '', ano: 1978 })]), ['1978']);
 });
 
-// --- acharTituloEquivalente --------------------------------------------------
+// --- acharTitulosParecidos: o aviso de obra repetida -------------------------
 
-test('acha o mesmo título mesmo com caixa e acento diferentes', () => {
-  const achado = acharTituloEquivalente(ACERVO, {
-    titulo: 'NOSSO LAR',
-    autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
-    autor_espiritual: 'André Luiz'
+const parecidos = (titulo, ignorarId) =>
+  acharTitulosParecidos(ACERVO, { titulo }, ignorarId).map((a) => [a.titulo.id_titulo, a.motivo]);
+
+test('mesmo título avisa mesmo com a autoria grafada de outro jeito', () => {
+  // A regra antiga, de título + autoria, deixava passar: o Google grava
+  // "Francisco Cândido Xavier", o pré-cadastro grava "(Chico Xavier)" junto.
+  // É o mesmo livro, e sem aviso ele ganhava uma segunda ficha.
+  const achados = acharTitulosParecidos(ACERVO, {
+    titulo: 'Nosso Lar', autor_ou_medium: 'Francisco Cândido Xavier', autor_espiritual: 'André Luiz'
   });
-  assert.equal(achado.id_titulo, 1);
+  assert.deepEqual(achados.map((a) => [a.titulo.id_titulo, a.motivo]), [[1, 'mesmo_titulo']]);
 });
 
-test('espaço sobrando não engana', () => {
-  const achado = acharTituloEquivalente(ACERVO, {
-    titulo: '  Nosso   Lar  ',
-    autor_ou_medium: 'Francisco Cândido Xavier (Chico Xavier)',
-    autor_espiritual: 'André Luiz'
+// O caso que motivou a regra: dois volumes, mesmo título, mesma organizadora.
+const ESDE = [
+  { id_titulo: 20, titulo: 'Estudo Sistematizado da Doutrina Espírita',
+    subtitulo: 'Programa fundamental', autor_ou_medium: 'Org. Cecília Rocha' },
+  { id_titulo: 21, titulo: 'Estudo Sistematizado da Doutrina Espírita',
+    subtitulo: 'Programa complementar', autor_ou_medium: 'Org. Cecília Rocha' }
+];
+
+test('subtítulo diferente é outro livro, mesmo com título e autoria iguais', () => {
+  // Regra do Weldson: livros são diferentes quando título e subtítulo são.
+  const achados = acharTitulosParecidos([ESDE[0]], ESDE[1]);
+  assert.deepEqual(achados, []);
+});
+
+test('título e subtítulo iguais é o mesmo livro, com qualquer pontuação', () => {
+  const achados = acharTitulosParecidos(ESDE, {
+    titulo: 'estudo sistematizado da doutrina espirita', subtitulo: 'PROGRAMA FUNDAMENTAL'
   });
-  assert.equal(achado.id_titulo, 1);
-});
+  assert.deepEqual(achados.map((a) => [a.titulo.id_titulo, a.motivo]), [[20, 'mesmo_titulo']]);
 
-test('título igual com autoria diferente são obras diferentes', () => {
-  // Obras distintas compartilham nome. Bloquear por título só impediria
-  // catalogar a segunda.
-  const achado = acharTituloEquivalente(ACERVO, {
-    titulo: 'Nosso Lar',
-    autor_ou_medium: 'Outro Autor Qualquer',
-    autor_espiritual: ''
+  // Onde acaba o título e começa o subtítulo não importa: o Google às vezes
+  // devolve os dois num campo só.
+  const colado = acharTitulosParecidos(ESDE, {
+    titulo: 'Estudo Sistematizado da Doutrina Espírita: programa fundamental'
   });
-  assert.equal(achado, null);
+  assert.deepEqual(colado.map((a) => [a.titulo.id_titulo, a.motivo]), [[20, 'mesmo_titulo']]);
 });
 
-test('ficha sem autoria conta como equivalente, para avisar', () => {
-  // Melhor avisar de leve numa ficha incompleta do que duplicar calado.
-  const achado = acharTituloEquivalente(ACERVO, { titulo: 'Nosso Lar' });
-  assert.equal(achado.id_titulo, 1);
+test('quem digitou só o título vê os volumes que já existem', () => {
+  const achados = acharTitulosParecidos(ESDE, { titulo: 'Estudo Sistematizado da Doutrina Espírita' });
+  assert.deepEqual(achados.map((a) => [a.titulo.id_titulo, a.motivo]),
+    [[21, 'comeca_igual'], [20, 'comeca_igual']]);
 });
 
-test('título diferente não casa', () => {
-  assert.equal(acharTituloEquivalente(ACERVO, { titulo: 'A Gênese' }), null);
+test('volume de número diferente não é erro de digitação', () => {
+  const tomos = [{ id_titulo: 30, titulo: 'Obras Póstumas', subtitulo: 'Tomo I' }];
+  assert.deepEqual(acharTitulosParecidos(tomos, { titulo: 'Obras Póstumas', subtitulo: 'Tomo II' }), []);
+
+  const revistas = [{ id_titulo: 31, titulo: 'Revista Espírita 1858' }];
+  assert.deepEqual(acharTitulosParecidos(revistas, { titulo: 'Revista Espírita 1859' }), []);
 });
 
-test('acervo vazio e entrada vazia não quebram', () => {
-  assert.equal(acharTituloEquivalente([], { titulo: 'Nosso Lar' }), null);
-  assert.equal(acharTituloEquivalente(null, { titulo: 'Nosso Lar' }), null);
-  assert.equal(acharTituloEquivalente(ACERVO, { titulo: '' }), null);
-  assert.equal(acharTituloEquivalente(ACERVO, null), null);
+test('acento, caixa e pontuação não fazem dois títulos', () => {
+  assert.deepEqual(parecidos('PAULO E ESTEVAO'), [[3, 'mesmo_titulo']]);
+  assert.deepEqual(parecidos('Nosso Lar.'), [[1, 'mesmo_titulo']]);
+  assert.deepEqual(parecidos('O livro dos espíritos!'), [[4, 'mesmo_titulo']]);
+});
+
+test('subtítulo colado ao título ainda avisa', () => {
+  // O Google costuma devolver "Nosso Lar: a vida no mundo espiritual" num
+  // campo só.
+  assert.deepEqual(parecidos('Nosso Lar: a vida no mundo espiritual'), [[1, 'comeca_igual']]);
+});
+
+test('título de uma palavra só não puxa todo título que começa por ela', () => {
+  const acervo = [{ id_titulo: 9, titulo: 'Vida' }];
+  assert.deepEqual(acharTitulosParecidos(acervo, { titulo: 'Vida e Sexo' }), []);
+});
+
+test('erro de digitação avisa; título curto parecido não', () => {
+  assert.deepEqual(parecidos('Noso Lar'), [[1, 'quase_igual']]);
+  assert.deepEqual(parecidos('Os Mensageiro'), [[2, 'quase_igual']]);
+
+  // "Lar" e "Luz" diferem numa letra e não são o mesmo livro.
+  const acervo = [{ id_titulo: 9, titulo: 'Luz' }];
+  assert.deepEqual(acharTitulosParecidos(acervo, { titulo: 'Lar' }), []);
+});
+
+test('título diferente não avisa', () => {
+  assert.deepEqual(parecidos('A Gênese'), []);
+  assert.deepEqual(parecidos('O Livro dos Médiuns'), []);
+});
+
+test('ao alterar uma obra, ela não avisa sobre si mesma', () => {
+  assert.deepEqual(parecidos('Nosso Lar', 1), []);
+  assert.deepEqual(parecidos('Os Mensageiros', 1), [[2, 'mesmo_titulo']]);
+});
+
+test('o mais parecido vem primeiro, e a lista tem teto', () => {
+  const acervo = [
+    { id_titulo: 1, titulo: 'Noso Lar' },
+    { id_titulo: 2, titulo: 'Nosso Lar: a vida no mundo espiritual' },
+    { id_titulo: 3, titulo: 'Nosso Lar' }
+  ];
+  const achados = acharTitulosParecidos(acervo, { titulo: 'Nosso Lar' });
+  assert.deepEqual(achados.map((a) => a.motivo), ['mesmo_titulo', 'comeca_igual', 'quase_igual']);
+  assert.equal(acharTitulosParecidos(acervo, { titulo: 'Nosso Lar' }, null, 1).length, 1);
+});
+
+test('entrada vazia ou curta demais não avisa nada', () => {
+  assert.deepEqual(parecidos(''), []);
+  assert.deepEqual(parecidos('  '), []);
+  assert.deepEqual(parecidos('Os'), []);
+  assert.deepEqual(acharTitulosParecidos(null, { titulo: 'Nosso Lar' }), []);
+  assert.deepEqual(acharTitulosParecidos(ACERVO, null), []);
+});
+
+// --- nomeDaObra --------------------------------------------------------------
+
+test('nomeDaObra junta o subtítulo, que é o que separa um tomo do outro', () => {
+  assert.equal(nomeDaObra({
+    titulo: 'Estudo Sistematizado da Doutrina Espírita: programa fundamental',
+    subtitulo: 'Tomo I'
+  }), 'Estudo Sistematizado da Doutrina Espírita: programa fundamental — Tomo I');
+  assert.equal(nomeDaObra({ titulo: 'Nosso Lar', subtitulo: '' }), 'Nosso Lar');
+  assert.equal(nomeDaObra({ titulo: ' Nosso Lar ', subtitulo: '  ' }), 'Nosso Lar');
+  assert.equal(nomeDaObra(null), '');
+});
+
+// --- busca por número da obra e por tombo ------------------------------------
+
+test('lerNumeroDaBusca: número puro procura obra e tombo', () => {
+  assert.deepEqual(lerNumeroDaBusca('142'), { numero: 142, obra: true, tombo: true });
+  assert.deepEqual(lerNumeroDaBusca(' 142 '), { numero: 142, obra: true, tombo: true });
+});
+
+test('lerNumeroDaBusca: o prefixo diz qual dos dois', () => {
+  for (const termo of ['tombo 142', 'Tombo: 142', 't142', 'T 142']) {
+    assert.deepEqual(lerNumeroDaBusca(termo), { numero: 142, obra: false, tombo: true }, termo);
+  }
+  for (const termo of ['obra 142', 'nº 142', 'n° 142', 'no 142', '#142', 'id 142', 'obra nº 142']) {
+    assert.deepEqual(lerNumeroDaBusca(termo), { numero: 142, obra: true, tombo: false }, termo);
+  }
+});
+
+test('lerNumeroDaBusca: texto com número no meio é busca de texto', () => {
+  assert.equal(lerNumeroDaBusca('Revista Espírita 1858'), null);
+  assert.equal(lerNumeroDaBusca('Há 2000 anos'), null);
+  assert.equal(lerNumeroDaBusca('nosso lar'), null);
+  assert.equal(lerNumeroDaBusca(''), null);
+  assert.equal(lerNumeroDaBusca(null), null);
+});
+
+const EXEMPLARES_NUMERADOS = [
+  { tombo: 10, id_titulo: 1, ativo: 'SIM', situacao: 'disponível' },
+  { tombo: 11, id_titulo: 1, ativo: 'SIM', situacao: 'emprestado' },
+  { tombo: 3, id_titulo: 4, ativo: 'SIM', situacao: 'disponível' },
+  { tombo: 77, id_titulo: 999, ativo: 'SIM', situacao: 'disponível' }   // obra sumida
+];
+
+test('buscarPorNumero acha o exemplar pelo tombo e a obra pelo número', () => {
+  const achados = buscarPorNumero(ACERVO, EXEMPLARES_NUMERADOS, '3');
+  assert.deepEqual(achados.map((a) => [a.tipo, a.titulo.id_titulo]), [['tombo', 4], ['obra', 3]]);
+  assert.equal(achados[0].exemplar.tombo, 3);
+});
+
+test('buscarPorNumero respeita o prefixo', () => {
+  assert.deepEqual(buscarPorNumero(ACERVO, EXEMPLARES_NUMERADOS, 'tombo 3')
+    .map((a) => [a.tipo, a.titulo.id_titulo]), [['tombo', 4]]);
+  assert.deepEqual(buscarPorNumero(ACERVO, EXEMPLARES_NUMERADOS, 'obra 3')
+    .map((a) => [a.tipo, a.titulo.id_titulo]), [['obra', 3]]);
+});
+
+test('buscarPorNumero não repete a obra quando tombo e número dão nela', () => {
+  const exemplares = [{ tombo: 1, id_titulo: 1, ativo: 'SIM', situacao: 'disponível' }];
+  assert.deepEqual(buscarPorNumero(ACERVO, exemplares, '1').map((a) => a.tipo), ['tombo']);
+});
+
+test('buscarPorNumero ignora o que não existe', () => {
+  assert.deepEqual(buscarPorNumero(ACERVO, EXEMPLARES_NUMERADOS, '500'), []);
+  assert.deepEqual(buscarPorNumero(ACERVO, EXEMPLARES_NUMERADOS, '77'), []);
+  assert.deepEqual(buscarPorNumero(ACERVO, EXEMPLARES_NUMERADOS, 'nosso lar'), []);
+  assert.deepEqual(buscarPorNumero(null, null, '3'), []);
+});
+
+test('resumirExemplarParaBusca nunca leva com quem está o livro', () => {
+  const resumo = resumirExemplarParaBusca({
+    tombo: 11, editora: 'FEB Editora', ano: 1978, edicao: 3, ativo: 'SIM',
+    situacao: 'emprestado', com_quem: 'Maria da Silva',
+    previsao_devolucao: new Date(2026, 11, 12)
+  });
+  assert.deepEqual(Object.keys(resumo).sort(), ['edicao', 'previsao', 'situacao', 'tombo']);
+  assert.equal(JSON.stringify(resumo).includes('Maria'), false);
+  assert.equal(resumo.situacao, 'emprestado');
+  assert.equal(resumo.edicao, 'FEB Editora · 1978 · 3ª ed.');
+  assert.equal(resumo.previsao.getDate(), 12);
+});
+
+test('resumirExemplarParaBusca: baixado é baixado, e só emprestado tem previsão', () => {
+  assert.equal(resumirExemplarParaBusca({ tombo: 1, ativo: 'NÃO', situacao: '' }).situacao, 'baixado');
+  const livre = resumirExemplarParaBusca({
+    tombo: 2, ativo: 'SIM', situacao: 'disponível', previsao_devolucao: new Date(2026, 0, 1)
+  });
+  assert.equal(livre.previsao, null);
 });
 
 // --- empréstimo: situação, prazo e atraso ------------------------------------

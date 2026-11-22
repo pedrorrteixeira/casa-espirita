@@ -88,7 +88,7 @@ function pegarLivro(tombo, contato) {
   var titulo = lerTitulo(feito.exemplar.id_titulo);
 
   return {
-    titulo: titulo ? titulo.titulo : '',
+    titulo: titulo ? nomeDaObra(titulo) : '',
     data_prevista: formatarData_(feito.registro.data_prevista),
     avisado_por_email: avisado
   };
@@ -126,7 +126,7 @@ function verLivroParaPegar(tombo) {
 
   return {
     tombo: alvo,
-    titulo: titulo ? titulo.titulo : '(título não encontrado)',
+    titulo: titulo ? nomeDaObra(titulo) : '(título não encontrado)',
     autoria: titulo ? montarAutoria(titulo) : '',
     edicao: descreverEdicao(exemplar),
     pode_pegar: situacao === SITUACAO_DISPONIVEL,
@@ -237,7 +237,7 @@ function enviarReciboDeEmprestimo_(feito) {
 
   try {
     var titulo = lerTitulo(feito.exemplar.id_titulo);
-    var livro = titulo ? '"' + titulo.titulo + '"' : 'o livro';
+    var livro = titulo ? '"' + nomeDaObra(titulo) + '"' : 'o livro';
     var url = limparCampo_(lerConfig('url_sistema', ''));
 
     return enviarEmail_(
@@ -409,7 +409,7 @@ function emprestadosAgora_(somenteAtrasados) {
       var titulo = tituloDoTombo[String(emprestimo.tombo)];
       return {
         tombo: emprestimo.tombo,
-        titulo: titulo ? titulo.titulo : '(título não encontrado)',
+        titulo: titulo ? nomeDaObra(titulo) : '(título não encontrado)',
         autoria: titulo ? montarAutoria(titulo) : '',
         nome: pessoas[String(emprestimo.id_pessoa)] || '(pessoa não encontrada)',
         data_prevista: formatarData_(emprestimo.data_prevista),
@@ -446,7 +446,7 @@ function verExemplar(sessao, tombo) {
 
   return {
     tombo: alvo,
-    titulo: titulo ? titulo.titulo : '(título não encontrado)',
+    titulo: titulo ? nomeDaObra(titulo) : '(título não encontrado)',
     autoria: titulo ? montarAutoria(titulo) : '',
     // "FEB · 2022 · 34ª ed.", e não "FEB · 2022 · 34": o número solto não
     // diz que é a edição. A mesma redação do relatório do acervo.
@@ -519,7 +519,7 @@ function meusEmprestimos(contato) {
       var titulo = exemplar ? titulos[String(exemplar.id_titulo)] : null;
       return {
         tombo: emprestimo.tombo,
-        titulo: titulo ? titulo.titulo : '(título não encontrado)',
+        titulo: titulo ? nomeDaObra(titulo) : '(título não encontrado)',
         autoria: titulo ? montarAutoria(titulo) : '',
         data_prevista: formatarData_(emprestimo.data_prevista),
         dias_de_atraso: diasDeAtraso(emprestimo, hoje)

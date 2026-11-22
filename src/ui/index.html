@@ -52,7 +52,7 @@
         id="termo"
         type="search"
         name="termo"
-        placeholder="título, autor, médium, série…"
+        placeholder="título, autor, médium, série ou tombo…"
         aria-label="Buscar no acervo"
         autocomplete="off"
         enterkeyhint="search">
@@ -61,7 +61,8 @@
 
     <p class="dica">
       Pode buscar sem acento. "andre luiz" acha André Luiz, "chico" acha as
-      psicografias.
+      psicografias. Um número acha o livro pelo tombo da etiqueta ou pelo
+      número da obra.
     </p>
 
     <div id="estado-busca" class="estado" role="status" aria-live="polite"></div>
@@ -259,6 +260,7 @@
         <span id="grupo-abas-livros" class="grupo-abas-titulo">Livros</span>
         <button type="button" class="aba-interna ativa" data-bloco="obra">Obra nova</button>
         <button type="button" class="aba-interna" data-bloco="exemplar">Novo exemplar</button>
+        <button type="button" class="aba-interna" data-bloco="alterar-obra">Alterar obra</button>
         <button type="button" class="aba-interna" data-bloco="alterar-exemplar">Alterar exemplar</button>
         <button type="button" class="aba-interna" data-bloco="relatorio">Relatório do acervo</button>
         <!-- Abre o cartaz numa aba nova, onde se imprime. Link de verdade, e
@@ -307,14 +309,14 @@
 
         <label>
           Procurar a obra
-          <input id="busca-obra" placeholder="título, autor ou médium"
+          <input id="busca-obra" placeholder="título, autor, médium ou tombo de outra cópia"
                  enterkeyhint="search">
         </label>
         <ul id="obras-achadas" class="candidatos"></ul>
         <div id="estado-busca-obra" class="estado" role="status" aria-live="polite"></div>
 
         <div id="campos-exemplar-novo" class="oculta">
-          <p id="obra-escolhida" class="escolhida"></p>
+          <div id="obra-escolhida" class="escolhida"></div>
 
           <div class="par">
             <label>
@@ -383,6 +385,113 @@
       <div id="estado-relatorio" class="estado" role="status" aria-live="polite"></div>
       <div id="relatorio-conteudo"></div>
     </div>
+
+    <!-- Alterar a ficha de uma obra já cadastrada: título, autoria, série,
+         categoria. Vale para todos os exemplares dela de uma vez, porque é a
+         obra que eles compartilham.
+
+         Os mesmos campos de "Obra nova", menos a consulta ao Google: aqui se
+         corrige o que alguém já conferiu, e preencher de novo pela consulta
+         sobrescreveria a correção com o erro de volta. Editora, ano e edição
+         ficam de fora porque são de cada exemplar, não da obra. -->
+    <form id="form-alterar-obra" class="bloco-cadastro oculta" autocomplete="off">
+      <fieldset>
+        <legend>Alterar obra</legend>
+
+        <p class="dica">
+          Para corrigir a ficha de um livro que já está no acervo. Vale para
+          todos os exemplares dele.
+        </p>
+
+        <label>
+          Procurar a obra
+          <input id="busca-obra-alterar" placeholder="título, autor, médium, nº da obra ou tombo"
+                 enterkeyhint="search">
+        </label>
+        <ul id="obras-alterar" class="candidatos"></ul>
+        <div id="estado-busca-obra-alterar" class="estado" role="status" aria-live="polite"></div>
+
+        <div id="campos-alterar-obra" class="oculta">
+          <div id="alterando-obra" class="escolhida"></div>
+
+          <label>
+            Título <span class="obrigatorio">*</span>
+            <input name="titulo" required>
+          </label>
+          <div id="parecidas-alterar" class="parecidas oculta" role="status" aria-live="polite"></div>
+
+          <label>
+            Subtítulo
+            <input name="subtitulo">
+          </label>
+
+          <label class="caixa">
+            <input type="checkbox" name="psicografada" id="psicografada-alterar">
+            Obra psicografada
+          </label>
+
+          <label id="rotulo-autoria-alterar">
+            Autor
+            <input name="autor_ou_medium" list="lista-autor-ou-medium">
+          </label>
+
+          <label id="campo-espiritual-alterar" class="oculta">
+            Autor espiritual
+            <input name="autor_espiritual" list="lista-autor-espiritual" placeholder="André Luiz">
+          </label>
+
+          <div class="par">
+            <label>
+              Tradutor
+              <input name="tradutor" list="lista-tradutor">
+            </label>
+            <label>
+              Categoria
+              <select name="categoria" id="categoria-alterar"></select>
+            </label>
+          </div>
+
+          <div class="par">
+            <label>
+              Série
+              <input name="serie" list="lista-serie">
+            </label>
+            <label>
+              Nº na série
+              <input name="ordem_na_serie" inputmode="numeric">
+            </label>
+          </div>
+
+          <label>
+            ISBN
+            <input name="isbn" inputmode="numeric">
+          </label>
+
+          <label>
+            Sinopse
+            <textarea name="sinopse" rows="3"></textarea>
+          </label>
+
+          <label>
+            Link para leitura on-line
+            <input name="link_online" type="url" placeholder="só fonte oficial (FEB, federação, editora)">
+          </label>
+
+          <label>
+            Observação sobre a obra
+            <input name="observacao">
+          </label>
+
+          <p class="dica">
+            Editora, ano e edição não estão aqui: são de cada exemplar, e a casa
+            pode ter a mesma obra em edições diferentes.
+          </p>
+
+          <button type="submit" id="btn-salvar-alterar-obra">Salvar alteração</button>
+        </div>
+      </fieldset>
+      <div id="estado-alterar-obra" class="estado" role="status" aria-live="polite"></div>
+    </form>
 
     <!-- Alterar um exemplar que já existe. Nasceu para os livros antigos e
          frágeis, que já estavam no acervo quando a marca "só para ler na
@@ -611,6 +720,11 @@
         <p id="aviso-titulo" class="dica"></p>
         <ul id="candidatos" class="candidatos"></ul>
 
+        <!-- Obra com título igual ou parecido já cadastrada. Aparece enquanto
+             se digita, antes de alguém preencher a ficha inteira à toa. É
+             aviso: não impede nada, e some quando o título muda. -->
+        <div id="parecidas-obra" class="parecidas oculta" role="status" aria-live="polite"></div>
+
         <label>
           Subtítulo
           <input name="subtitulo">
@@ -740,15 +854,15 @@
         </div>
       </fieldset>
 
-      <!-- Aparece quando o título já existe. Não é erro: é uma escolha, e a
-           primeira opção costuma ser a certa. -->
+      <!-- Aparece ao salvar, quando o título já existe — com qualquer
+           autoria, porque o mesmo livro chega grafado de dois jeitos. Não é
+           erro: é uma escolha, e a primeira opção costuma ser a certa. Pode
+           haver mais de uma obra com o mesmo nome, e cada uma tem o seu botão. -->
       <div id="painel-duplicata" class="aviso oculta" role="alert">
         <p><strong>Esta obra já está no acervo.</strong></p>
-        <p id="duplicata-detalhe"></p>
+        <p id="duplicata-detalhe" class="dica"></p>
+        <ul id="duplicatas" class="candidatos"></ul>
         <div class="escolhas">
-          <button type="button" id="btn-somar-exemplar">
-            Acrescentar este exemplar à obra existente
-          </button>
           <button type="button" id="btn-forcar" class="discreto">
             Não é a mesma obra — cadastrar separado
           </button>

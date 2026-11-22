@@ -586,6 +586,16 @@
     color: var(--so-na-casa);
     border-bottom-color: var(--so-na-casa);
   }
+  .divisor-numero h2 {
+    margin: 0;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--acento);
+    padding-bottom: .3rem;
+    border-bottom: 2px solid var(--acento);
+  }
 
   .divisor-ausente > details > summary {
     cursor: pointer;
@@ -817,7 +827,53 @@
     border-left: 3px solid var(--acento);
     border-radius: 4px;
     color: var(--tinta);
-    font-weight: 600;
+  }
+  /* O nome inteiro numa linha própria, com o subtítulo: é ele que separa
+     livros de mesmo título. Os detalhes embaixo, menores. */
+  .escolhida-rotulo {
+    display: block;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--tinta-fraca);
+  }
+  .escolhida-nome { display: block; font-weight: 600; margin-top: .1rem; }
+  .escolhida-detalhe { display: block; margin-top: .2rem; color: var(--tinta-fraca); }
+
+  /* Obra com título igual ou parecido. Amarelo de atenção, como a
+     duplicata: é aviso, não erro, e não impede nada. */
+  .parecidas {
+    margin: .6rem 0 0;
+    padding: .7rem .9rem;
+    border: 1px solid var(--aviso-borda);
+    border-left: 4px solid var(--aviso-borda);
+    border-radius: 6px;
+    background: var(--aviso-fundo);
+    color: var(--tinta);
+  }
+  .parecidas-titulo { margin: 0; font-weight: 600; }
+  .parecidas .dica { margin-top: .5rem; }
+  .parecida {
+    padding: .5rem .7rem;
+    background: var(--fundo);
+    border: 1px solid var(--borda);
+    border-radius: 6px;
+    line-height: 1.35;
+  }
+  .parecida strong { display: block; font-weight: 600; }
+  .parecida small { display: block; color: var(--tinta-fraca); }
+  .parecida button { margin-top: .45rem; width: 100%; }
+
+  /* Na busca, qual número casou: "Tombo 142" e "Obra nº 142" podem ser
+     livros diferentes. */
+  .achado-por {
+    margin: 0 0 .15rem;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--acento);
   }
 
   /* Convite para marcar data. Azul da casa: é ação pública, aberta a qualquer

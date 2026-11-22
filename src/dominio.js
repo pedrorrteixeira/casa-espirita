@@ -127,46 +127,236 @@ function separarAutoria(autores) {
 }
 
 /**
- * Procura um título já cadastrado equivalente ao que se quer criar.
+ * Obras já cadastradas com título igual ou parecido com o que se vai
+ * cadastrar. É AVISO, não trava: a tela mostra e a bibliotecária decide.
  *
  * Duplicata acontece porque a casa recebe a segunda cópia do mesmo livro meses
  * depois, e quem cataloga não lembra que já entrou. O resultado é o acervo
  * dizendo "1 exemplar" duas vezes em vez de "2 exemplares", e a busca
  * devolvendo a mesma obra repetida.
  *
- * Equivalência compara texto normalizado — "Nosso Lar" e "nosso lar " são o
- * mesmo livro. Mas título igual NÃO basta: obras diferentes compartilham nome.
- * Por isso, quando as duas fichas têm autoria preenchida e ela difere, são
- * obras distintas e ambas podem existir.
+ * O que identifica a obra é TÍTULO + SUBTÍTULO, e só isso — regra do Weldson.
+ * O "Estudo Sistematizado da Doutrina Espírita" existe como programa
+ * fundamental e como programa complementar: mesmo título, mesma organizadora,
+ * livros diferentes. O subtítulo é o que os separa.
  *
- * Quando uma das duas está sem autoria, trata como equivalente: é o caso de
- * ficha incompleta, e avisar de leve é melhor do que deixar duplicar calado.
+ * A autoria não entra, nem para separar nem para juntar. Comparar autoria
+ * deixava passar o mesmo livro grafado de dois jeitos — o pré-cadastro grava
+ * "Francisco Cândido Xavier (Chico Xavier)", o Google devolve "Francisco
+ * Cândido Xavier" — e "Nosso Lar" entrava duas vezes sem aviso nenhum.
+ *
+ * Três graus, nesta ordem:
+ *
+ *  1. `mesmo_titulo` — título e subtítulo iguais. É o caso que a tela confirma
+ *     antes de gravar.
+ *  2. `comeca_igual` — um é o começo do outro, palavra inteira. Pega o
+ *     subtítulo que o Google cola no título ("Nosso Lar: a vida no mundo
+ *     espiritual") e mostra os volumes de uma obra a quem digitou só o título.
+ *     Só vale se o mais curto tiver duas palavras ou mais; com uma só,
+ *     "Renúncia" puxaria toda obra que começa por ela.
+ *  3. `quase_igual` — uma ou duas letras de diferença, o erro de digitação.
+ *     "Paulo e Estevao" sem o acento já cai no 1; isto pega "Noso Lar". Mas
+ *     não quando o que muda é um número: "Tomo I" e "Tomo II" diferem numa
+ *     letra e são livros diferentes.
+ *
+ * Pontuação não conta ("Nosso Lar" = "Nosso Lar."), nem acento, nem caixa —
+ * nem onde termina o título e começa o subtítulo.
+ * `ignorarId` tira da conta a própria obra, para a tela de alterar.
  */
-function acharTituloEquivalente(titulos, candidato) {
-  if (!candidato) return null;
+function acharTitulosParecidos(titulos, candidato, ignorarId, limite) {
+  var chave = chaveDeObra_(candidato);
+  if (chave.length < 3) return [];
 
-  var nome = normalizarTexto(candidato.titulo);
-  if (!nome) return null;
+  var achados = [];
+  (titulos || []).forEach(function (existente) {
+    if (ignorarId !== undefined && ignorarId !== null &&
+        Number(existente.id_titulo) === Number(ignorarId)) return;
 
-  var autoriaNova = autoriaComparavel_(candidato);
+    var outra = chaveDeObra_(existente);
+    if (!outra) return;
 
-  var iguais = (titulos || []).filter(function (existente) {
-    if (normalizarTexto(existente.titulo) !== nome) return false;
-
-    var autoriaVelha = autoriaComparavel_(existente);
-    if (autoriaNova && autoriaVelha && autoriaNova !== autoriaVelha) return false;
-
-    return true;
+    var motivo = grauDeParecenca_(chave, outra);
+    if (motivo) achados.push({ titulo: existente, motivo: motivo });
   });
 
-  return iguais.length ? iguais[0] : null;
+  var peso = { mesmo_titulo: 0, comeca_igual: 1, quase_igual: 2 };
+  achados.sort(function (a, b) {
+    return peso[a.motivo] - peso[b.motivo] ||
+      normalizarTexto(nomeDaObra(a.titulo)).localeCompare(normalizarTexto(nomeDaObra(b.titulo)));
+  });
+
+  return achados.slice(0, limite || 5);
 }
 
-/** Autoria reduzida a texto comparável, juntando os dois campos. */
-function autoriaComparavel_(titulo) {
-  return normalizarTexto(
-    limpar_(titulo.autor_ou_medium) + ' ' + limpar_(titulo.autor_espiritual)
-  );
+/** Título e subtítulo reduzidos ao que importa para comparar: sem acento,
+ *  caixa nem pontuação. */
+function chaveDeObra_(obra) {
+  if (!obra) return '';
+  return normalizarTexto(limpar_(obra.titulo) + ' ' + limpar_(obra.subtitulo))
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function grauDeParecenca_(a, b) {
+  if (a === b) return 'mesmo_titulo';
+
+  var curta = a.length <= b.length ? a : b;
+  var longa = curta === a ? b : a;
+  if (curta.indexOf(' ') !== -1 && longa.indexOf(curta + ' ') === 0) return 'comeca_igual';
+
+  // Título curto não tem folga para erro: "Lar" e "Luz" diferem numa letra e
+  // não são o mesmo livro.
+  if (curta.length < 6) return null;
+  if (soMudaONumero_(a, b)) return null;
+  var folga = curta.length < 15 ? 1 : 2;
+  if (longa.length - curta.length > folga) return null;
+  return distanciaDeEdicao_(a, b, folga) <= folga ? 'quase_igual' : null;
+}
+
+/**
+ * Os dois diferem só em número — "Tomo I" e "Tomo II", "Revista Espírita
+ * 1858" e "1859"? Então são volumes, não erro de digitação.
+ */
+function soMudaONumero_(a, b) {
+  var partesA = a.split(' ');
+  var partesB = b.split(' ');
+  if (partesA.length !== partesB.length) return false;
+
+  var numeral = /^(?:\d+|m{0,3}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3}))$/;
+  var mudou = false;
+  for (var i = 0; i < partesA.length; i++) {
+    if (partesA[i] === partesB[i]) continue;
+    if (!numeral.test(partesA[i]) || !numeral.test(partesB[i])) return false;
+    mudou = true;
+  }
+  return mudou;
+}
+
+/**
+ * Quantas letras trocar, pôr ou tirar para ir de um texto ao outro
+ * (Levenshtein). Para de contar quando passa do `teto` — só interessa saber se
+ * é perto, e o catálogo tem centenas de títulos para comparar a cada consulta.
+ */
+function distanciaDeEdicao_(a, b, teto) {
+  var anterior = [];
+  for (var j = 0; j <= b.length; j++) anterior.push(j);
+
+  for (var i = 1; i <= a.length; i++) {
+    var atual = [i];
+    var menorDaLinha = i;
+    for (var k = 1; k <= b.length; k++) {
+      var custo = a.charAt(i - 1) === b.charAt(k - 1) ? 0 : 1;
+      var valor = Math.min(anterior[k] + 1, atual[k - 1] + 1, anterior[k - 1] + custo);
+      atual.push(valor);
+      if (valor < menorDaLinha) menorDaLinha = valor;
+    }
+    if (menorDaLinha > teto) return teto + 1;
+    anterior = atual;
+  }
+  return anterior[b.length];
+}
+
+/**
+ * O nome da obra como quem está com o livro na mão o reconhece: título e
+ * subtítulo juntos.
+ *
+ * Só o título não basta para distinguir volumes. O "Estudo Sistematizado da
+ * Doutrina Espírita" tem tomo I e tomo II, e o que separa um do outro está no
+ * subtítulo — escondê-lo põe o exemplar no tomo errado, com o tombo errado na
+ * etiqueta.
+ */
+function nomeDaObra(titulo) {
+  if (!titulo) return '';
+  var nome = limpar_(titulo.titulo);
+  var subtitulo = limpar_(titulo.subtitulo);
+  return subtitulo ? nome + ' — ' + subtitulo : nome;
+}
+
+/**
+ * Lê na busca um número de obra ou de tombo.
+ *
+ * Só número ("142") procura nos dois: quem digita sabe o que o número é, mas
+ * a busca não, e mostrar os dois — cada um com o seu rótulo — custa uma linha.
+ * Com o prefixo, procura só um: "tombo 142", "t142", "obra 142", "nº 142",
+ * "#142".
+ *
+ * Devolve null quando o termo não é um número — e aí é busca de texto comum.
+ */
+function lerNumeroDaBusca(termo) {
+  var texto = normalizarTexto(termo);
+  if (!texto) return null;
+
+  var achado = /^(\d+)$/.exec(texto);
+  if (achado) return { numero: Number(achado[1]), obra: true, tombo: true };
+
+  achado = /^(?:tombo|t)\s*[.:#-]?\s*(\d+)$/.exec(texto);
+  if (achado) return { numero: Number(achado[1]), obra: false, tombo: true };
+
+  achado = /^(?:obra|id|#|n[º°o.])\s*(?:n[º°o.]\s*)?[.:#-]?\s*(\d+)$/.exec(texto);
+  if (achado) return { numero: Number(achado[1]), obra: true, tombo: false };
+
+  return null;
+}
+
+/**
+ * Acha a obra pelo número dela e o exemplar pelo tombo.
+ *
+ * Devolve uma lista de `{ tipo, numero, titulo, exemplar }`, com o tombo
+ * antes: é o número que está na etiqueta, e o mais provável de alguém
+ * digitar. Quando o tombo e a obra de mesmo número dão no mesmo livro, ele
+ * aparece uma vez só.
+ *
+ * Exemplar cuja obra não existe não aparece — não há o que mostrar dele.
+ */
+function buscarPorNumero(titulos, exemplares, termo) {
+  var pedido = lerNumeroDaBusca(termo);
+  if (!pedido) return [];
+
+  var porId = {};
+  (titulos || []).forEach(function (titulo) {
+    porId[Number(titulo.id_titulo)] = titulo;
+  });
+
+  var achados = [];
+  var vistas = {};
+
+  if (pedido.tombo) {
+    (exemplares || []).forEach(function (exemplar) {
+      if (Number(exemplar.tombo) !== pedido.numero) return;
+      var titulo = porId[Number(exemplar.id_titulo)];
+      if (!titulo) return;
+      vistas[Number(titulo.id_titulo)] = true;
+      achados.push({ tipo: 'tombo', numero: pedido.numero, titulo: titulo, exemplar: exemplar });
+    });
+  }
+
+  if (pedido.obra && porId[pedido.numero] && !vistas[pedido.numero]) {
+    achados.push({ tipo: 'obra', numero: pedido.numero, titulo: porId[pedido.numero] });
+  }
+
+  return achados;
+}
+
+/**
+ * Um exemplar, do jeito que a busca pública pode mostrar: tombo, edição,
+ * situação e previsão de volta.
+ *
+ * Lista branca, como `resumirDisponibilidade`: o exemplar chega com
+ * `com_quem` preenchido, e isto simplesmente não olha para o campo. Quem
+ * digitar o tombo de um livro emprestado descobre quando ele volta, nunca com
+ * quem está (seção 6 da especificação).
+ */
+function resumirExemplarParaBusca(exemplar) {
+  var ativo = String(exemplar && exemplar.ativo).trim() === 'SIM';
+  var situacao = ativo ? limpar_(exemplar.situacao) : SITUACAO_BAIXADO;
+  var emprestado = normalizarTexto(situacao) === normalizarTexto(SITUACAO_EMPRESTADO);
+
+  return {
+    tombo: Number(exemplar && exemplar.tombo),
+    edicao: descreverEdicao(exemplar),
+    situacao: situacao,
+    previsao: emprestado ? comoData_(exemplar.previsao_devolucao) : null
+  };
 }
 
 /**
@@ -835,7 +1025,7 @@ function montarRelatorioDoAcervo(titulos, exemplares, emprestimos) {
   });
 
   obras.sort(function (a, b) {
-    return normalizarTexto(a.titulo).localeCompare(normalizarTexto(b.titulo)) ||
+    return normalizarTexto(nomeDaObra(a)).localeCompare(normalizarTexto(nomeDaObra(b))) ||
       a.id_titulo - b.id_titulo;
   });
   resumo.obras = obras.length;
@@ -889,10 +1079,16 @@ function limpar_(valor) {
   return String(valor).trim();
 }
 
-/** Os cinco campos pesquisáveis, normalizados e juntos num texto só. */
+/**
+ * Os campos pesquisáveis, normalizados e juntos num texto só.
+ *
+ * O subtítulo entra porque é ele que separa volumes de mesmo título: quem
+ * procura "programa complementar" quer aquele, e não o fundamental.
+ */
 function camposDeBusca_(titulo) {
   return normalizarTexto([
     titulo.titulo,
+    titulo.subtitulo,
     titulo.autor_ou_medium,
     titulo.autor_espiritual,
     titulo.serie
@@ -937,7 +1133,8 @@ function compararAchados_(a, b, palavras) {
     }
   }
 
-  return normalizarTexto(a.titulo).localeCompare(normalizarTexto(b.titulo));
+  // Com o subtítulo: dois volumes de mesmo título saem sempre na mesma ordem.
+  return normalizarTexto(nomeDaObra(a)).localeCompare(normalizarTexto(nomeDaObra(b)));
 }
 
 /**
@@ -952,7 +1149,7 @@ function temNaCasa_(titulo) {
 }
 
 function casaNoTitulo_(titulo, palavras) {
-  var alvo = normalizarTexto(titulo.titulo);
+  var alvo = normalizarTexto(nomeDaObra(titulo));
   return palavras.every(function (palavra) {
     return alvo.indexOf(palavra) !== -1;
   });
@@ -1006,7 +1203,11 @@ if (typeof module !== 'undefined') {
     montarRelatorioDoAcervo: montarRelatorioDoAcervo,
     descreverEdicao: descreverEdicao,
     resumirEdicoes: resumirEdicoes,
-    acharTituloEquivalente: acharTituloEquivalente,
+    acharTitulosParecidos: acharTitulosParecidos,
+    nomeDaObra: nomeDaObra,
+    lerNumeroDaBusca: lerNumeroDaBusca,
+    buscarPorNumero: buscarPorNumero,
+    resumirExemplarParaBusca: resumirExemplarParaBusca,
     calcularSituacao: calcularSituacao,
     soParaLerNaCasa: soParaLerNaCasa,
     acharEmprestimoAberto: acharEmprestimoAberto,

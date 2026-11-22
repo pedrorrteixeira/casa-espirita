@@ -39,11 +39,19 @@ function criarTitulo(sessao, dados, permitirDuplicata) {
     // Dentro da trava e lendo sem cache, de propósito. A tela já avisa antes
     // de salvar, mas dois voluntários cadastrando o mesmo livro ao mesmo
     // tempo passariam pelo aviso e criariam a duplicata assim mesmo.
+    //
+    // A regra é a MESMA da tela — título e subtítulo iguais —, e tem que ser:
+    // uma regra mais larga aqui recusaria o que a tela deixou passar. Foi o
+    // caso do programa complementar do ESDE, recusado por ter o mesmo título
+    // e a mesma organizadora do fundamental.
     if (!permitirDuplicata) {
-      var jaExiste = acharTituloEquivalente(lerTitulos(true), dados);
-      if (jaExiste) {
+      var iguais = acharTitulosParecidos(lerTitulos(true), dados).filter(function (achado) {
+        return achado.motivo === 'mesmo_titulo';
+      });
+      if (iguais.length) {
+        var jaExiste = iguais[0].titulo;
         throw new Error(
-          'O título "' + jaExiste.titulo + '" já está cadastrado (nº ' +
+          '"' + nomeDaObra(jaExiste) + '" já está cadastrado (obra nº ' +
           jaExiste.id_titulo + '). Acrescente um exemplar a ele em vez de ' +
           'criar outro.'
         );
@@ -74,6 +82,17 @@ function criarTitulo(sessao, dados, permitirDuplicata) {
 }
 
 /**
+ * O que a tela "Alterar obra" pode mudar. É a ficha inteira menos o
+ * `id_titulo`, que liga os exemplares, e as duas colunas de fórmula, que
+ * ninguém escreve (D14).
+ */
+var CAMPOS_EDITAVEIS_DA_OBRA = [
+  'titulo', 'subtitulo', 'autor_ou_medium', 'autor_espiritual', 'tradutor',
+  'isbn', 'categoria', 'serie', 'ordem_na_serie', 'sinopse', 'link_online',
+  'observacao'
+];
+
+/**
  * Atualiza campos de um título. Só mexe no que veio em `mudancas`; o resto
  * fica como está. `id_titulo` não é alterável — é o que liga os exemplares.
  */
@@ -84,15 +103,9 @@ function atualizarTitulo(sessao, idTitulo, mudancas) {
     var titulo = lerTitulo(idTitulo);
     if (!titulo) throw new Error('Título ' + idTitulo + ' não existe.');
 
-    var permitidos = [
-      'titulo', 'subtitulo', 'autor_ou_medium', 'autor_espiritual', 'tradutor',
-      'isbn', 'categoria', 'serie', 'ordem_na_serie', 'sinopse', 'link_online',
-      'observacao'
-    ];
-
     var aplicar = {};
     Object.keys(mudancas || {}).forEach(function (campo) {
-      if (permitidos.indexOf(campo) === -1) {
+      if (CAMPOS_EDITAVEIS_DA_OBRA.indexOf(campo) === -1) {
         throw new Error('O campo "' + campo + '" não pode ser alterado.');
       }
       aplicar[campo] = limparCampo_(mudancas[campo]);
@@ -291,38 +304,86 @@ function darBaixaExemplar(sessao, tombo, motivo) {
  * Acrescentar campo aqui é decisão consciente; esquecer de tirar, não seria.
  */
 function buscarNoAcervo(termo) {
-  var achados = buscarTitulos(lerTitulos(), termo);
-  if (!achados.length) return [];
+  var titulos = lerTitulos();
 
+  // Número procura a obra pelo `id_titulo` e o exemplar pelo tombo. Com
+  // prefixo ("tombo 142", "obra 142") quem digitou disse o que quer, e o texto
+  // fica de fora: "t 12" casaria com qualquer título que tivesse um 12.
+  var pedido = lerNumeroDaBusca(termo);
+  var soNumero = pedido && !(pedido.obra && pedido.tombo);
+  var porTexto = soNumero ? [] : buscarTitulos(titulos, termo);
+  if (!pedido && !porTexto.length) return [];
+
+  var exemplares = lerExemplares();
+  var porNumero = pedido ? buscarPorNumero(titulos, exemplares, termo) : [];
+  if (!porNumero.length && !porTexto.length) return [];
+
+  var porTitulo = exemplaresPorTitulo_(exemplares);
+  var listadas = {};
+
+  // O achado pelo número vem antes: quem digita um número sabe qual livro
+  // quer, e não está explorando.
+  var lista = porNumero.map(function (achado) {
+    listadas[Number(achado.titulo.id_titulo)] = true;
+    var obra = resumirObra_(achado.titulo, porTitulo);
+    obra.por_numero = { tipo: achado.tipo, numero: achado.numero };
+
+    // O exemplar daquele tombo, e não a obra inteira: é ESTE livro que a
+    // pessoa tem na mão, ou que veio perguntar. Sem `com_quem` — ver
+    // `resumirExemplarParaBusca`.
+    // `google.script.run` não devolve Date: a previsão vai já formatada.
+    if (achado.exemplar) {
+      var exemplar = resumirExemplarParaBusca(achado.exemplar);
+      exemplar.previsao = exemplar.previsao ? formatarData_(exemplar.previsao) : '';
+      obra.por_numero.exemplar = exemplar;
+    }
+    return obra;
+  });
+
+  porTexto.forEach(function (titulo) {
+    if (listadas[Number(titulo.id_titulo)]) return;
+    lista.push(resumirObra_(titulo, porTitulo));
+  });
+
+  return lista;
+}
+
+/** Os exemplares de cada título, indexados pelo `id_titulo`. */
+function exemplaresPorTitulo_(exemplares) {
   var porTitulo = {};
-  lerExemplares().forEach(function (exemplar) {
+  (exemplares || []).forEach(function (exemplar) {
     var id = Number(exemplar.id_titulo);
     if (!porTitulo[id]) porTitulo[id] = [];
     porTitulo[id].push(exemplar);
   });
+  return porTitulo;
+}
 
-  return achados.map(function (titulo) {
-    var meus = porTitulo[Number(titulo.id_titulo)] || [];
-    var resumo = resumirDisponibilidade(meus);
-    return {
-      id_titulo: titulo.id_titulo,
-      titulo: titulo.titulo,
-      subtitulo: titulo.subtitulo,
-      autoria: montarAutoria(titulo),
-      categoria: titulo.categoria,
-      serie: titulo.serie,
-      ordem_na_serie: titulo.ordem_na_serie,
-      link_online: titulo.link_online,
-      // Editora e ano agora vêm dos exemplares, e podem ser vários. A busca
-      // mostra o título, então resume o que existe na estante.
-      edicoes: resumirEdicoes(meus),
-      estado: resumo.estado,
-      total: resumo.total,
-      disponiveis: resumo.disponiveis,
-      so_na_casa: resumo.so_na_casa,
-      previsao: resumo.previsao ? formatarData_(resumo.previsao) : ''
-    };
-  });
+/**
+ * Uma obra como a busca pública a mostra. LISTA BRANCA — ver o comentário de
+ * `buscarNoAcervo`: nada sobre com quem está cada livro.
+ */
+function resumirObra_(titulo, porTitulo) {
+  var meus = porTitulo[Number(titulo.id_titulo)] || [];
+  var resumo = resumirDisponibilidade(meus);
+  return {
+    id_titulo: titulo.id_titulo,
+    titulo: titulo.titulo,
+    subtitulo: titulo.subtitulo,
+    autoria: montarAutoria(titulo),
+    categoria: titulo.categoria,
+    serie: titulo.serie,
+    ordem_na_serie: titulo.ordem_na_serie,
+    link_online: titulo.link_online,
+    // Editora e ano agora vêm dos exemplares, e podem ser vários. A busca
+    // mostra o título, então resume o que existe na estante.
+    edicoes: resumirEdicoes(meus),
+    estado: resumo.estado,
+    total: resumo.total,
+    disponiveis: resumo.disponiveis,
+    so_na_casa: resumo.so_na_casa,
+    previsao: resumo.previsao ? formatarData_(resumo.previsao) : ''
+  };
 }
 
 /** Ficha completa de um título, para a tela de detalhe. Traz a sinopse. */
@@ -381,31 +442,56 @@ function relatorioDoAcervo(sessao) {
 }
 
 /**
- * A tela pergunta isto ANTES de salvar, para poder oferecer a saída certa em
- * vez de só recusar. Quem cadastra um livro que já existe quase sempre quer
+ * Obras com título igual ou parecido com o que está sendo digitado. É AVISO,
+ * nunca recusa: quem decide se é o mesmo livro é quem está com ele na mão.
+ *
+ * A tela pergunta duas vezes. Enquanto se digita o título, para mostrar cedo
+ * — antes de alguém preencher a ficha inteira à toa — e oferecer o atalho de
+ * só acrescentar o exemplar. E ao salvar, quando o título é o mesmo, para
+ * confirmar: quem cadastra um livro que já existe quase sempre quer
  * acrescentar um exemplar, não criar outra ficha.
  *
- * Devolve null quando não há conflito. Quando há, devolve o suficiente para a
- * tela mostrar de qual obra se trata — sem , como toda saída daqui.
+ * `ignorarId` é a própria obra, na tela de alterar. Devolve lista, vazia
+ * quando não há nada parecido; cada item é o resumo da busca pública mais o
+ * `motivo` (ver `acharTitulosParecidos`).
  */
-function verificarTituloExistente(sessao, dados) {
+function procurarTitulosParecidos(sessao, dados, ignorarId) {
   exigir_(sessao, 'cadastrar_obra');
-  var achado = acharTituloEquivalente(lerTitulos(), dados);
-  if (!achado) return null;
 
-  var exemplares = lerExemplares().filter(function (exemplar) {
-    return Number(exemplar.id_titulo) === Number(achado.id_titulo);
+  var parecidos = acharTitulosParecidos(lerTitulos(), dados, ignorarId);
+  if (!parecidos.length) return [];
+
+  var porTitulo = exemplaresPorTitulo_(lerExemplares());
+  return parecidos.map(function (achado) {
+    var obra = resumirObra_(achado.titulo, porTitulo);
+    obra.motivo = achado.motivo;
+    return obra;
   });
-  var resumo = resumirDisponibilidade(exemplares);
+}
 
-  return {
-    id_titulo: achado.id_titulo,
-    titulo: achado.titulo,
-    autoria: montarAutoria(achado),
-    total: resumo.total,
-    disponiveis: resumo.disponiveis,
+/**
+ * A ficha da obra, para a tela "Alterar obra". Traz todos os campos que ela
+ * edita — inclusive a sinopse, que `lerTitulos` deixa fora do cache — como
+ * texto, porque célula numérica (ISBN, nº na série) volta como Number.
+ */
+function verTituloParaEditar(sessao, idTitulo) {
+  exigir_(sessao, 'editar_obra');
+
+  var titulo = lerTitulo(idTitulo);
+  if (!titulo) throw new Error('A obra nº ' + idTitulo + ' não existe.');
+
+  var exemplares = exemplaresPorTitulo_(lerExemplares())[Number(titulo.id_titulo)] || [];
+
+  var ficha = {
+    id_titulo: Number(titulo.id_titulo),
+    autoria: montarAutoria(titulo),
+    total: resumirDisponibilidade(exemplares).total,
     edicoes: resumirEdicoes(exemplares)
   };
+  CAMPOS_EDITAVEIS_DA_OBRA.forEach(function (campo) {
+    ficha[campo] = limparCampo_(titulo[campo]);
+  });
+  return ficha;
 }
 
 /**
@@ -767,8 +853,7 @@ function mostrarRelatorio_(titulo, texto) {
  * massa, feita uma vez, por quem já tem a planilha aberta — e ter a planilha
  * aberta já é a permissão (é o mesmo raciocínio de `criarEstruturaPlanilha`).
  *
- * IDEMPOTENTE. Pula toda obra que já exista, comparando pelo mesmo
- * `acharTituloEquivalente` que a tela de cadastro usa. Rodar duas vezes não
+ * IDEMPOTENTE. Pula toda obra cujo título já exista. Rodar duas vezes não
  * duplica, e acrescentar obras ao arquivo e rodar de novo importa só as novas.
  *
  * NUNCA CRIA EXEMPLAR. O título entra com zero exemplares — que é o D5: a casa
@@ -783,18 +868,17 @@ function importarAcervoBase() {
     // deixado a lista velha, e a checagem de duplicata passaria batido.
     var existentes = lerTitulos(true);
 
-    // Compara SÓ pelo título, e não pelo par título+autoria que a tela de
-    // cadastro usa.
+    // Compara SÓ pelo título, sem o subtítulo que a tela de cadastro também
+    // olha (`acharTitulosParecidos`).
     //
-    // A tela compara os dois porque está julgando o que uma pessoa acabou de
-    // digitar, com o livro na mão: ali, dois "Reencontro" de autores
-    // diferentes são obras diferentes e ambas devem entrar. Aqui é o
-    // contrário. As obras já cadastradas vieram do Google Books, que grava
-    // "Francisco Cândido Xavier"; este arquivo grava "Francisco Cândido
-    // Xavier (Chico Xavier)", que é a convenção de catalogação da casa. Pela
-    // regra da tela as duas autorias divergem, e "Nosso Lar" ganharia uma
-    // segunda ficha — com os exemplares na primeira e o pré-cadastro na
-    // segunda, que é o pior resultado possível.
+    // A tela julga o que uma pessoa acabou de digitar, com o livro na mão, e
+    // ali o subtítulo separa volumes — o programa fundamental e o
+    // complementar do ESDE são livros diferentes. Aqui ninguém está olhando:
+    // as obras deste arquivo não têm subtítulo, e uma já cadastrada pelo
+    // Google às vezes tem ("Nosso Lar" + "a vida no mundo espiritual"). Pela
+    // regra da tela seriam duas obras, e "Nosso Lar" ganharia uma segunda
+    // ficha — com os exemplares na primeira e o pré-cadastro na segunda, que é
+    // o pior resultado possível.
     //
     // Errar para o lado de pular é barato: no máximo uma obra homônima deixa
     // de ser pré-cadastrada, e ela se cadastra à mão em meio minuto. Errar
